@@ -5709,8 +5709,9 @@ uniform vec3 uInk;
 uniform vec2 uResolution;
 uniform vec4 uFrame;  // plate in uv: x0 y0 x1 y1
 uniform vec2 uFlash;  // x the plate darkening (or lightening) for a kick, y the frame slap for a snare
+uniform float uUnit;  // canvas pixels per CSS pixel
 void main() {
-  vec2 px = 1.0 / uResolution;
+  vec2 px = uUnit / uResolution;
   bool inside = vUv.x > uFrame.x && vUv.x < uFrame.z && vUv.y > uFrame.y && vUv.y < uFrame.w;
   vec3 color = inside ? uPlate * (1.0 - uFlash.x) : uGround;
   // an engraved border: a rule round the plate and a hairline outside it; a snare fills the
@@ -6111,16 +6112,26 @@ registerVisualizer({
       const width = frame.width,
         height = frame.height;
       size = { width, height };
-      // The plate: a square in the middle of the sheet as tall as it can be, beside the title
-      // when the title is short enough to leave it room, under it otherwise.
-      const bottom = height * 0.9;
+      // The plate: a square as tall as the sheet allows (above the controls while paused), in
+      // the middle beside the title; when the title reaches past its left edge, moved right to
+      // clear it, and only put under the title if the frame is too narrow for that.
+      const bottom = height * (frame.playing === false ? 0.84 : 0.9);
       let top = height * 0.05;
       let side = Math.min(bottom - top, width * 0.9);
-      if ((frame.titleRight || 0) + 24 > (width - side) / 2 && (frame.titleBottom || 0) > top) {
-        top = Math.max(height * 0.17, (frame.titleBottom || 0) + height * 0.025);
-        side = Math.min(bottom - top, width * 0.9);
+      let x0 = (width - side) / 2;
+      const titleRight = (frame.titleRight || 0) + 44;
+      if (titleRight > x0 && (frame.titleBottom || 0) > top) {
+        const room = width - width * 0.03 - titleRight;
+        if (room >= side * 0.85) {
+          side = Math.min(side, room);
+          x0 = Math.max(titleRight, (width - side) / 2);
+        } else {
+          top = Math.max(height * 0.17, (frame.titleBottom || 0) + height * 0.025);
+          side = Math.min(bottom - top, width * 0.9);
+          x0 = (width - side) / 2;
+        }
       }
-      plate.x0 = (width - side) / 2;
+      plate.x0 = x0;
       plate.y0 = top;
       plate.side = side;
 
@@ -6156,6 +6167,7 @@ registerVisualizer({
       gl.uniform3f(ground.uniforms.uPlate, plateColor[0], plateColor[1], plateColor[2]);
       gl.uniform3f(ground.uniforms.uInk, inkColor[0], inkColor[1], inkColor[2]);
       gl.uniform2f(ground.uniforms.uResolution, canvas.width, canvas.height);
+      gl.uniform1f(ground.uniforms.uUnit, canvas.width / width);
       gl.uniform4f(ground.uniforms.uFrame, plate.x0 / width, 1 - (plate.y0 + side) / height, (plate.x0 + side) / width, 1 - plate.y0 / height);
       gl.uniform2f(ground.uniforms.uFlash, groundName === "ink" || groundName === "inverted" ? -1.2 * kickHit : 0.22 * kickHit, snareHit);
       gl.bindVertexArray(emptyVertexArray);
@@ -6184,7 +6196,8 @@ registerVisualizer({
         const endBar = Math.max(startBar + 1, song.barIndex(drop.build.end - 0.01) + 1);
         const bar = song.barPosition(time);
         const done = Math.floor(bar) - startBar + easeOutCubic(clamp01(fract(bar) / 0.2));
-        gather = 0.88 * clamp01(done / (endBar - startBar));
+        // the first downbeat takes a visible step; the rest follow bar by bar
+        gather = 0.88 * clamp01((done + (done > 0 ? 1 : 0)) / (endBar - startBar + 1));
       }
       if (drop.phase === 2) {
         const beatsLeft = Math.ceil((drop.drop.time - time) / song.beatPeriod - 1e-6);
@@ -6235,16 +6248,25 @@ registerVisualizer({
       let heavy = 0;
       {
         const notes = song.bassNotes;
+        // a strong note's weight: in over 60 ms, held 150 ms past its end, out over 0.2 s; a
+        // note that starts while the one before still weighs takes over from that weight
+        const weightOf = (index) => {
+          const attack = easeOutCubic(clamp01((time - notes.start[index]) / 0.06));
+          const hold = notes.end[index] + 0.15;
+          return time <= hold ? attack : attack * (1 - easeInOutCubic(clamp01((time - hold) / 0.2)));
+        };
         let index = notes.last(time);
         while (index >= 0 && notes.strength[index] <= 0.3) index--;
         if (index >= 0) {
-          const attack = easeOutCubic(clamp01((time - notes.start[index]) / 0.06));
-          const hold = notes.end[index] + 0.15;
-          heavy = time <= hold ? attack : attack * (1 - easeInOutCubic(clamp01((time - hold) / 0.2)));
+          heavy = weightOf(index);
+          let before = index - 1;
+          while (before >= 0 && notes.strength[before] <= 0.3) before--;
+          if (before >= 0 && notes.start[index] <= notes.end[before] + 0.35) heavy = Math.max(heavy, Math.min(1, weightOf(before)));
         }
       }
       // a drop lands in heavy lines for its first two beats, bass or not
       if (drop.phase === 3 && drop.since < 2 * song.beatPeriod) heavy = Math.max(heavy, 1 - easeInCubic(drop.since / (2 * song.beatPeriod)));
+      if (time < 0.5) heavy = 1; // the thumbnail
       const weight = 0.025 + 0.02 * heavy;
       const pointSize = Math.max(1.5, 2.3 * (canvas.height / 1080)) * (1 + 0.4 * heavy);
       // Outro: the sand drains away to the bare knot.
@@ -6283,8 +6305,8 @@ registerVisualizer({
       const sandColor = hexColor(colors.sand),
         voiceColor = hexColor(colors.voice);
       // the black sand steps back while the voice sings, and almost leaves for the key word,
-      // except in a drop's hold
-      const sandPresence = holding ? 1 : (1 - 0.55 * voicePresence) * (1 - 0.8 * keyMoment);
+      // except in a drop's hold and in the first frames (the thumbnail)
+      const sandPresence = holding || time < 0.5 ? 1 : (1 - 0.55 * voicePresence) * (1 - 0.8 * keyMoment);
       drawSand(sandArray, plateGrains, previous, current, settle, gather, knot, sandPresence, sandColor, pointSize, ripples, weight, drain);
       if (keyMoment > 0.01) {
         const before = lastIndexAtOrBefore(voiceStarts, keyStart - 0.01);
