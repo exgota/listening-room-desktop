@@ -1327,7 +1327,7 @@ html[data-visual="type"] {
 html[data-visual="type"] #player-view .play,
 html[data-visual="pocket"] #player-view .play,
 html[data-visual="plate"] #player-view .play {
-  box-shadow: 0 0 0 10px var(--vz-background);
+  box-shadow: 0 0 0 16px var(--vz-background);
 }
 html[data-visual="pocket"] {
   --vz-scrim: linear-gradient(to top, var(--pocket-field, #f2e8d3) 45%, transparent);
@@ -4185,18 +4185,20 @@ registerVisualizer({
 
 // Pocket: a troupe of cut-paper figures, one per instrument, on a small stage. Every
 // movement is keyed to that instrument's own onsets, so the groove on screen is the band's
-// groove: the drum (a black disc) touches the floor exactly on each kick; the bass (a red
-// dome, taller for a higher note) winds up before each note and lands on it, wherever the
-// bass line pushes or lays back; the hands above it clap on the backbeat; the fringe marks
-// every hi-hat against a faint sixteenth grid; the singer stretches with the sung pitch and
-// sways with the song's own swing (measured from where the bass lands against the beat).
-// The stage shows who is playing: a performer rises through the floor to arrive on its first
-// note and sinks when its part ends, and each has a column of its own, so no one covers
-// another. Phrase by phrase one of them is featured, larger. Each figure keeps its colour all
-// song; the fields come from a pale family none of them can vanish into, and in a chord
-// passage the field changes with each chord. A build dims the stage and crouches everyone,
-// the gap holds them in the air on a dark stage, and the drop lands them together on new
-// marks; from the song's turn (its main drop) the stage is night.
+// groove: the kit's drum (a black disc) touches the floor exactly on each kick, and once the
+// kit grows its two cymbals ring on the off-beat hats and on the swung sixteenth, so the row
+// spells the pattern; the bass (a red dome, taller for a higher note) winds up before each
+// note and lands on it, wherever the bass line pushes or lays back; the hands above it clap
+// on beats two and four; the singer, a cut-paper profile, opens its mouth with the voice and
+// snaps its lean on the beat and on the song's measured swung sixteenth. Under the stage the
+// pocket itself: one beat, four sixteenth cells, where every onset of the last two bars is
+// stamped at the place in the beat it actually landed, so swing and push show as offsets in
+// a single frame. The stage shows who is playing: a performer rises through the floor to
+// arrive on its first note and sinks when its part ends, and each has its own column. A
+// build steps the field darker bar by bar, closes the hands a notch per bar and gathers the
+// troupe; the gap holds them in the air on night; the main drop lands in the song's own
+// colour for its whole section; after the song's turn the stage is dark. The song opens and
+// closes on its poster: the troupe posed in that colour.
 
 const pocketInk = {
   cream: "#f2e8d3",
@@ -4213,23 +4215,19 @@ const pocketFields = {
   lilac: "#d9d0f0",
   night: "#151413",
   ink: "#17213f",
-  oxblood: "#3d1219",
+  aubergine: "#2b1a33",
   bottle: "#10302a",
-  tomato: "#e4472b",
 };
-const pocketDark = ["night", "ink", "oxblood", "bottle"];
+const pocketDark = ["ink", "bottle", "aubergine"];
 const pocketPale = ["cream", "mint", "blush", "sky", "lilac"];
-// Each song opens on its own field with its own stage order (the order turns at each drop).
-const pocketOpenings = {
-  "5ff86d6cd02ebd7308e03df8": { field: "sky", order: ["singer", "drum", "bass"] }, // NBLY
-  "1d589940ca458d793a3fad8a": { field: "blush", order: ["drum", "bass", "singer"] }, // Desire
-  f127a026dc751f1528bfb95d: { field: "mint", order: ["bass", "singer", "drum"] }, // Ophelia
-  "8eee874c702a10807f79706c": { field: "cream", order: ["drum", "singer", "bass"] }, // Outside
-  "4048d4a6dce44c151690b2b1": { field: "lilac", order: ["bass", "drum", "singer"] }, // American Boy
+// Each song's opening field, stage order (it turns at each drop) and its own main-drop colour.
+const pocketSongs = {
+  "5ff86d6cd02ebd7308e03df8": { field: "sky", order: ["singer", "drum", "bass"], main: "#2749b5" }, // NBLY: cobalt
+  "1d589940ca458d793a3fad8a": { field: "blush", order: ["drum", "bass", "singer"], main: "#e4472b" }, // Desire: tomato
+  f127a026dc751f1528bfb95d: { field: "mint", order: ["bass", "singer", "drum"], main: "#12593f" }, // Ophelia: bottle green
+  "8eee874c702a10807f79706c": { field: "cream", order: ["drum", "singer", "bass"], main: "#eab12c" }, // Outside: mustard
+  "4048d4a6dce44c151690b2b1": { field: "lilac", order: ["bass", "drum", "singer"], main: "#6b3fd6" }, // American Boy: violet
 };
-// Column widths at scale 1 (in 1080ths of the frame height). The bass column holds the dome
-// at its widest (a low note, squashed) with the hands above it.
-const pocketDrumRadius = [150, 118, 100];
 const pocketRise = 0.5; // seconds to rise through the floor or sink through it
 
 registerVisualizer({
@@ -4247,16 +4245,21 @@ registerVisualizer({
     let sceneFields = [];
     let segments = [];
     let segmentStarts = new Float64Array(0);
-    let opening = { field: "cream", order: ["drum", "bass", "singer"] };
+    let setup = { field: "cream", order: ["drum", "bass", "singer"], main: "#e4472b" };
     let bassLow = 28,
       bassHigh = 52;
     let layoutKey = "";
+    let songEnd = Infinity;
+    let finale = Infinity; // the last downbeat: the troupe takes its closing pose
+    let mainSection = null; // [start, end] of the main drop's section
     const layouts = new Map();
     // A cut edge per figure: fixed small irregularities so the shapes read as cut paper.
     const cutEdge = Array.from({ length: 64 }, (_, index) => 1 + (hash01(index * 31 + 7) - 0.5) * 0.035);
-    // The drum lands on every kick and on every drop frame; the hands close on the strong
-    // backbeats only.
+    // Onset lists: the drum lands on kicks and drop frames; the cymbals on the off-beat hats
+    // and on the late (swung) sixteenth hats; the hands on strong events on beats 2 and 4.
     let landing = new SongEvents([]);
+    let offbeats = new SongEvents([]);
+    let lates = new SongEvents([]);
     let backbeats = new SongEvents([]);
 
     function setSong(model) {
@@ -4267,10 +4270,11 @@ registerVisualizer({
       segments = [];
       segmentStarts = new Float64Array(0);
       layouts.clear();
-      landing = new SongEvents([]);
-      backbeats = new SongEvents([]);
+      landing = offbeats = lates = backbeats = new SongEvents([]);
+      songEnd = finale = Infinity;
+      mainSection = null;
       if (!model) return;
-      opening = pocketOpenings[model.identifier] || { field: "cream", order: ["drum", "bass", "singer"] };
+      setup = pocketSongs[model.identifier] || { field: "cream", order: ["drum", "bass", "singer"], main: "#e4472b" };
       // The claps: strong snare-band events on beats two and four (when most strong events
       // are there; otherwise all strong ones).
       const strong = [],
@@ -4298,28 +4302,58 @@ registerVisualizer({
       }
       late.sort((a, b) => a - b);
       swingLate = late.length > 20 ? clampRange(late[late.length >> 1] - 0.75, 0, 0.15) : 0;
+      // The cymbals' hats: the off-beat ones, and the late sixteenths (where swing shows).
+      const off = [],
+        lateHats = [];
+      for (let index = 0; index < model.hats.length; index++) {
+        if (model.hats.strength[index] < 0.25) continue;
+        const phase = fract(model.beatPosition(model.hats.time[index]));
+        const event = [model.hats.time[index], model.hats.strength[index]];
+        if (phase > 0.4 && phase < 0.6) off.push(event);
+        else if (phase >= 0.62 && phase < 0.97) lateHats.push(event);
+      }
+      offbeats = new SongEvents(off);
+      lates = new SongEvents(lateHats);
       // The bass line's range, for the dome's height.
       const pitches = Array.from(model.bassNotes.pitch).sort((a, b) => a - b);
       if (pitches.length > 8) {
         bassLow = pitches[Math.floor(pitches.length * 0.05)];
         bassHigh = Math.max(bassLow + 5, pitches[Math.floor(pitches.length * 0.95)]);
       }
-      // Each scene's field: pale before the turn, night after it.
+      // The song's end: the last moment anything sounds (a bar before the file ends when the
+      // mix never falls silent); the closing pose from the last downbeat before it.
+      const mix = model.series.mix;
+      songEnd = model.duration;
+      if (mix) {
+        let index = mix.length - 1;
+        while (index > 0 && mix[index] < 0.08) index--;
+        songEnd = Math.min(model.duration, index / 100 + 0.3);
+        if (songEnd > model.duration - 0.5) songEnd = model.duration - model.barPeriod;
+      }
+      finale = model.barTime(model.barIndex(songEnd - 0.05));
+      // The main drop's section keeps the song's colour.
+      if (model.mainDrop >= 0) {
+        const time = model.drops[model.mainDrop].time;
+        const scene = model.scene(time + 0.01);
+        mainSection = [time, Math.max(scene.end, time + 4 * model.barPeriod)];
+      }
+      // Each scene's field: pale before the turn (a partner tone every eight bars keeps long
+      // scenes moving), dark after it; night only for the holds.
       const turn = model.lateStart;
       let darkIndex = 0;
       model.scenes.forEach((scene, index) => {
         const after = scene.start >= turn - 0.05;
         let field;
-        if (index === 0) field = opening.field;
+        if (index === 0) field = setup.field;
         else if (scene.end - scene.start < 1) field = sceneFields[index - 1]; // a sliver keeps the last look
-        else if (after) field = scene.kind === "gap" ? "night" : pocketDark[darkIndex++ % pocketDark.length];
+        else if (scene.kind === "gap") field = "night";
+        else if (after) field = pocketDark[darkIndex++ % pocketDark.length];
         else
           switch (scene.kind) {
             case "verse": field = "blush"; break;
             case "break": field = "sky"; break;
             case "groove": field = "mint"; break;
             case "build": field = "blush"; break;
-            case "gap": field = "night"; break;
             default: field = ["cream", "mint", "lilac"][scene.kindIndex % 3];
           }
         sceneFields.push(field);
@@ -4334,7 +4368,7 @@ registerVisualizer({
     function findPresence(model) {
       const bars = model.downbeats;
       const result = {};
-      for (const [figure, series, floor] of [["drum", null, 0], ["bass", "bass", 0.18], ["singer", "vocal", 0.2], ["hands", null, 0], ["fringe", "hats", 0.12]]) {
+      for (const [figure, series, floor] of [["drum", null, 0], ["bass", "bass", 0.18], ["singer", "vocal", 0.2], ["hands", null, 0]]) {
         const spans = [];
         let open = null,
           quiet = 0;
@@ -4343,10 +4377,8 @@ registerVisualizer({
             end = index + 1 < bars.length ? bars[index + 1] : model.duration;
           let on;
           if (figure === "drum") on = model.kicks.last(end - 0.001) - model.kicks.last(start) >= 2;
-          else if (figure === "hands") {
-            on = false;
-            for (let event = model.snares.last(start) + 1; event <= model.snares.last(end - 0.001); event++) if (model.snares.strength[event] > 0.5) on = true;
-          } else on = model.mean(series, start, end) > floor;
+          else if (figure === "hands") on = backbeats.last(end - 0.001) > backbeats.last(start);
+          else on = model.mean(series, start, end) > floor;
           if (on) {
             quiet = 0;
             if (!open) open = { start: Math.max(0, start), end };
@@ -4369,23 +4401,28 @@ registerVisualizer({
     }
 
     // The stage over the song: a list of segments, each the troupe's target arrangement
-    // (who is on, in which order, how many drums, who is featured) and how long the move into
-    // it takes (0 for a drop: the drop is a cut to the new marks).
+    // (who is on, in which order, how big the kit is, who is featured) and how long the move
+    // into it takes (0 for a drop: the drop is a cut to the new marks).
     function findSegments(model) {
       const dropAt = (time) => {
         for (const drop of model.drops) if (Math.abs(drop.time - time) < 0.25) return drop.time;
         return -1;
       };
-      // A part that starts within the first four bars is on stage from the first frame.
+      // A part that starts within the first four bars is on stage from the first frame; the
+      // singer waits on stage for its first line if that comes within sixteen bars. In the
+      // outro nobody leaves: the troupe stays for its closing pose.
       const openingReach = model.barTime(4);
       const firstSong = presence.singer.length ? presence.singer[0] : null;
+      const outro = model.scenes.find((scene, index) => scene.kind === "outro" && model.scenes.slice(index).every((next) => next.kind === "outro"));
+      const outroStart = outro ? outro.start : finale;
       const enterTime = (span) => {
         const drop = dropAt(span.start);
-        if (span === firstSong && span.start <= model.barTime(16)) return 0; // the singer waits on stage
+        if (span === firstSong && span.start <= model.barTime(16)) return 0;
         if (drop >= 0) return drop;
         return span.start <= openingReach ? 0 : Math.max(0, span.start - pocketRise);
       };
       const leaveTime = (span) => {
+        if (span.end >= outroStart - 0.05) return Infinity;
         const drop = dropAt(span.end);
         return drop >= 0 ? drop : span.end;
       };
@@ -4393,13 +4430,12 @@ registerVisualizer({
         const on = new Set();
         for (const figure of ["drum", "bass", "singer", "hands"])
           for (const span of presence[figure]) if (time >= enterTime(span) && time < leaveTime(span)) on.add(figure);
-        if (!on.has("drum") && !on.has("bass") && !on.has("singer") && !on.has("hands")) {
-          // silence: the band waits on stage for the part that comes next (after the last
-          // part the stage is left empty)
+        if (!on.size) {
+          // silence: the band waits on stage for the part that comes next
           let next = null;
           for (const figure of ["drum", "bass", "singer"])
             for (const span of presence[figure]) if (span.start > time && (!next || span.start < next.start)) next = { figure, start: span.start };
-          if (next) on.add(next.figure);
+          on.add(next ? next.figure : "singer");
         }
         return on;
       };
@@ -4408,9 +4444,11 @@ registerVisualizer({
         for (const span of presence[figure]) {
           const enter = enterTime(span);
           if (enter > 0) hard.push({ time: enter, duration: dropAt(span.start) >= 0 ? 0 : pocketRise });
-          hard.push({ time: leaveTime(span), duration: dropAt(span.end) >= 0 ? 0 : pocketRise });
+          const leave = leaveTime(span);
+          if (leave < Infinity) hard.push({ time: leave, duration: dropAt(span.end) >= 0 ? 0 : pocketRise });
         }
       for (const drop of model.drops) hard.push({ time: drop.time, duration: 0 });
+      if (model.lateStart < Infinity) hard.push({ time: model.lateStart, duration: 0.6 });
       // A new feature every eight bars and at each scene, unless a harder change is near.
       const soft = [];
       for (let bar = 8; bar < model.downbeats.length; bar += 8) soft.push({ time: model.barTime(bar), duration: 0.6 });
@@ -4423,29 +4461,28 @@ registerVisualizer({
         let dropsPassed = 0;
         for (const drop of model.drops) if (drop.time <= boundary.time + 0.001) dropsPassed++;
         const on = members(settled);
-        const turn = dropsPassed % opening.order.length;
-        const order = opening.order.slice(turn).concat(opening.order.slice(0, turn));
+        const turn = dropsPassed % setup.order.length;
+        const order = setup.order.slice(turn).concat(setup.order.slice(0, turn));
         const scene = model.scene(settled);
+        const phrase = Math.max(0, Math.floor(model.barIndex(settled) / 8));
         let feature = null;
-        if (scene.kind === "verse" || scene.kind === "break") feature = "singer";
+        if (scene.kind === "verse" || scene.kind === "break") feature = phrase % 2 ? "singer" : null;
         else if (scene.kind === "gap") feature = result.length ? result[result.length - 1].feature : null; // the gap holds
-        else if (scene.kind !== "drop" && scene.kind !== "build") {
-          const phrase = Math.max(0, Math.floor(model.barIndex(settled) / 8));
-          feature = [null, "drum", null, "bass", null, "singer"][phrase % 6];
-        }
+        else if (scene.kind !== "drop" && scene.kind !== "build") feature = [null, "drum", null, "bass", null, "singer"][phrase % 6];
         if (feature && !on.has(feature)) feature = null;
-        const drums = Math.min(3, 1 + dropsPassed + (settled >= model.lateStart && dropsPassed === 1 ? 1 : 0));
+        // the kit grows: the off-beat cymbal after the first drop, the swing cymbal after the turn
+        const kit = 1 + (dropsPassed > 0 ? 1 : 0) + (settled >= model.lateStart ? 1 : 0);
         const segment = {
           start: boundary.time,
           duration: boundary.duration,
           order: order.filter((name) => (name === "bass" ? on.has("bass") || on.has("hands") : on.has(name))),
           dome: on.has("bass"),
           hands: on.has("hands"),
-          drums,
+          kit,
           feature,
         };
         const previous = result[result.length - 1];
-        if (previous && previous.order.join() === segment.order.join() && previous.dome === segment.dome && previous.hands === segment.hands && previous.drums === segment.drums && previous.feature === segment.feature) continue;
+        if (previous && previous.order.join() === segment.order.join() && previous.dome === segment.dome && previous.hands === segment.hands && previous.kit === segment.kit && previous.feature === segment.feature) continue;
         if (previous && Math.abs(previous.start - segment.start) < 0.05) {
           result[result.length - 1] = { ...segment, start: previous.start, duration: Math.min(previous.duration, segment.duration) };
           continue;
@@ -4457,43 +4494,45 @@ registerVisualizer({
 
     // Column widths and the scale each performer can take before it would leave the stage
     // (in 1080ths of the frame height).
-    function drumColumn(count, size) {
-      const radius = pocketDrumRadius[count - 1] * size;
-      return count * radius * 2.8 + (count - 1) * 20 * size;
-    }
+    const drumRadius = 150;
     function columnWidth(segment, name, size) {
-      if (name === "drum") return drumColumn(segment.drums, size);
+      if (name === "drum") return (drumRadius * 2.8 + (segment.kit > 1 ? 2 * drumRadius * 1.25 : 0)) * size;
       if (name === "bass") return (segment.dome ? 680 : 520) * size;
+      if (name === "spacer") return size;
       return 400 * size;
     }
     function columnCap(segment, name, room) {
-      if (name === "drum") return room / (300 + 2 * pocketDrumRadius[segment.drums - 1]);
-      if (name === "bass") return segment.dome && segment.hands ? (room - 30) / 634 : segment.dome ? room / 410 : room / 330;
+      if (name === "drum") return room / (200 + 2 * drumRadius);
+      if (name === "bass") return segment.dome && segment.hands ? (room - 30) / 614 : segment.dome ? room / 390 : room / 330;
+      if (name === "spacer") return Infinity;
       return 1.6;
     }
 
     // Where each performer stands in a segment: the columns in order, each as large as the
     // stage allows (the featured one larger), spaced evenly. Nothing overlaps by construction.
-    function layoutFor(index, left, right, room, unit) {
-      const cached = layouts.get(index);
+    // The poster keeps the middle clear for the play button.
+    function layoutFor(index, left, right, room, unit, poster = false) {
+      const cacheKey = poster ? `poster${index}` : index;
+      const cached = layouts.get(cacheKey);
       if (cached) return cached;
-      const segment = segments[index];
-      const names = segment.order;
-      const base = (name) => (segment.feature && names.length > 1 ? (name === segment.feature ? 1.3 : 0.85) : 1);
+      const segment = poster ? { order: setup.order, dome: true, hands: true, kit: 3, feature: "singer" } : segments[index];
+      let names = segment.order.slice();
+      if (poster) names.splice(Math.ceil(names.length / 2), 0, "spacer");
+      const base = (name) => (name === "spacer" ? 240 : segment.feature && names.length > 1 ? (name === segment.feature ? 1.3 : 0.9) : 1);
       const span = (right - left) / unit;
-      const gap = 60;
+      const gap = 50;
       const nominal = names.reduce((sum, name) => sum + columnWidth(segment, name, base(name)), 0);
-      const fit = Math.min(1.35, (span - gap * (names.length + 1)) / Math.max(1, nominal));
-      const sizes = names.map((name) => Math.min(base(name) * fit, columnCap(segment, name, room), 1.6));
+      const fit = Math.min(1.45, (span - gap * (names.length + 1)) / Math.max(1, nominal));
+      const sizes = names.map((name) => (name === "spacer" ? 240 : Math.min(base(name) * fit, columnCap(segment, name, room), 1.6)));
       const widths = names.map((name, column) => columnWidth(segment, name, sizes[column]));
       const spacing = (span - widths.reduce((sum, value) => sum + value, 0)) / (names.length + 1);
       const result = {};
       let x = spacing;
       names.forEach((name, column) => {
-        result[name] = { x: left + (x + widths[column] / 2) * unit, size: sizes[column] };
+        if (name !== "spacer") result[name] = { x: left + (x + widths[column] / 2) * unit, size: sizes[column] };
         x += widths[column] + spacing;
       });
-      layouts.set(index, result);
+      layouts.set(cacheKey, result);
       return result;
     }
 
@@ -4519,16 +4558,20 @@ registerVisualizer({
       context.fill();
     }
 
-    function disc(cx, cy, rx, ry, color, seed = 0) {
+    function disc(cx, cy, rx, ry, color, seed = 0, tilt = 0) {
       context.fillStyle = color;
       context.beginPath();
+      const cos = Math.cos(tilt),
+        sin = Math.sin(tilt);
       for (let index = 0; index < 48; index++) {
         const angle = (index / 48) * Math.PI * 2;
         const wobble = cutEdge[(index + seed) % 64];
-        const x = cx + Math.cos(angle) * rx * wobble,
-          y = cy + Math.sin(angle) * ry * wobble;
-        if (index) context.lineTo(x, y);
-        else context.moveTo(x, y);
+        const x = Math.cos(angle) * rx * wobble,
+          y = Math.sin(angle) * ry * wobble;
+        const px = cx + x * cos - y * sin,
+          py = cy + x * sin + y * cos;
+        if (index) context.lineTo(px, py);
+        else context.moveTo(px, py);
       }
       context.closePath();
       context.fill();
@@ -4549,14 +4592,14 @@ registerVisualizer({
       context.fill();
     }
 
-    // Height of the drum between landings: on the floor at each, a parabola between them,
+    // Height of a disc between its landings: on the floor at each, a parabola between them,
     // lower when they come faster. With no landing for a while it rests, and hops up in time
     // to land on the next one.
-    function bounce(time, maximum, perSecond) {
-      const index = landing.last(time);
-      const next = index + 1 < landing.length ? landing.time[index + 1] : Infinity;
-      const last = index >= 0 ? landing.time[index] : -Infinity;
-      const strength = index >= 0 ? landing.strength[index] : 0;
+    function bounce(events, time, maximum, perSecond) {
+      const index = events.last(time);
+      const next = index + 1 < events.length ? events.time[index + 1] : Infinity;
+      const last = index >= 0 ? events.time[index] : -Infinity;
+      const strength = index >= 0 ? events.strength[index] : 0;
       const gap = next - last;
       if (gap <= 1.6) {
         const u = (time - last) / gap;
@@ -4577,6 +4620,23 @@ registerVisualizer({
       return { width: 120000 / height, height };
     }
 
+    // Colours for a field: the figures keep theirs unless the field would swallow them.
+    function colorsFor(fieldColor) {
+      const [r, g, b] = fieldColor;
+      const dark = r + g + b < 1.2;
+      const near = (hex) => {
+        const [x, y, z] = hexColor(hex);
+        return Math.abs(x - r) + Math.abs(y - g) + Math.abs(z - b) < 0.55;
+      };
+      return {
+        dark,
+        ink: dark ? pocketInk.cream : pocketInk.black,
+        singer: near(pocketInk.cobalt) || (dark && b > r && b > g) ? pocketInk.cream : dark ? "#6f8ef7" : pocketInk.cobalt,
+        dome: near(pocketInk.tomato) || (r > 0.35 && g < 0.3 && dark) ? pocketInk.cream : pocketInk.tomato,
+        hands: near(pocketInk.mustard) ? pocketInk.black : pocketInk.mustard,
+      };
+    }
+
     function render(time, frame) {
       const width = frame.width,
         height = frame.height;
@@ -4587,7 +4647,7 @@ registerVisualizer({
         return;
       }
       const unit = height / 1080;
-      const floor = height * 0.82;
+      const floor = height * 0.76;
       // nothing rises into the title
       const ceiling = Math.max(height * 0.2, (frame.titleBottom || 0) + 12 * unit);
       const room = (floor - ceiling) / unit;
@@ -4596,96 +4656,108 @@ registerVisualizer({
       const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
       const inGap = drop.phase === 2 || leadIn >= 0;
       const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
-      const hit = sinceDrop < song.beatPeriod * 2;
-      const mainHit = hit && drop.index === song.mainDrop;
+      const hit = sinceDrop < song.barPeriod;
       const windUp = drop.phase === 1 ? drop.progress : 0;
+      // The poster: the first moment and the closing bar.
+      const posterIn = time < 0.35 ? 1 : time < 0.7 ? 1 - easeInOutCubic((time - 0.35) / 0.35) : 0;
+      const posterOut = time >= finale ? easeInOutCubic(clamp01((time - finale) / 0.4)) : 0;
+      const poster = Math.max(posterIn, posterOut);
+      // Build progress in whole bars: the build steps once a bar.
+      let barsDone = 0,
+        barsTotal = 1;
+      if (drop.phase === 1) {
+        const startBar = song.barIndex(drop.build.start + 0.01);
+        barsTotal = Math.max(1, song.barIndex(drop.build.end - 0.01) + 1 - startBar);
+        barsDone = clamp01((song.barIndex(time) - startBar + easeOutCubic(clamp01(fract(song.barPosition(time)) / 0.15))) / barsTotal);
+      }
 
-      // Field: the scene's; in a chord passage, the chord's; a build dims it (or, on the night
-      // stage, heats it); the gap is night; a drop's first two beats are light (the main
-      // drop's are tomato).
-      let fieldName = sceneFields[sceneIndex];
+      // Field: the scene's (held through a build from where the build began); in a chord
+      // passage the chord's; a build steps it darker bar by bar (on the dark stage, hotter);
+      // the gap is night; the main drop's section is the song's colour; later drops flash
+      // cream for their first bar.
+      let fieldName = sceneFields[drop.phase === 1 ? song.sceneIndex(drop.build.start + 0.01) : sceneIndex];
       const peak = song.peakAt(time);
       if (peak && peak.kind === "chords") {
         const chordIndex = song.chordIndex(time);
         if (chordIndex >= 0) {
+          const before = sceneFields[song.sceneIndex(peak.start - 0.05)];
           const pick = (index) => pocketPale[(((song.chords[index].root * 7) % 12) + 12) % 5];
           fieldName = pick(chordIndex);
           if (chordIndex > 0 && song.chords[chordIndex - 1].start >= peak.start - 0.5 && pick(chordIndex - 1) === fieldName) fieldName = pocketPale[(pocketPale.indexOf(fieldName) + 1) % 5];
+          if (fieldName === before) fieldName = pocketPale[(pocketPale.indexOf(fieldName) + 2) % 5];
         }
       }
-      let fieldColor = hexColor(pocketFields[fieldName]);
+      let fieldColor = hexColor(pocketFields[fieldName] || pocketFields.cream);
+      // pale fields step through a partner tone every eight bars, so a long scene moves
+      if (pocketPale.includes(fieldName) && Math.floor(Math.max(0, song.barIndex(time)) / 8) % 2 === 1 && drop.phase !== 1)
+        fieldColor = mixColor(fieldColor, hexColor(pocketFields[pocketPale[(pocketPale.indexOf(fieldName) + 3) % 5]]), 0.55);
+      const baseColors = colorsFor(fieldColor);
       if (windUp > 0) {
-        const dusk = 0.5 * windUp + 0.15 * windUp * windUp * windUp;
-        fieldColor = fieldName === "night" ? mixColor(fieldColor, hexColor(pocketFields.tomato), 0.75 * dusk) : mixColor(fieldColor, hexColor(pocketFields.night), dusk);
+        const step = 0.55 * barsDone;
+        fieldColor = baseColors.dark ? mixColor(fieldColor, hexColor(pocketInk.tomato), 0.6 * step) : mixColor(fieldColor, hexColor(pocketFields.night), step);
       }
-      if (inGap) fieldColor = hexColor(pocketFields.night);
-      if (hit) {
-        if (mainHit) fieldColor = hexColor(pocketFields.tomato);
-        else if (pocketDark.includes(fieldName)) fieldColor = hexColor(pocketFields.cream);
+      let colors = baseColors;
+      const inMain = mainSection && time >= mainSection[0] && time < mainSection[1];
+      if (inMain) {
+        fieldColor = hexColor(setup.main);
+        colors = colorsFor(fieldColor);
+      } else if (hit && drop.index !== song.mainDrop && baseColors.dark) {
+        fieldColor = hexColor(pocketFields.cream);
+        colors = colorsFor(fieldColor);
       }
-      const dark = fieldColor[0] + fieldColor[1] + fieldColor[2] < 1.2;
-      const hot = mainHit;
+      if (inGap) {
+        fieldColor = hexColor(pocketFields.night);
+        colors = colorsFor(fieldColor);
+      }
+      if (poster > 0) {
+        fieldColor = mixColor(fieldColor, hexColor(setup.main), poster);
+        colors = poster > 0.5 ? colorsFor(hexColor(setup.main)) : colors;
+      }
+      const dark = colors.dark;
       const field = cssColor(fieldColor);
-      const inkName = dark ? "cream" : "black";
       if (field !== themeField) {
         themeField = field;
         document.documentElement.style.setProperty("--pocket-field", field);
-        document.documentElement.style.setProperty("--pocket-ink", pocketInk[inkName]);
+        document.documentElement.style.setProperty("--pocket-ink", colors.ink);
         waveformTheme = null;
       }
       context.fillStyle = field;
       context.fillRect(0, 0, width, height);
-      // Floor: the field, a shade darker (the transport sits on it when shown).
-      context.fillStyle = cssColor(mixColor(fieldColor, dark ? [1, 1, 1] : [0, 0, 0], dark ? 0.1 : 0.14));
+      // Floor: the field, a shade darker; the pocket lane lives on it.
+      context.fillStyle = cssColor(mixColor(fieldColor, dark ? [1, 1, 1] : [0, 0, 0], dark ? 0.1 : 0.12));
       context.fillRect(0, floor, width, height - floor);
 
-      // Wind-up: everyone crouches through a build; the gap holds them in the air, stretched;
-      // the drop lands them with a slam.
-      const crouch = inGap ? 0 : 0.55 * windUp;
-      // a tremble on the sixteenths, growing through the build
-      const shake = windUp > 0 && !inGap ? Math.sin(song.beatPosition(time) * Math.PI * 8) * (4 + 20 * windUp) * unit : 0;
-      // the troupe gathers toward the middle of the stage as the build rises
-      const gather = 1 - 0.25 * (inGap ? 1 : windUp) * (drop.phase === 1 || inGap ? 1 : 0);
+      // Wind-up: everyone crouches through a build and the troupe gathers bar by bar; the
+      // last bar trembles hard; the gap holds them in the air, stretched; the drop lands them.
+      const crouch = inGap ? 0 : 0.55 * barsDone;
+      const lastBar = drop.phase === 1 && barsDone > 1 - 1 / barsTotal;
+      const shake = windUp > 0 && !inGap ? Math.sin(song.beatPosition(time) * Math.PI * 8) * (lastBar ? 60 : 6 + 14 * barsDone) * unit : 0;
+      const gather = 1 - 0.3 * (inGap ? 1 : drop.phase === 1 ? barsDone : 0);
       let hang = 0;
       if (inGap) {
         const holdStart = drop.phase === 2 ? drop.drop.gapStart : song.anchor.moments[leadIn].start;
         hang = easeOutCubic(clamp01((time - holdStart) / 0.25));
       }
       const slam = sinceDrop < 0.25 ? 1 - sinceDrop / 0.25 : 0;
-      const liftFor = (maximum) => hang * Math.min(maximum, room * unit * 0.4);
+      const liftFor = (maximum, depth) => hang * (1 - depth) * Math.min(maximum, room * unit * 0.4);
       // the main drop lands the cast a size larger, settling over its first bar
-      const grow = drop.phase === 3 && drop.index === song.mainDrop ? 1 + 0.18 * (1 - easeInOutCubic(sinceDrop / (song.beatPeriod * 4))) : 1;
-      const inkColor = hexColor(pocketInk[inkName]);
+      const grow = drop.phase === 3 && drop.index === song.mainDrop ? 1 + 0.18 * (1 - easeInOutCubic(sinceDrop / song.barPeriod)) : 1;
 
-      // Hats → the fringe along the top right: each hat of the last beat and a half is a tick
-      // at its phase in the bar, over a faint grid of the bar's sixteenths.
-      {
-        const fringeAwake = awake("fringe", time);
-        const gridLeft = width * 0.5,
-          gridRight = width * 0.975;
-        const tickWidth = 44 * unit,
-          tickHeight = Math.min(170 * unit, ceiling * 0.8) * (0.35 + 0.65 * fringeAwake);
-        context.fillStyle = cssColor(inkColor, 0.16);
-        for (let step = 0; step < 16; step++) {
-          const x = gridLeft + (step / 16) * (gridRight - gridLeft);
-          context.fillRect(x - 3 * unit, 0, 6 * unit, tickHeight * (step % 4 === 0 ? 0.42 : 0.24));
-        }
-        let index = song.hats.last(time);
-        while (index >= 0) {
-          const hatTime = song.hats.time[index];
-          const age = time - hatTime;
-          if (age > song.beatPeriod) break;
-          const barAt = song.barPosition(hatTime);
-          const x = gridLeft + (barAt - Math.floor(barAt)) * (gridRight - gridLeft);
-          const fresh = hitDecay(age, song.beatPeriod * 0.4);
-          context.fillStyle = cssColor(inkColor, 0.3 + 0.7 * fresh);
-          context.fillRect(x - tickWidth / 2, 0, tickWidth, tickHeight * (0.5 + 0.5 * song.hats.strength[index]) * (0.3 + 0.7 * fresh) * (1 - hang * 0.4));
-          index--;
+      // The key word: small in the free band right of the title, or, sung into the main drop,
+      // across the stage behind the troupe.
+      const word = song.anchor.kind === "word" ? song.anchor.word.toUpperCase() : "";
+      let wordState = null;
+      if (word) {
+        const index = lastIndexAtOrBefore(song.anchorStarts, time);
+        if (index >= 0) {
+          const moment = song.anchor.moments[index];
+          const main = song.mainDrop >= 0 && Math.abs(song.drops[song.mainDrop].time - moment.start) < 1.2;
+          const holdEnd = main ? song.drops[song.mainDrop].time + song.barPeriod : Math.min(index + 1 < song.anchor.moments.length ? song.anchor.moments[index + 1].start : Infinity, Math.max(moment.end, moment.start + 0.8));
+          if (time < holdEnd) wordState = { main, age: time - moment.start, index };
         }
       }
 
-      // The stage: this segment's arrangement, moved into from the last one's.
-      const word = song.anchor.kind === "word" ? song.anchor.word.toUpperCase() : "";
+      // The stage: this segment's arrangement, moved into from the last one's (or the poster).
       const slipHeight = Math.min(38 * unit, (room * unit * 0.9) / Math.max(8, song.anchor.moments.length));
       let slipWidth = 0;
       if (word) {
@@ -4702,80 +4774,118 @@ registerVisualizer({
       const segmentIndex = Math.max(0, lastIndexAtOrBefore(segmentStarts, time));
       const segment = segments[segmentIndex];
       const progress = segment.duration > 0 ? clamp01((time - segment.start) / segment.duration) : 1;
-      const move = easeInOutCubic(progress);
-      const before = layoutFor(Math.max(0, segmentIndex - 1), stageLeft, stageRight, room, unit);
-      const after = layoutFor(segmentIndex, stageLeft, stageRight, room, unit);
+      let before = layoutFor(Math.max(0, segmentIndex - 1), stageLeft, stageRight, room, unit);
+      let after = layoutFor(segmentIndex, stageLeft, stageRight, room, unit);
       const previousSegment = segments[Math.max(0, segmentIndex - 1)];
-      // A performer on both sides of the move walks; one arriving rises through the floor,
-      // one leaving sinks. `depth` is how far below its place it is, 0..1 of its height.
+      // Who arrives makes room first and rises after; who leaves sinks first and the others
+      // close up after: nobody crosses anybody.
+      const arriving = Object.keys(after).some((name) => !before[name]);
+      const leaving = Object.keys(before).some((name) => !after[name]);
+      const move = easeInOutCubic(arriving ? clamp01(progress / 0.6) : leaving ? clamp01((progress - 0.4) / 0.6) : progress);
+      const posterLayout = poster > 0 ? layoutFor(0, stageLeft, stageRight, room, unit, true) : null;
       const middle = (stageLeft + stageRight) / 2;
       const squeeze = (entry) => (entry ? { x: middle + (entry.x - middle) * gather, size: entry.size * gather, depth: entry.depth } : null);
       const place = (name) => {
         const a = before[name],
           b = after[name];
-        if (a && b) return squeeze({ x: mixValue(a.x, b.x, move), size: mixValue(a.size, b.size, move), depth: 0 });
-        if (b) return squeeze({ x: b.x, size: b.size, depth: 1 - easeOutCubic(progress) });
-        if (a && progress < 1) return squeeze({ x: a.x, size: a.size, depth: easeInCubic(progress) });
-        return null;
+        let entry = null;
+        if (a && b) entry = { x: mixValue(a.x, b.x, move), size: mixValue(a.size, b.size, move), depth: 0 };
+        else if (b) entry = { x: b.x, size: b.size, depth: 1 - easeOutCubic(clamp01((progress - 0.4) / 0.6)) };
+        else if (a && progress < 1) entry = { x: a.x, size: a.size, depth: easeInCubic(clamp01(progress / 0.6)) };
+        if (posterLayout && posterLayout[name]) {
+          const p = posterLayout[name];
+          entry = entry ? { x: mixValue(entry.x, p.x, poster), size: mixValue(entry.size, p.size, poster), depth: entry.depth * (1 - poster) } : poster > 0.02 ? { x: p.x, size: p.size, depth: 1 - poster } : null;
+        }
+        return squeeze(entry);
       };
+
+      // The main drop's word stands behind the troupe, across the stage.
+      if (wordState && wordState.main) {
+        const size = Math.min(400 * unit, (floor - ceiling) * 0.95, (width * 0.9) / (word.length * 0.62));
+        context.font = `800 ${size}px "Jost", sans-serif`;
+        const total = context.measureText(word).width;
+        const pop = easeOutBack(clamp01(wordState.age / 0.12));
+        context.fillStyle = cssColor(mixColor(fieldColor, hexColor(colors.ink), 0.4));
+        context.save();
+        context.translate(width / 2, (ceiling + floor) / 2 + size * 0.34);
+        context.scale(0.7 + 0.3 * pop, 0.7 + 0.3 * pop);
+        context.fillText(word, -total / 2, 0);
+        context.restore();
+      }
+
       context.save();
       context.beginPath();
       context.rect(0, 0, width, floor);
       context.clip();
 
-      // Voice → the singer: a tall column, taller with the pitch, its mouth open with the
-      // level, swaying with the song's swing.
-      let singerX = width * 0.5;
+      // Voice → the singer: a cut-paper profile, a flared skirt and a round head facing the
+      // middle of the stage; taller with the pitch; its mouth, a notch cut from the head,
+      // opens with the voice; it snaps its lean on the beat and on the swung sixteenth.
       const singer = place("singer");
       if (singer) {
-        const singerAwake = awake("singer", time);
+        const singerAwake = Math.max(awake("singer", time), poster);
         const size = singer.size * grow;
-        singerX = singer.x + shake;
+        const x = singer.x + shake;
+        const facing = x < middle ? 1 : -1;
         const pitch = song.value("pitch", time);
-        const level = clamp01((song.value("vocal", time) - 0.15) / 0.6);
-        const range = pitch > 0 ? clamp01((pitch - 50) / 28) : 0.2;
-        // the lean snaps on the beat (right) and on the swung eighth (left): the swing, in
-        // one body
+        const level = poster > 0.5 ? 0.8 : clamp01((song.value("vocal", time) - 0.15) / 0.6);
+        const range = pitch > 0 ? clamp01((pitch - 50) / 28) : 0.4;
         const phase = fract(song.beatPosition(time));
-        const split = 0.5 + swingLate * 2; // the swung eighth lands late by twice the sixteenth's lag
-        const snap = (age) => easeOutBack(clamp01(age / 0.09));
-        const lean = phase < split ? mixValue(-1, 1, snap(phase)) : mixValue(1, -1, snap(phase - split));
-        const sway = lean * 0.12 * singerAwake * (1 - windUp);
-        const bodyWidth = 200 * unit * size;
-        const available = floor - ceiling - bodyWidth * 0.2;
-        const bodyHeight = Math.min(available, (380 + 420 * range) * unit * size * (0.72 + 0.28 * level) * (0.85 + 0.15 * singerAwake) * (1 - crouch * 0.4));
-        const lift = liftFor(260 * unit) - singer.depth * (bodyHeight + 40 * unit);
-        const top = floor - bodyHeight - lift;
+        const snap = (age) => easeOutBack(clamp01(age / 0.08));
+        let lean;
+        if (swingLate > 0.04) {
+          const late = 0.75 + swingLate;
+          lean = phase < late ? mixValue(-1, 1, snap(phase)) : mixValue(1, -1, snap(phase - late));
+        } else lean = phase < 0.1 ? mixValue(-1, 1, snap(phase)) : 1 - 2 * easeInOutCubic((phase - 0.1) / 0.9); // one snap a beat
+        const sway = clampRange(lean, -1, 1) * 0.1 * singerAwake * (1 - windUp) * (1 - poster);
+        const bodyWidth = 210 * unit * size;
+        const available = floor - ceiling - 20 * unit;
+        const bodyHeight = Math.min(available, (440 + 380 * range) * unit * size * (0.8 + 0.2 * level) * (0.9 + 0.1 * singerAwake) * (1 - crouch * 0.4));
+        const lift = liftFor(260 * unit, singer.depth) - singer.depth * (bodyHeight + 40 * unit);
         const base = floor - lift;
-        context.fillStyle = hot ? pocketInk.cream : dark ? "#6f8ef7" : pocketInk.cobalt;
+        const top = base - bodyHeight;
+        const headRadius = bodyWidth * 0.46;
+        const headX = x + sway * bodyHeight,
+          headY = top + headRadius;
+        context.fillStyle = colors.singer;
+        // skirt and body
         context.beginPath();
-        context.moveTo(singerX - bodyWidth / 2, base);
-        context.lineTo(singerX - bodyWidth / 2 + sway * bodyHeight, top + bodyWidth / 2);
-        context.arc(singerX + sway * bodyHeight, top + bodyWidth / 2, bodyWidth / 2, Math.PI, 0);
-        context.lineTo(singerX + bodyWidth / 2, base);
+        context.moveTo(x - bodyWidth * 0.62, base);
+        context.lineTo(headX - bodyWidth * 0.22, headY + headRadius * 0.6);
+        context.lineTo(headX + bodyWidth * 0.22, headY + headRadius * 0.6);
+        context.lineTo(x + bodyWidth * 0.62, base);
         context.closePath();
         context.fill();
-        // the mouth: a low, wide slot that opens with the level (a line while resting)
-        context.fillStyle = field;
-        const slot = Math.min(bodyWidth * 0.36, 8 * unit + 100 * unit * level * size);
-        const slotWidth = bodyWidth * 0.7;
-        const cx = singerX + sway * bodyHeight * 0.8,
-          cy = top + Math.min(bodyWidth * 1.15, bodyHeight * 0.45);
+        // head in profile, facing the middle of the stage
         context.beginPath();
-        context.roundRect(cx - slotWidth / 2, cy - slot / 2, slotWidth, slot, slot / 2);
+        context.arc(headX, headY, headRadius, 0, Math.PI * 2);
+        context.fill();
+        // the mouth: a notch cut from the lower front of the head, the jaw dropping with the
+        // voice; and a small eye above it
+        const jaw = (0.12 + 0.62 * level) * singerAwake;
+        const corner = [headX + facing * headRadius * 0.28, headY + headRadius * 0.22];
+        const upper = 0.2;
+        context.fillStyle = field;
+        context.beginPath();
+        context.moveTo(corner[0], corner[1]);
+        context.lineTo(headX + facing * headRadius * 1.3 * Math.cos(upper), headY + headRadius * 1.3 * Math.sin(upper));
+        context.lineTo(headX + facing * headRadius * 1.3 * Math.cos(upper + jaw), headY + headRadius * 1.3 * Math.sin(upper + jaw));
+        context.closePath();
+        context.fill();
+        context.beginPath();
+        context.arc(headX + facing * headRadius * 0.42, headY - headRadius * 0.3, headRadius * 0.12, 0, Math.PI * 2);
         context.fill();
       }
 
       // Bass → the dome, hopping to every note; the hands ride above it.
       const bassPlace = place("bass");
-      const domeOn = (a, b) => (a && b ? true : a || b);
       if (bassPlace) {
         const size = bassPlace.size * grow;
         const x = bassPlace.x + shake;
-        const hasDome = domeOn(before.bass && previousSegment.dome, after.bass && segment.dome);
+        const hasDome = (before.bass && previousSegment.dome) || (after.bass && segment.dome) || poster > 0.02;
         const domeDepth = before.bass && after.bass && previousSegment.dome !== segment.dome ? (segment.dome ? 1 - easeOutCubic(progress) : easeInCubic(progress)) : bassPlace.depth;
         if (hasDome) {
-          const bassAwake = awake("bass", time);
+          const bassAwake = Math.max(awake("bass", time), poster);
           const notes = song.bassNotes;
           const last = notes.last(time);
           const next = last + 1 < notes.length ? last + 1 : -1;
@@ -4789,120 +4899,136 @@ registerVisualizer({
               const u = (time - (nextStart - flight)) / flight;
               const target = domeShape(next);
               shape = { width: mixValue(shape.width, target.width, easeInOutCubic(u)), height: mixValue(shape.height, target.height, easeInOutCubic(u)) };
-              hop = 4 * u * (1 - u) * Math.min(110, 700 * flight);
+              hop = 4 * u * (1 - u) * Math.min(90, 600 * flight);
             }
           }
           const squash = last >= 0 && !inGap ? hitDecay(time - notes.start[last], 0.07) * notes.strength[last] : 0;
           const w = shape.width * unit * size * (1 + 0.12 * squash) * (1 + crouch * 0.2);
           const h = shape.height * unit * size * (1 - 0.22 * squash) * (1 - crouch * 0.35) * (1 + slam * 0.3) * (0.5 + 0.5 * bassAwake);
-          const lift = hop * unit * size * bassAwake + liftFor(200 * unit) - domeDepth * (h + 40 * unit);
-          dome(x, floor - lift, w, h, hot ? pocketInk.cream : pocketInk.tomato);
+          const lift = hop * unit * size * bassAwake * (1 - poster) + liftFor(200 * unit, domeDepth) - domeDepth * (h + 40 * unit);
+          dome(x, floor - lift, w, h, colors.dome);
         }
-        // Snare → the hands: two triangles that meet on each backbeat.
+        // Snare → the hands: two triangles that meet on beats two and four. Through a build
+        // they close a notch each bar.
         const handsBefore = before.bass && previousSegment.hands,
           handsAfter = after.bass && segment.hands;
-        if (handsBefore || handsAfter) {
-          const pop = handsBefore && handsAfter ? 1 : handsAfter ? easeOutBack(clamp01(progress / 0.6)) : 1 - easeInCubic(clamp01(progress / 0.6));
+        if (handsBefore || handsAfter || poster > 0.02) {
+          const pop = poster > 0.02 ? 1 : handsBefore && handsAfter ? 1 : handsAfter ? easeOutCubic(clamp01((progress - 0.4) / 0.6)) : 1 - easeInCubic(clamp01(progress / 0.6));
           if (pop > 0.02) {
-            const handsAwake = awake("hands", time);
+            const handsAwake = Math.max(awake("hands", time), poster);
             const nextBeat = backbeats.until(time);
             const lastBeat = backbeats.since(time);
             const approach = song.beatPeriod * 0.5;
             let apart = 1;
             if (nextBeat < approach) apart = nextBeat / approach;
             if (lastBeat < 0.14) apart = Math.min(apart, easeOutCubic(lastBeat / 0.14));
+            if (drop.phase === 1) apart = Math.min(apart, 1 - 0.85 * barsDone);
             if (inGap) apart = 0.15;
             apart = mixValue(1.25, apart, handsAwake);
             const handSize = 140 * unit * size * pop;
             const handGap = 14 * unit + 180 * unit * size * apart;
-            const over = hasDome ? floor - (410 * size + 30) * unit - handSize * 0.8 : floor - room * unit * 0.5;
-            const cy = Math.max(ceiling + handSize * 0.8 + 6 * unit, over - liftFor(120 * unit) + (1 - handsAwake) * 60 * unit + crouch * 60 * unit);
-            paperShape([[x - handGap / 2, cy], [x - handGap / 2 - handSize, cy - handSize * 0.8], [x - handGap / 2 - handSize, cy + handSize * 0.8]], pocketInk.mustard);
-            paperShape([[x + handGap / 2, cy], [x + handGap / 2 + handSize, cy - handSize * 0.8], [x + handGap / 2 + handSize, cy + handSize * 0.8]], pocketInk.mustard);
+            const over = hasDome ? floor - (390 * size + 30) * unit - handSize * 0.8 : floor - room * unit * 0.5;
+            const cy = Math.max(ceiling + handSize * 0.8 + 6 * unit, over - liftFor(120 * unit, 0) + (1 - handsAwake) * 60 * unit + crouch * 60 * unit);
+            paperShape([[x - handGap / 2, cy], [x - handGap / 2 - handSize, cy - handSize * 0.8], [x - handGap / 2 - handSize, cy + handSize * 0.8]], colors.hands);
+            paperShape([[x + handGap / 2, cy], [x + handGap / 2 + handSize, cy - handSize * 0.8], [x + handGap / 2 + handSize, cy + handSize * 0.8]], colors.hands);
           }
         }
       }
 
-      // Kick → the drums: discs that touch the floor exactly on each kick (and on each drop).
+      // Kick → the kit: the drum touches the floor exactly on each kick (and on each drop);
+      // the cymbals ring on the off-beat hats (left) and on the late, swung sixteenths (right).
       const drumPlace = place("drum");
       if (drumPlace) {
-        const drumAwake = awake("drum", time);
+        const drumAwake = Math.max(awake("drum", time), poster);
         const size = drumPlace.size * grow;
-        const count = after.drum ? segment.drums : previousSegment.drums;
-        const jump = bounce(time, 300 * unit, 1300 * unit);
+        const kit = poster > 0.5 ? 3 : after.drum ? segment.kit : previousSegment.kit;
+        const radius = drumRadius * unit * size;
+        const x = drumPlace.x + shake;
+        const jump = bounce(landing, time, 200 * unit, 1100 * unit);
         const contact = inGap || time < 0.12 ? 0 : hitDecay(jump.age, 0.06) * (0.4 + 0.6 * jump.strength);
-        const color = dark ? pocketInk.cream : pocketInk.black;
-        const radius = pocketDrumRadius[count - 1] * unit * size;
-        const pitch = radius * 2.8 + 20 * unit * size;
-        for (let index = 0; index < count; index++) {
-          const rx = radius * (1 + 0.25 * contact + crouch * 0.25);
-          const ry = radius * (1 - 0.3 * contact - crouch * 0.25 + hang * 0.08);
-          const rise = jump.height * drumAwake * size * (1 - windUp * 0.5) * (inGap ? 0 : 1);
-          const lift = rise + liftFor(330 * unit) - drumPlace.depth * (2 * ry + 40 * unit);
-          const cy = Math.max(ceiling + ry, floor - ry - lift);
-          disc(drumPlace.x + shake + (index - (count - 1) / 2) * pitch, cy, rx, ry, color, 3 + index * 7);
+        const rx = radius * (1 + 0.25 * contact + crouch * 0.25);
+        const ry = radius * (1 - 0.3 * contact - crouch * 0.25 + hang * 0.08);
+        const rise = jump.height * drumAwake * size * (1 - barsDone * 0.5) * (inGap ? 0 : 1) * (1 - poster);
+        const lift = rise + liftFor(330 * unit, drumPlace.depth) - drumPlace.depth * (2 * ry + 40 * unit);
+        const cy = Math.max(ceiling + ry, floor - ry - lift);
+        disc(x, cy, rx, ry, colors.ink, 3);
+        // the cymbals on their stands
+        if (kit > 1) {
+          const cymbal = (events, side, seed) => {
+            const cx = x + side * radius * 2.05;
+            const last = events.last(time);
+            const age = last >= 0 ? time - events.time[last] : Infinity;
+            const ring = inGap ? 0 : hitDecay(age, 0.1) * (last >= 0 ? events.strength[last] : 0);
+            const stand = radius * 1.35;
+            const baseY = floor + drumPlace.depth * (stand + radius) - liftFor(330 * unit, drumPlace.depth);
+            const cyC = baseY - stand - ring * radius * 0.35;
+            context.fillStyle = colors.ink;
+            context.fillRect(cx - 9 * unit * size, cyC, 18 * unit * size, baseY - cyC);
+            disc(cx, cyC, radius * 0.62, radius * 0.2, colors.ink, seed, side * (0.08 + 0.45 * ring));
+          };
+          cymbal(offbeats, -1, 17);
+          if (kit > 2) cymbal(lates, 1, 29);
         }
       }
       context.restore();
 
-      // The groove lane along the floor: the bar as a line of sixteen steps, each performer
-      // stamping where it actually landed (the drum a disc, the bass a half-dome, the clap a
-      // triangle, the hats a tick), the previous bar ghosted ahead of the playhead. The pocket
-      // and the swing show as offsets from the steps in a single frame.
+      // The pocket, along the floor: one beat, four sixteenth cells; every onset of the last
+      // two bars stamped where it landed in the beat (the voice as pills, the hats as ticks,
+      // the claps as triangles, the kick as discs, the bass as half-domes), older ones fainter.
+      // Swing and push show as offsets from the cells' edges in a single frame.
       {
         const laneLeft = width * 0.03,
           laneRight = width * 0.97,
-          laneTop = floor + (height - floor) * 0.14,
-          laneBottom = height - (height - floor) * 0.12;
+          laneTop = floor + (height - floor) * 0.1,
+          laneBottom = height - (height - floor) * 0.08;
         const laneHeight = laneBottom - laneTop;
-        const barPosition = song.barPosition(time);
-        const barIndex = Math.floor(barPosition);
-        const phaseNow = barPosition - barIndex;
+        const cell = (laneRight - laneLeft) / 4;
+        const phaseNow = fract(song.beatPosition(time));
         const xAt = (phase) => laneLeft + (laneRight - laneLeft) * phase;
-        context.fillStyle = cssColor(inkColor, 0.2);
-        for (let step = 0; step < 16; step++) context.fillRect(xAt(step / 16) - 1.5 * unit, laneTop, 3 * unit, laneHeight * (step % 4 === 0 ? 1 : 0.45));
-        const size = laneHeight * 0.42;
-        const stamp = (list, kind, fromTime, toTime, alpha, minimum = 0) => {
-          let index = list.last(toTime);
+        for (let index = 0; index < 4; index++) {
+          context.fillStyle = cssColor(mixColor(fieldColor, dark ? [1, 1, 1] : [0, 0, 0], index % 2 ? (dark ? 0.16 : 0.2) : dark ? 0.1 : 0.12));
+          context.fillRect(laneLeft + cell * index, laneTop, cell, laneHeight);
+        }
+        const rows = 4;
+        const rowHeight = laneHeight / rows;
+        const rowY = (row) => laneTop + rowHeight * (row + 0.5);
+        const stampSize = rowHeight * 0.44;
+        const window = song.beatPeriod * 8;
+        const stamp = (list, kind, row, minimum = 0) => {
+          let index = list.last(time);
           while (index >= 0) {
             const at = list.time ? list.time[index] : list.start[index];
-            if (at < fromTime) break;
+            const age = time - at;
+            if (age > window) break;
             const strength = list.strength[index];
             if (strength >= minimum) {
-              const position = song.barPosition(at);
-              const x = xAt(position - Math.floor(position));
-              context.globalAlpha = alpha;
-              if (kind === "kick") disc(x, laneTop + laneHeight * 0.62, size * 0.62, size * 0.62, dark ? pocketInk.cream : pocketInk.black, index);
-              else if (kind === "bass") dome(x, laneBottom, size * 1.25, size * 0.75, hot ? pocketInk.cream : pocketInk.tomato);
-              else if (kind === "clap") paperShape([[x, laneTop + laneHeight * 0.05], [x - size * 0.45, laneTop + laneHeight * 0.45], [x + size * 0.45, laneTop + laneHeight * 0.45]], pocketInk.mustard);
-              else {
-                context.fillStyle = cssColor(inkColor);
-                context.fillRect(x - 2 * unit, laneTop, 4 * unit, laneHeight * 0.18);
+              const x = xAt(fract(song.beatPosition(at)));
+              const y = rowY(row);
+              context.globalAlpha = 0.18 + 0.82 * Math.exp(-age / (song.beatPeriod * 2.2));
+              if (kind === "kick") disc(x, y, stampSize, stampSize, colors.ink, index);
+              else if (kind === "bass") dome(x, y + stampSize * 0.7, stampSize * 2.4, stampSize * 1.5, colors.dome);
+              else if (kind === "clap") paperShape([[x, y - stampSize], [x - stampSize, y + stampSize * 0.8], [x + stampSize, y + stampSize * 0.8]], colors.hands);
+              else if (kind === "voice") {
+                context.fillStyle = colors.singer;
+                context.beginPath();
+                context.roundRect(x - stampSize * 1.3, y - stampSize * 0.6, stampSize * 2.6, stampSize * 1.2, stampSize * 0.6);
+                context.fill();
+              } else {
+                context.fillStyle = colors.ink;
+                context.fillRect(x - 5 * unit, y - stampSize, 10 * unit, stampSize * 2);
               }
               context.globalAlpha = 1;
             }
             index--;
           }
         };
-        const barStart = song.barTime(barIndex),
-          previousStart = song.barTime(barIndex - 1);
-        // ghost of the previous bar, ahead of the playhead
-        context.save();
-        context.beginPath();
-        context.rect(xAt(phaseNow), laneTop - laneHeight, laneRight - xAt(phaseNow) + 10 * unit, laneHeight * 2.2);
-        context.clip();
-        stamp(song.bassNotes, "bass", previousStart, barStart - 0.001, 0.28);
-        stamp(landing, "kick", previousStart, barStart - 0.001, 0.28);
-        stamp(backbeats, "clap", previousStart, barStart - 0.001, 0.28);
-        stamp(song.hats, "hat", previousStart, barStart - 0.001, 0.28, 0.25);
-        context.restore();
-        // this bar, up to now
-        stamp(song.bassNotes, "bass", barStart, time, 1);
-        stamp(landing, "kick", barStart, time, 1);
-        stamp(backbeats, "clap", barStart, time, 1);
-        stamp(song.hats, "hat", barStart, time, 1, 0.25);
-        context.fillStyle = cssColor(inkColor, 0.85);
-        context.fillRect(xAt(phaseNow) - 2 * unit, laneTop - 4 * unit, 4 * unit, laneHeight + 8 * unit);
+        stamp(song.vocalNotes, "voice", 0, 0.2);
+        stamp(song.hats, "hat", 1, 0.25);
+        stamp(backbeats, "clap", 1);
+        stamp(landing, "kick", 2);
+        stamp(song.bassNotes, "bass", 3);
+        context.fillStyle = cssColor(hexColor(colors.ink), 0.9);
+        context.fillRect(xAt(phaseNow) - 3 * unit, laneTop - 6 * unit, 6 * unit, laneHeight + 12 * unit);
       }
 
       // Every key word sung so far lies in a pile of paper slips at the right of the stage.
@@ -4918,7 +5044,7 @@ registerVisualizer({
           context.save();
           context.translate(x + slipWidth / 2, y + slipHeight / 2);
           context.rotate((hash01(count * 7 + 3) - 0.5) * 0.12);
-          context.fillStyle = dark ? pocketInk.cream : pocketInk.black;
+          context.fillStyle = colors.ink;
           context.fillRect(-slipWidth / 2, -slipHeight / 2, slipWidth, slipHeight * 0.92);
           context.fillStyle = field;
           context.fillText(word, -slipWidth / 2 + slipHeight * 0.3, slipHeight * 0.26);
@@ -4927,42 +5053,33 @@ registerVisualizer({
         }
       }
 
-      // The key word leaves the singer as big cut-paper letters, whole at once, and stays at
-      // least 0.8 s. The one sung into the main drop is set across the frame.
-      if (word) {
-        const index = lastIndexAtOrBefore(song.anchorStarts, time);
-        if (index >= 0) {
-          const moment = song.anchor.moments[index];
-          const nextStart = index + 1 < song.anchor.moments.length ? song.anchor.moments[index + 1].start : Infinity;
-          const holdEnd = Math.min(nextStart, Math.max(moment.end, moment.start + 0.8));
-          const main = song.mainDrop >= 0 && Math.abs(song.drops[song.mainDrop].time - moment.start) < 1.2;
-          if (time < holdEnd || (main && sinceDrop < song.beatPeriod * 4 && drop.index === song.mainDrop)) {
-            const age = time - moment.start;
-            const size = main ? Math.min(420 * unit, (width * 0.9) / (word.length * 0.62)) : Math.min(260 * unit, (width * 0.8) / Math.max(3, word.length) / 0.62);
-            context.font = `800 ${size}px "Jost", sans-serif`;
-            const total = context.measureText(word).width;
-            let x = main ? (width - total) / 2 : clampRange(singerX - total / 2, width * 0.03, width * 0.97 - total);
-            const pop = easeOutBack(clamp01(age / 0.1));
-            const baseline = main ? floor * 0.62 : Math.max(ceiling + size * 0.8, floor * 0.55) - pop * 40 * unit;
-            context.fillStyle = dark ? pocketInk.cream : pocketInk.black;
-            for (let letter = 0; letter < word.length; letter++) {
-              const glyph = word[letter];
-              const letterWidth = context.measureText(glyph).width;
-              context.save();
-              context.translate(x + letterWidth / 2, baseline - size * 0.35);
-              context.rotate((hash01(letter * 17 + index) - 0.5) * 0.3);
-              context.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
-              context.fillText(glyph, -letterWidth / 2, size * 0.35);
-              context.restore();
-              x += letterWidth;
-            }
-          }
+      // The key word sung (not into the main drop): cut-paper letters in the band right of
+      // the title, whole at once, held at least 0.8 s.
+      if (wordState && !wordState.main) {
+        const band = ceiling - 8 * unit;
+        const size = Math.min(band / 0.8, (width * 0.5) / (word.length * 0.62));
+        context.font = `800 ${size}px "Jost", sans-serif`;
+        const total = context.measureText(word).width;
+        const pop = easeOutBack(clamp01(wordState.age / 0.1));
+        let x = width * 0.97 - total;
+        const baseline = band;
+        context.fillStyle = colors.ink;
+        for (let letter = 0; letter < word.length; letter++) {
+          const glyph = word[letter];
+          const letterWidth = context.measureText(glyph).width;
+          context.save();
+          context.translate(x + letterWidth / 2, baseline - size * 0.35);
+          context.rotate((hash01(letter * 17 + wordState.index) - 0.5) * 0.24);
+          context.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
+          context.fillText(glyph, -letterWidth / 2, size * 0.35);
+          context.restore();
+          x += letterWidth;
         }
       }
 
       // The drop: the floor rises to meet everything for its first frames.
       if (slam > 0) {
-        context.fillStyle = dark ? pocketInk.cream : pocketInk.black;
+        context.fillStyle = colors.ink;
         context.fillRect(0, floor - height * 0.05 * slam, width, height * 0.05 * slam);
       }
     }
@@ -4975,8 +5092,8 @@ registerVisualizer({
       },
       themeFor() {
         themeField = "";
-        const field = song ? pocketFields[sceneFields[0]] || pocketFields.cream : pocketFields.cream;
-        return { "--pocket-field": field, "--pocket-ink": pocketInk.black };
+        const field = song ? setup.main : pocketFields.cream;
+        return { "--pocket-field": field, "--pocket-ink": colorsFor(hexColor(field)).ink };
       },
       setActive(on) {
         canvas.hidden = !on;
