@@ -4449,7 +4449,7 @@ const pocketPale = ["cream", "mint", "blush", "sky", "lilac"];
 const pocketSongs = {
   "5ff86d6cd02ebd7308e03df8": { field: "sky", order: ["singer", "drum", "bass"], main: "#2749b5" }, // NBLY: cobalt
   "1d589940ca458d793a3fad8a": { field: "blush", order: ["drum", "bass", "singer"], main: "#e4472b" }, // Desire: tomato
-  f127a026dc751f1528bfb95d: { field: "mint", order: ["bass", "singer", "drum"], main: "#12593f" }, // Ophelia: bottle green
+  f127a026dc751f1528bfb95d: { field: "mint", order: ["bass", "singer", "drum"], main: "#1bb07a" }, // Ophelia: emerald
   "8eee874c702a10807f79706c": { field: "cream", order: ["drum", "singer", "bass"], main: "#eab12c" }, // Outside: mustard
   "4048d4a6dce44c151690b2b1": { field: "lilac", order: ["bass", "drum", "singer"], main: "#6b3fd6" }, // American Boy: violet
 };
@@ -4690,10 +4690,14 @@ registerVisualizer({
         const order = setup.order.slice(turn).concat(setup.order.slice(0, turn));
         const scene = model.scene(settled);
         const phrase = Math.max(0, Math.floor(model.barIndex(settled) / 8));
+        // Every eight bars someone else is featured, so the composition itself moves: in verses
+        // and breakdowns the singer and the rest take turns; elsewhere the feature walks along
+        // the stage order.
+        const present = order.filter((name) => on.has(name));
         let feature = null;
-        if (scene.kind === "verse" || scene.kind === "break") feature = phrase % 2 ? "singer" : null;
+        if (scene.kind === "verse" || scene.kind === "break") feature = phrase % 2 ? "singer" : present.find((name) => name !== "singer") || null;
         else if (scene.kind === "gap") feature = result.length ? result[result.length - 1].feature : null; // the gap holds
-        else if (scene.kind !== "drop" && scene.kind !== "build") feature = [null, "drum", null, "bass", null, "singer"][phrase % 6];
+        else if (scene.kind !== "build" && (scene.kind !== "drop" || settled - scene.start > 7.5 * model.barPeriod) && present.length > 1) feature = present[phrase % present.length];
         if (feature && !on.has(feature)) feature = null;
         // the kit grows: the off-beat cymbal after the first drop, the swing cymbal after the turn
         const kit = 1 + (dropsPassed > 0 ? 1 : 0) + (settled >= model.lateStart ? 1 : 0);
@@ -4736,7 +4740,7 @@ registerVisualizer({
     // Where each performer stands in a segment: the columns in order, each as large as the
     // stage allows (the featured one larger), spaced evenly. Nothing overlaps by construction.
     // The poster keeps the middle clear for the play button.
-    function layoutFor(index, left, right, room, unit, poster = false) {
+    function layoutFor(index, left, right, room, unit, poster = false, frameMiddle = 0) {
       const cacheKey = poster ? `poster${index}` : index;
       const cached = layouts.get(cacheKey);
       if (cached) return cached;
@@ -4752,11 +4756,28 @@ registerVisualizer({
       const widths = names.map((name, column) => columnWidth(segment, name, sizes[column]));
       const spacing = (span - widths.reduce((sum, value) => sum + value, 0)) / (names.length + 1);
       const result = {};
-      let x = spacing;
+      let x = spacing,
+        spacerX = 0;
       names.forEach((name, column) => {
-        if (name !== "spacer") result[name] = { x: left + (x + widths[column] / 2) * unit, size: sizes[column] };
+        if (name !== "spacer") result[name] = { x: left + (x + widths[column] / 2) * unit, size: sizes[column], half: (widths[column] / 2) * unit };
+        else spacerX = left + (x + widths[column] / 2) * unit;
         x += widths[column] + spacing;
       });
+      if (poster && frameMiddle) {
+        // the play button stands at the middle of the frame: move the gap there, drawing the
+        // row in about that middle if it would leave the stage
+        const shift = frameMiddle - spacerX;
+        let reach = 1;
+        for (const entry of Object.values(result)) {
+          const cx = entry.x + shift;
+          if (cx - entry.half < left) reach = Math.min(reach, (frameMiddle - left) / Math.max(1, frameMiddle - (cx - entry.half)));
+          if (cx + entry.half > right) reach = Math.min(reach, (right - frameMiddle) / Math.max(1, cx + entry.half - frameMiddle));
+        }
+        for (const entry of Object.values(result)) {
+          entry.x = frameMiddle + (entry.x + shift - frameMiddle) * reach;
+          entry.size *= reach;
+        }
+      }
       layouts.set(cacheKey, result);
       return result;
     }
@@ -4856,7 +4877,7 @@ registerVisualizer({
       return {
         dark,
         ink: dark ? pocketInk.cream : pocketInk.black,
-        singer: near(pocketInk.cobalt) || (dark && b > r && b > g) ? pocketInk.cream : dark ? "#6f8ef7" : pocketInk.cobalt,
+        singer: dark && b > r && b > g ? "#f4a3c0" : near(pocketInk.cobalt) ? pocketInk.cream : dark ? "#6f8ef7" : pocketInk.cobalt,
         dome: near(pocketInk.tomato) || (r > 0.35 && g < 0.3 && dark) ? pocketInk.cream : pocketInk.tomato,
         hands: near(pocketInk.mustard) ? pocketInk.black : pocketInk.mustard,
       };
@@ -4912,10 +4933,13 @@ registerVisualizer({
           if (fieldName === before) fieldName = pocketPale[(pocketPale.indexOf(fieldName) + 2) % 5];
         }
       }
+      // A pale scene opens on its own field and takes a partner field (another of the pale
+      // five, never a grey mix) for every second eight bars of it, so a long scene moves.
+      if (pocketPale.includes(fieldName) && drop.phase !== 1 && !(peak && peak.kind === "chords")) {
+        const opened = song.barIndex(song.scenes[sceneIndex].start + 0.01);
+        if (Math.floor(Math.max(0, song.barIndex(time) - opened) / 8) % 2 === 1) fieldName = pocketPale[(pocketPale.indexOf(fieldName) + 3) % 5];
+      }
       let fieldColor = hexColor(pocketFields[fieldName] || pocketFields.cream);
-      // pale fields step through a partner tone every eight bars, so a long scene moves
-      if (pocketPale.includes(fieldName) && Math.floor(Math.max(0, song.barIndex(time)) / 8) % 2 === 1 && drop.phase !== 1)
-        fieldColor = mixColor(fieldColor, hexColor(pocketFields[pocketPale[(pocketPale.indexOf(fieldName) + 3) % 5]]), 0.55);
       const baseColors = colorsFor(fieldColor);
       if (windUp > 0) {
         const step = 0.55 * barsDone;
@@ -5007,7 +5031,7 @@ registerVisualizer({
       const arriving = Object.keys(after).some((name) => !before[name]);
       const leaving = Object.keys(before).some((name) => !after[name]);
       const move = easeInOutCubic(arriving ? clamp01(progress / 0.6) : leaving ? clamp01((progress - 0.4) / 0.6) : progress);
-      const posterLayout = poster > 0 ? layoutFor(0, stageLeft, stageRight, room, unit, true) : null;
+      const posterLayout = poster > 0 ? layoutFor(0, stageLeft, stageRight, room, unit, true, width / 2) : null;
       const middle = (stageLeft + stageRight) / 2;
       const squeeze = (entry) => (entry ? { x: middle + (entry.x - middle) * gather, size: entry.size * gather, depth: entry.depth } : null);
       const place = (name) => {
@@ -5066,7 +5090,7 @@ registerVisualizer({
         const bodyWidth = 210 * unit * size;
         const available = floor - ceiling - 20 * unit;
         const bodyHeight = Math.min(available, (440 + 380 * range) * unit * size * (0.8 + 0.2 * level) * (0.9 + 0.1 * singerAwake) * (1 - crouch * 0.4));
-        const lift = liftFor(260 * unit, singer.depth) - singer.depth * (bodyHeight + 40 * unit);
+        const lift = Math.min(liftFor(260 * unit, singer.depth) - singer.depth * (bodyHeight + 40 * unit), floor - ceiling - 10 * unit - bodyHeight);
         const base = floor - lift;
         const top = base - bodyHeight;
         const headRadius = bodyWidth * 0.46;
@@ -5130,7 +5154,7 @@ registerVisualizer({
           const squash = last >= 0 && !inGap ? hitDecay(time - notes.start[last], 0.07) * notes.strength[last] : 0;
           const w = shape.width * unit * size * (1 + 0.12 * squash) * (1 + crouch * 0.2);
           const h = shape.height * unit * size * (1 - 0.22 * squash) * (1 - crouch * 0.35) * (1 + slam * 0.3) * (0.5 + 0.5 * bassAwake);
-          const lift = hop * unit * size * bassAwake * (1 - poster) + liftFor(200 * unit, domeDepth) - domeDepth * (h + 40 * unit);
+          const lift = Math.min(hop * unit * size * bassAwake * (1 - poster) + liftFor(200 * unit, domeDepth) - domeDepth * (h + 40 * unit), floor - ceiling - 10 * unit - h);
           dome(x, floor - lift, w, h, colors.dome);
         }
         // Snare → the hands: two triangles that meet on beats two and four. Through a build
