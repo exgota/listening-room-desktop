@@ -3646,9 +3646,9 @@ function createRigShow() {
 
 const typePalettes = {
   "5ff86d6cd02ebd7308e03df8": { field: "#2530f2", ink: "#f3efe4", hook: ["NBLY", "LIKE YOU", "NEVER", "LIKE YOU"] },
-  "1d589940ca458d793a3fad8a": { field: "#e4261c", ink: "#16090a", hook: ["DESIRE", "IS IT LOVE", "DESIRE", "I WANT"] },
-  f127a026dc751f1528bfb95d: { field: "#0b7556", ink: "#f7f0d8", hook: ["OPHELIA", "CAME FOR ME", "THE FATE OF", "OPHELIA"] },
-  "8eee874c702a10807f79706c": { field: "#101010", ink: "#e5ff2f", hook: ["OUTSIDE", "FEELS LIKE", "OUTSIDE", "EVERYTHING RIGHT"] },
+  "1d589940ca458d793a3fad8a": { field: "#e4261c", ink: "#16090a", hook: ["DESIRE", "IS IT LOVE", "DESIRE", "I WANT"], split: ["DE", "SIRE"] },
+  f127a026dc751f1528bfb95d: { field: "#0b7556", ink: "#f7f0d8", hook: ["OPHELIA", "CAME FOR ME", "THE FATE OF", "OPHELIA"], split: ["OPHE", "LIA"] },
+  "8eee874c702a10807f79706c": { field: "#101010", ink: "#e5ff2f", hook: ["OUTSIDE", "FEELS LIKE", "OUTSIDE", "EVERYTHING RIGHT"], split: ["OUT", "SIDE"] },
   "4048d4a6dce44c151690b2b1": { field: "#ff8db0", ink: "#1a1461", hook: ["BOY", "AMERICAN BOY", "LA LA LA", "AMERICAN"] },
 };
 const typeDefaultPalette = { field: "#2530f2", ink: "#f3efe4", hook: [] };
@@ -3679,6 +3679,7 @@ registerVisualizer({
     let timelineStarts = new Float64Array(0);
     const blockCache = new Map();
     let hitCache = { key: "", size: 0 };
+    let tint = typeTint; // an unsung word's strength: more where field and ink are close in value
 
     function setFont(target, weight, size, stretch) {
       target.font = `${weight} ${size}px ${typeFamily}`;
@@ -3813,8 +3814,19 @@ registerVisualizer({
       const lines = [];
       for (const line of model.lyrics.lines) {
         line.shown = line.words.filter((word) => word.votes > 0 || word.probability >= 0.85);
-        if (!line.shown.length || (line.shown.length < 2 && line.shown.length < line.words.length / 2)) continue;
+        // a line is set when most of it is confirmed (a two-word fragment of a long line is not)
+        if (line.shown.length < line.words.length && line.shown.length < Math.max(2, Math.ceil(line.words.length * 0.6))) continue;
         lines.push({ line, start: line.shown[0].start - 0.35, sungEnd: line.shown[line.shown.length - 1].end });
+      }
+      // a line that would show for under a second is set together with the next one
+      for (let index = 0; index + 1 < lines.length; index++) {
+        const entry = lines[index],
+          next = lines[index + 1];
+        if (next.start - entry.start < 1.0 && entry.line.shown.length + next.line.shown.length <= 12) {
+          const merged = { number: `${entry.line.number}+${next.line.number}`, words: entry.line.words.concat(next.line.words), shown: entry.line.shown.concat(next.line.shown) };
+          lines.splice(index, 2, { line: merged, start: entry.start, sungEnd: next.sungEnd });
+          index--;
+        }
       }
       const states = [];
       lines.forEach((entry, index) => {
@@ -3826,7 +3838,8 @@ registerVisualizer({
           if (start >= window.from && start < window.end) start = window.end;
           if (start < window.cut && end > window.cut) end = window.cut;
         }
-        if (end - start > 0.3 && entry.sungEnd > start) states.push({ start, end, kind: "line", line: entry.line });
+        // a line keeps one size throughout: a breakdown line if it begins in a breakdown
+        if (end - start > 0.3 && entry.sungEnd > start) states.push({ start, end, kind: "line", line: entry.line, breakdown: model.scene(entry.start + 0.36).kind === "break" });
       });
       // Instrumental stretches: whatever the lines and drops leave, cut at eight-bar lines and
       // at the chord passages, each piece given a mode by its section. A stretch under two
@@ -3906,6 +3919,13 @@ registerVisualizer({
       if (!model) return;
       mainDrop = model.mainDrop;
       chordNames = spelling(model);
+      const luminance = (hex) => {
+        const channel = (value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        const [r, g, b] = hexColor(hex).map(channel);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const [light, dark] = [luminance(palette.field), luminance(palette.ink)].sort((a, b) => b - a);
+      tint = (light + 0.05) / (dark + 0.05) < 8 ? 0.5 : typeTint;
       // The song's end: the last moment anything sounds, or a bar before the file ends when
       // the mix never falls silent.
       const mix = model.series.mix;
@@ -4008,7 +4028,7 @@ registerVisualizer({
         let offset = (((steps * unitWidth) / 4) % unitWidth) * (even ? -1 : 1) - unitWidth * (row % 3) * 0.37;
         offset = ((offset % unitWidth) + unitWidth) % unitWidth - unitWidth;
         const baseline = top + rowHeight * (row + 1) - rowHeight * 0.13;
-        drawTextInverted(unit.repeat(Math.ceil(width / unitWidth) + 2), offset, baseline, field, ink, edge, rowHeight, row % 2 ? typeTint + 0.25 : 1);
+        drawTextInverted(unit.repeat(Math.ceil(width / unitWidth) + 2), offset, baseline, field, ink, edge, rowHeight, row % 2 ? tint + 0.2 : 1);
       }
     }
 
@@ -4027,15 +4047,46 @@ registerVisualizer({
 
     // After the turn: the hook stacked, a row more each bar of the phrase.
     function drawStack(time, state, left, top, right, bottom, field, ink, edge) {
-      const rows = 2 + (((song.barIndex(time) - song.barIndex(state.from + 0.01)) % 3) + 3) % 3;
-      const rowHeight = (bottom - top) / 4;
+      const rows = 2 + (((song.barIndex(time) - song.barIndex(state.from + 0.01)) % 2) + 2) % 2;
+      const rowHeight = (bottom - top) / 3;
       const size = Math.min(rowHeight / 0.78, (100 * (right - left)) / textWidth(state.text, 900, 100, "condensed"));
       setFont(context, 900, size, "condensed");
       const width = context.measureText(state.text).width;
       const stackBottom = (top + bottom) / 2 + (rows * rowHeight) / 2;
       for (let row = 0; row < rows; row++) {
         const baseline = stackBottom - rowHeight * row - rowHeight * 0.13;
-        drawTextInverted(state.text, left + (right - left - width) / 2, baseline, field, ink, edge, rowHeight, row === rows - 1 ? 1 : typeTint + 0.2);
+        drawTextInverted(state.text, left + (right - left - width) / 2, baseline, field, ink, edge, rowHeight, row === rows - 1 ? 1 : tint + 0.15);
+      }
+    }
+
+    // A chord's name: the root letter, its accidental as a raised small letter of the same
+    // heavy face (the font has no flat or sharp sign), then "m" for minor.
+    function drawChord(chord, left, top, right, bottom, field, ink, edge, maximum) {
+      const name = chordNames[chord.root];
+      const letter = name[0],
+        accidental = name.length > 1 ? (name[1] === "♭" ? "b" : "#") : "",
+        suffix = chord.minor ? "m" : "";
+      const measureAt = (size) => {
+        setFont(context, 900, size, "normal");
+        const main = context.measureText(letter).width + (suffix ? context.measureText(suffix).width : 0);
+        setFont(context, 900, size * 0.6, "normal");
+        return main + (accidental ? context.measureText(accidental).width + size * 0.04 : 0);
+      };
+      const size = Math.min(maximum, (bottom - top) / 0.74, (100 * (right - left)) / measureAt(100));
+      const total = measureAt(size);
+      let x = left + (right - left - total) / 2;
+      const baseline = (top + bottom) / 2 + size * 0.36;
+      setFont(context, 900, size, "normal");
+      drawTextInverted(letter, x, baseline, field, ink, edge, size);
+      x += context.measureText(letter).width + size * 0.02;
+      if (accidental) {
+        setFont(context, 900, size * 0.6, "normal");
+        drawTextInverted(accidental, x, baseline - size * 0.3, field, ink, edge, size * 0.6);
+        x += context.measureText(accidental).width + size * 0.02;
+      }
+      if (suffix) {
+        setFont(context, 900, size, "normal");
+        drawTextInverted(suffix, x, baseline, field, ink, edge, size);
       }
     }
 
@@ -4074,7 +4125,7 @@ registerVisualizer({
       // third when that drop comes early) swaps them for good.
       let field = palette.field,
         ink = palette.ink;
-      const swap = late !== (inHit && !(mainHit && late));
+      const swap = late && !(mainHit && Math.abs(song.lateStart - song.drops[mainDrop].time) < 0.1);
       if (swap) [field, ink] = [ink, field];
       context.fillStyle = field;
       context.fillRect(0, 0, width, height);
@@ -4084,11 +4135,11 @@ registerVisualizer({
       // controls while paused).
       const top = Math.max(height * 0.2, (frame.titleBottom || 0) + height * 0.035),
         bottom = frame.playing === false ? height * 0.8 : height * 0.93;
-      const breakdown = scene.kind === "break" && state && state.kind === "line";
-      const boxTop = breakdown ? top + (bottom - top) * 0.4 : top;
+      const breakdown = Boolean(state && state.kind === "line" && state.breakdown);
+      const boxTop = top;
       const boxWidth = width - margin * 2;
       // The line on show, laid out, so the ink's edge can stop between its rows.
-      const block = state && state.kind === "line" && !inGap && !inHit ? blockFor(state.line, boxWidth, bottom - boxTop, breakdown ? 0.36 : 0.5) : null;
+      const block = state && state.kind === "line" && !inGap && !inHit ? blockFor(state.line, boxWidth, bottom - boxTop, breakdown ? 0.34 : 0.5) : null;
       const offsetY = block ? boxTop + (bottom - boxTop - block.height) / 2 : 0;
 
       // Ink from the bottom: the bass note's height, or the build's flood rising up the
@@ -4112,13 +4163,20 @@ registerVisualizer({
       if (inHit || time > songEnd) blockHeight = 0;
       let edge = height - blockHeight;
       if (block && blockHeight > 0 && !inGap)
-        for (const band of block.rowBands) if (edge > offsetY + band.top && edge < offsetY + band.bottom) edge = offsetY + band.bottom;
+        for (const band of block.rowBands) {
+          const rowTop = offsetY + band.top,
+            rowBottom = offsetY + band.bottom;
+          if (edge > rowTop && edge < rowBottom) {
+            edge = edge - rowTop < rowBottom - edge ? rowTop : rowBottom;
+            break;
+          }
+        }
       context.fillStyle = ink;
       if (edge < height - 0.5) context.fillRect(0, edge, width, height - edge);
 
       // The page's title and controls follow the field and ink as they swap, and flip again
       // when the ink covers the title.
-      const titleCovered = edge < (frame.titleBottom || height * 0.12);
+      const titleCovered = edge < (frame.titleBottom || height * 0.12) * 0.55;
       const pageSwap = swap !== titleCovered;
       const key = `${pageSwap}`;
       if (key !== themeKey) {
@@ -4133,27 +4191,29 @@ registerVisualizer({
       const hitKey = `${width}x${height}:${top}:${bottom}`;
       if (hitCache.key !== hitKey) hitCache = { key: hitKey, size: bigWordFit(hitWord, boxWidth, bottom - top).size };
       const cap = hitCache.size * 0.6;
+      // numerals are not words: a count may stand as tall as the box allows
+      const countCap = (bottom - top) * 0.9 / 0.74;
       let anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
       let showTab = frame.playing !== false && !inGap && !inHit && time <= songEnd && !breakdown;
 
       if (time > songEnd) {
         // After the last sound: the song's word, still, as a tint.
-        drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, Infinity, typeTint + 0.15);
+        drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, Infinity, 0.55);
       } else if (inGap && anchor >= 0) {
         // The key word sung into the gap: a tint in the flood, filled by the drop.
-        drawBigWord(song.anchor.word.toUpperCase(), margin, top, width - margin, bottom, field, ink, edge, Infinity, typeTint + 0.2);
+        drawBigWord(song.anchor.word.toUpperCase(), margin, top, width - margin, bottom, field, ink, edge, Infinity, tint + 0.2);
       } else if (inGap) {
         // The gap: the flood and a countdown of the beats left before the drop, on the grid.
         const end = drop.phase === 2 ? drop.drop.time : song.anchor.moments[leadIn].end;
         const beatsLeft = Math.max(1, song.beatIndex(end - 0.02) - song.beatIndex(time) + 1);
-        drawCount(beatsLeft, margin, top, width - margin, bottom, field, ink, edge, cap);
+        drawCount(beatsLeft, margin, top, width - margin, bottom, field, ink, edge, countCap);
       } else if (inHit) {
         // The hit: the song's word. The main drop's fills the whole frame below the title: a
         // long word split over two rows, a short one run off the bottom edge.
         if (mainHit) {
           if (hitWord.length >= 5 && !hitWord.includes(" ")) {
             const half = Math.ceil(hitWord.length / 2);
-            const rows = [hitWord.slice(0, half), hitWord.slice(half)];
+            const rows = palette.split || [hitWord.slice(0, half), hitWord.slice(half)];
             const rowHeight = (height - margin * 0.5 - top) / 2;
             let size = Infinity,
               stretch = "normal";
@@ -4197,7 +4257,7 @@ registerVisualizer({
             context.fillText(word.display, x, baseline);
             return;
           }
-          drawTextInverted(word.display, x, baseline, field, ink, edge, place.size, sung ? 1 : typeTint);
+          drawTextInverted(word.display, x, baseline, field, ink, edge, place.size, sung ? 1 : tint);
           // the word being sung now carries a rule under it
           if (sung && word.index === current && time < word.end + 0.05) {
             const rule = Math.max(4, place.size * 0.06);
@@ -4217,15 +4277,11 @@ registerVisualizer({
           // the drop's word held until the voice returns
           drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge);
         } else if (state.mode === "count") {
-          // the intro counts its bars, until the voice comes in
-          drawCount(Math.max(1, song.barIndex(time) + 1), margin, top, width - margin, bottom, field, ink, edge, cap);
-          showTab = false;
+          // the intro counts its bars, until the voice comes in (the corner keeps the kick)
+          drawCount(Math.max(1, song.barIndex(time) + 1), margin, top, width - margin, bottom, field, ink, edge, countCap);
         } else if (state.mode === "chords") {
           const index = song.chordIndex(time);
-          if (index >= 0) {
-            const chord = song.chords[index];
-            drawBigWord(chordNames[chord.root] + (chord.minor ? "m" : ""), margin, top, width - margin, bottom, field, ink, edge, cap);
-          }
+          if (index >= 0) drawChord(song.chords[index], margin, top, width - margin, bottom, field, ink, edge, cap);
           showTab = false;
         } else if (state.mode === "breathing") drawBreathing(time, margin, top, width - margin, bottom, state.text.length <= 8 || state.text.includes(" ") ? state.text : hitWord, field, ink, edge, cap);
         else if (state.mode === "stack") drawStack(time, state, margin, top, width - margin, bottom, field, ink, edge);
@@ -4252,7 +4308,7 @@ registerVisualizer({
         context.textAlign = "center";
         const baseline = tabY + tabHeight / 2 + size * 0.36;
         context.fillStyle = solid ? field : ink;
-        context.globalAlpha = solid ? 1 : typeTint + 0.2;
+        context.globalAlpha = solid ? 1 : tint + 0.2;
         context.fillText(text, tabX + tabWidth / 2, baseline);
         context.globalAlpha = 1;
         context.textAlign = "left";
