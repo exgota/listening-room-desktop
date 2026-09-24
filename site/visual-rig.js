@@ -815,8 +815,9 @@ function createRigShow() {
     state.wash[3] = inGap ? 0 : other * (0.35 + 1.5 * stabHit) * fadeOut;
 
     // Lenses: dimmed while the beams converge, so a build narrows to a spike, not a flare;
-    // held down in the drives so only a drop glares.
-    state.lens = lens * (1 - 0.6 * converge);
+    // held down in the drives so only a drop glares, and while the heads tip toward the
+    // singer (and so toward the camera) for the key word.
+    state.lens = lens * (1 - 0.6 * converge) * (1 - 0.6 * onSinger);
     state.lensSize = 1;
 
     // ---- the gap: blackout with four big blinders counting in, a pair per beat, aimed at the
