@@ -66,8 +66,8 @@ Type sets a line when at least half its words are confirmed, and shows only its 
 
 ### Where the data and the brief disagree
 
-- **Desire: "desire" is sung 12 times, not 11.** The 12th is at 3:10.3 ("I want desire"),
-  which the first transcription misheard. Every visualizer uses the 12.
+- **Desire: "desire" is sung 12 times, not 11.** The 12th is at 3:10.3, the word
+  ending a short phrase, which the first transcription misheard. Every visualizer uses the 12.
 - **Drop times, corrected by up to 30 ms (1–3 frames).** Each corrected time was checked
   against the stems:
 
@@ -208,38 +208,54 @@ the drop's word is the largest type the song ever shows.
 | --- | --- |
 | Voice (sung words) | Each confirmed word fills in solid as it is sung, with a rule under the word being sung; a line is set when at least half its words are confirmed; unsung words are tints at about 3:1 against the field |
 | Key word | Reversed out of an ink box inside its line; its running count (01–12) in the corner tab |
-| Kick | The corner tab shows the beat of the bar, solid on each kick (while a count runs it only blinks); before the voice, the hook hops from side to side on every kick |
-| Snare | Before the voice, the hook widens for an instant on every snare; the wall's odd rows step on it |
+| Kick | The corner tab shows the beat of the bar, solid on each kick (while a count runs it only blinks); before the voice, the hook hops from side to side on every kick (on the beat where there are no kicks; in American Boy also on the late, swung bass notes) |
+| Snare | Before the voice, the hook squashes wide onto its baseline for an instant on every snare; the wall's odd rows step on it |
 | Bass | A block of ink rising from the bottom to the note's height, inverting the rows it covers (whole rows at a time) |
 | Harmony | In NBLY's chord passages the chord names, spelled in the song's key, with drawn flats |
 | Intro | The song's word through the first bar, then the hook hopping with the kit, then the last four bars counted down to the voice |
-| Instrumental passages | One mode per piece of at most eight bars, taken in turn by section: the hook as a wall stepping on kick and snare, spelled a letter a beat, breathing once a bar; after the turn a stack that grows a row a bar. The drop's word is never used |
+| Instrumental passages | One mode per piece of at most eight bars, taken in turn by section: the hook as a wall stepping on kick and snare, spelled a letter a beat, breathing once a bar, hopping on the kick; after the turn a stack that grows a row a bar to four, then rolls on a row a bar. The drop's word, and any hook phrase holding it, is never used |
 | Breakdown | Lines set smaller, centred, with no ink band or tab |
-| Build | The ink floods up the frame, stopping at the edges of rows and numerals; bars counted down where no line is sung |
+| Build | The ink floods up the frame, stopping at the edges of rows; where no line is sung, the last eight bars counted down, the numeral riding just above the flood and moving into it, reversed, on a bar line |
 | Gap | Full flood; the beats left as a row of full stops (numerals are for bars) |
 | Drop | The song's word across the frame, on the field the flood hid. The main drop's word fills the whole frame below the title (two rows split at a syllable, or run off the foot) and holds a bar; the other drops are a size down |
 | Song's turn | Field and ink swap for good |
 | Ending | The song's word as a tint |
 
-**Measurements.** From the fourth review (on v4, before the v5 changes) and the Node plan
-replay on the current code.
+**Measurements.** From the fifth review (on v5c, graded B), then a Node replay of the plan
+and stills on the current code (v5d, which acts on that review).
 
-- Grades by review: C-, C+, B- (the third was cut off before its grade).
-- Drops: all ten change on the first frame after the drop line (NBLY 2:18.200 and 4:36.300,
-  Desire 0:45.800, 2:47.700 and 3:48.700, Ophelia 0:36.500 and 1:34.700, Outside 2:21.200,
-  American Boy 0:48.900; Desire 1:16.25 on the 2 fps sheets). Counts and chord names flip on
-  the first frame after their beat lines.
-- Lines set, current code: NBLY 79 of 115, Desire 52 of 53, Ophelia 44 of 47, Outside 40
-  of 54, American Boy 103 of 107. The sung-note time inside a shown line is 80, 91, 75, 66
-  and 93 %. The skipped lines are mostly vocal chops and ad-libs the two transcriptions do
-  not agree on.
-- Flashes (instrumental runs under 2 s between lines): 4 in the set (pass 2: 25).
-- Hierarchy since v5c: the main drop's word, then the secondary drops' (0.82 of a full
-  one-row fit), numerals at most 0.75 of those, other big type at most 0.6.
+- Grades by review: C-, C+, (the third was cut off before its grade), B-, B.
+- Drops (fifth review, 10 fps strips): all nine drops and all three chord passages change on
+  the first frame after their line (NBLY 2:18.200 and 4:36.300, Desire 0:45.800, 2:47.700
+  and 3:48.700, Ophelia 0:36.500 and 1:34.700, Outside 2:21.200, American Boy 0:48.900;
+  Desire 1:16.25 agrees on the 2 fps sheets). Every pip and bar numeral flips on the first
+  frame after its beat or bar line.
+- Hierarchy (fifth review): the main hit is the biggest and heaviest frame in every song.
+  NBLY's main word is 63.3 % of the frame tall and 42.9 % inked, against 50.6 % and 26.6 % for
+  its first drop; Desire's two rows fill 72.6 % of the height, 31-33 % inked, against 35.7 %
+  and 18.7 %; Ophelia's fill 66 %, 24.9 % inked, against 29.4 % and 15.1 %. Numerals are at
+  most 0.76 of a secondary drop's letters, the modes at most 0.60.
+- Contrast (fifth review, measured pixels): unsung words 3.0:1 against the field in every
+  palette, both ways round; 2.3-2.9:1 inside the flood before the turn.
+- Thumbnails (paused first frame, the word's height as % of the frame; the fifth review's
+  v5c in brackets): American Boy 44.3 (31.9), NBLY 42.8 (30.7), Desire 35.9 (25.7), Outside
+  29.6 (21.3), Ophelia 29.4 (21.3). The thumbnail is now the size of a secondary drop.
+- American Boy's intro row: 29.1 % of the frame tall and 12 % inked (fifth review: 9.3 %),
+  squashing to 16.5 % on a snare.
+- Lines set: NBLY 78 of 115, Desire 50 of 53, Ophelia 44 of 47, Outside 39 of 54, American
+  Boy 102 of 107. The sung-note time inside a shown line is 80, 91, 75, 64 and 93 %. The
+  skipped lines are mostly vocal chops and ad-libs the two transcriptions do not agree on,
+  and lines a hit leaves under 0.6 s.
+- Line runs under 1 s: none (fifth review: four, three of them stale or early lines at
+  drops). Instrumental runs under 2 s: five, four of them holds of a hit's word.
+- Longest instrumental stretches: NBLY 0:26.7-1:21.3 (54.6 s: breathing, step, wall,
+  letters), Outside 3:56.0-4:44.4 (48.4 s) and 3:04.5-3:49.7 (45.2 s), no longer the same
+  sequence twice. No mode follows itself except in the intros, and once the late stack has
+  four rows it rolls on a row a bar rather than standing still.
 
 **With more time.**
 
-- Listen through the lines the two transcriptions disagree on (36 in NBLY, 14 in Outside)
+- Listen through the lines the two transcriptions disagree on (30 in NBLY, 13 in Outside)
   and hand-confirm them, so the long ad-lib stretches have words.
 - Give instrumental stretches a direction: the next line's first word assembling over the
   last four bars before the voice returns.

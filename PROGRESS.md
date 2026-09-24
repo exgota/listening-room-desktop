@@ -4,14 +4,22 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- Final review round grades (each on the build before its last fixes): Plate B (v4), Type
-  B- (v4), Rig B- (v5), Pocket B- (v5). Earlier: Plate D+, C, B-; Type C-, C+ (and a
-  cut-off third); Rig C, C+ (and a cut-off third); Pocket D+, C-, C+ (and a cut-off fourth).
-- Built after those reviews: Plate v5-v5c, Type v5-v5c, Rig v6-v7, Pocket v6. A verification
-  review of Rig v7 and Pocket v6 is running on the frozen build `scratchpad/page-final-c.html`
-  (ports 8095 and 8096); Type and Plate follow on the same build.
+- Review grades, pass by pass (each on the build before that pass's fixes): Plate D+, C, B-,
+  B; Type C-, C+, (a cut-off third), B-, B; Rig C, C+, (a cut-off third), B-, B; Pocket D+,
+  C-, C+, (a cut-off fourth), B-, B. The last pass of Type, Rig and Pocket is the
+  verification review (Type on v5c, Rig on v7, Pocket on v6). Plate's B was on v4; its
+  v5-v5c fixes were checked on sheets and strips instead of another agent review, to save
+  usage.
+- Built after the verification reviews: Type v5d, Rig v8, Pocket v7, each checked on
+  sheets, 10 fps strips and stills, with no further agent review.
 - Acceptance (`tools/render/acceptance.mjs`) on the final build, with Plate as the default
-  on key 1: 218/218.
+  on key 1: 218/218. One run made while renders loaded the machine failed Desire's
+  mid-song seek twice: once playback had not resumed when the 20 s wait ran out, and once
+  the first time the page set was 151.8 s rather than the clicked 130.5 s (not
+  investigated further: headless Chromium plays the page's MP3 fallback, not the AAC a
+  desktop Chrome plays). The rerun with nothing else running passed every check.
+- Frame cost (`tools/render/frametime.mjs`, headless, software GPU): medians 0.2-0.4 ms and
+  95th percentiles 0.6-2.6 ms of main-thread script per frame (NOTES.md, Cost per frame).
 - Dev loop: `cd site && node build.mjs --out dist-dev/page.html`; dev server on port 8081
   (`tools/render/test_server.py --port 8081 --page site/dist-dev/page.html --mp3`);
   render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments,
@@ -19,8 +27,7 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
   `platedbg.js`); `shots.js` projects the Rig's truss and lenses onto each camera shot;
   `tools/render/chladni.py` previews Plate figures; `tools/render/frametime.mjs` times a
   drawn frame per visualizer.
-- Next: act on the verification reviews; NOTES.md cost section with the measured frame
-  times.
+- Nothing is pending. NOTES.md lists, per visualizer, what I would do with more time.
 - Housekeeping: a stray `/pl3` directory (8 render PNGs from a render run with an unset
   variable) exists outside the repo; removing it needs the user's approval.
 
@@ -138,6 +145,44 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
   until the first phrase ends; the closing crossfade's overlaps and frozen poster → a cut,
   no gap while playing, hands keeping the tempo; the maze-eater head → a profile with a nose.
 
+## Review findings acted on (the verification round)
+
+- Type (B, on v5c → v5d): long instrumental stretches rotating two or three textures, and
+  Outside's ending playing one sequence twice → a fourth mode in each rotation (the kit hop
+  early, breathing late) and a late stack that rolls on a row a bar once it has four;
+  American Boy without groove, its intro a thin row → the row at full width (29 % of the
+  frame tall, from 9 %), hopping on the kick and on the late, swung bass notes, squashing on
+  the snare; thumbnails 18 % smaller → the size of a secondary drop (about 1.4x); the flood
+  stalling and pumping at numerals → the numeral rides just above the flood and moves into
+  it, reversed, on a bar line (never sliced, the flood never waits); Desire's build counted
+  from 15 → only the last eight bars are counted, and an intro's count to the voice keeps
+  its own numbers; stale and early lines at drops → a line needs 0.8 s of singing left,
+  must run 0.6 s past its first word, and stands at least 0.6 s; the drop's word inside
+  American Boy's hook phrase → phrases holding it are left out of the modes; a duplicated
+  hook phrase in NBLY → the modes' list is de-duplicated.
+- Rig (B, on v7 → v8): builds climbing to the drop's own brightness (a hit 0.8-2.6x its
+  build), and main drops weaker than earlier ones (Desire, Ophelia) or than the verses
+  (Outside) → builds gather below the drop's level, hits run hotter, and the main drop alone
+  floods the back wall in its gel (NBLY's main hit now 2.5x its build top); Ophelia's
+  overhead drop aiming beams into the camera and washing the frame white → downward looks
+  only, and any beam whose cone holds the camera fades outside the gaps; Outside's drop
+  echoing its opening → it crosses the room; half of American Boy's drop a white slab → no
+  scissor look there; Desire's last drop repeating its first → looks of its own; one look
+  filling Outside's and American Boy's later sections → one fan in the rotation and the
+  signature every third phrase; the frame-0 burst cutting off at 0:00.5 → brighter heads
+  instead; two breakdowns missing the wake by a rounding hair → from 5.9 bars. Not acted
+  on: the credits, still small at phone size (v7 had already raised them to 22 px).
+- Pocket (B, on v6 → v7): the swing snap firing in straight Outside (measured swing just
+  over the threshold) → swing marked by hand (American Boy only); the weak off-beat hat rule
+  never firing → it counts weaker hats where strong ones fall on fewer than half the beats;
+  the title at 1.6:1 before four main drops, and Outside's drum at the end of its build →
+  fields dark by luminance take cream ink, the title and kit follow the field on its bar
+  steps, and the singer turns cream under 3:1; builds turning brown → they step toward plain
+  night where the song's colour would; dark partner fields merging into the next scene →
+  a dark field's partner is the song's own colour at night; a cymbal off the frame at the
+  main drop's 1.35x → growth stops at the frame's edges; the singer's nose read as a beak →
+  one cut profile. Not acted on: the key word covered by the troupe at the drop.
+
 ## Decisions (newest last)
 
 - Beat grid corrected per song against kick transients (Desire -28 ms, Ophelia -19,
@@ -191,8 +236,8 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 - Desire 125 BPM (no `beat_grid` field; tracked beats). Four-on-floor kicks from 0:00 with no
   bass. Build 0:15.3 (data calls the whole 0:15–0:44 a build), vocals from 0:30, drop 0:45.8.
   Build 1:01–1:14, drop 1:16.28 (vocals stop; instrumental post-chorus; the brief does not
-  list this one as a drop). Breakdown 2:21–2:30.5, build 2:30.5–2:45.8, "Is it desire?"
-  2:47.44–2:48.10 straddles the drop at 2:47.70. Drop 3:48.66 is instrumental (vocals out).
+  list this one as a drop). Breakdown 2:21–2:30.5, build 2:30.5–2:45.8, the question on
+  the anchor word 2:47.44–2:48.10 straddles the drop at 2:47.70. Drop 3:48.66 is instrumental (vocals out).
 - Ophelia 132 BPM. Breakdown 0:09.2–0:20.2 (vocals), build to 0:36.5, drop 0:36.52 (vocals
   continue). Instrumental drop-like 1:05–1:20. Breakdown 1:22–1:32.9, drop 1:34.70.
   Breakdown 2:20–2:27.4, end 2:35. "came" at 1:26.4, 1:33.8, 1:37.4, 1:41.1.
