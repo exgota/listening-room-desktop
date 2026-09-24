@@ -19,9 +19,9 @@ const rigHeadOrder = [3, 4, 1, 6, 2, 5, 0, 7];
 // A drop's camera is never used by any other section of its song; breakdowns take their
 // looks in the song's own order.
 const rigSongs = {
-  "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "cross"] }, signature: "blade", breaks: ["cathedral", "rain", "fan", "rain"] }, // NBLY
-  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shot: "floor", mainShot: "side", looks: ["cross", "fan"], funnel: true }, signature: "cross", breaks: ["rain"] }, // Desire
-  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "side", looks: ["rain", "fan"] }, signature: "rain", breaks: ["fan", "cathedral"] }, // Ophelia
+  "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "cross"], mainLooks: ["fan", "scissor"] }, signature: "blade", breaks: ["cathedral", "rain", "fan", "rain"] }, // NBLY
+  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shots: ["floor", "low"], mainShot: "side", looks: ["cross", "fan"], funnel: true }, signature: "cross", breaks: ["rain"] }, // Desire
+  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "side", mainShot: "overhead", looks: ["rain", "fan"], mainLooks: ["scissor", "rain"] }, signature: "rain", breaks: ["fan", "cathedral"] }, // Ophelia
   "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "high", looks: ["scissor", "rain"] }, signature: "fan", breaks: ["cathedral", "rain"] }, // Outside
   "4048d4a6dce44c151690b2b1": { shot: "right", look: "cross", drop: { shot: "low", looks: ["cross", "scissor"] }, signature: "fan", breaks: ["rain", "cathedral"] }, // American Boy
 };
@@ -383,6 +383,7 @@ function createRigShow() {
     high: [[0, 9.0, 8], [0, 6.0, -7], 1.05],
     side: [[13, 2.2, 4], [-2, 4.8, -6], 1.1],
     low: [[0, 0.3, 6], [0, 6.5, -7], 1.2],
+    overhead: [[0, 17, 1], [0, 0, -12], 1.0],
   };
   // Looks for the heads: fan spread (radians, negative crosses), elevation bias, and
   // whether the beams lean toward the audience (+1) or away (-1).
@@ -649,8 +650,11 @@ function createRigShow() {
       chase = 0,
       lens = 1,
       sweep = 0;
-    // the drop camera of the drop this section follows (Desire's main drop has its own)
-    const dropShot = drop.phase === 3 && drop.index === song.mainDrop && config.drop.mainShot ? config.drop.mainShot : config.drop.shot;
+    // the camera and looks of the drop this section follows: a main drop may have its own,
+    // and a song with several drops may take its cameras in turn
+    const mainSection = drop.phase === 3 && drop.index === song.mainDrop;
+    const dropShot = mainSection && config.drop.mainShot ? config.drop.mainShot : config.drop.shots ? config.drop.shots[Math.max(0, drop.index) % config.drop.shots.length] : config.drop.shot;
+    const dropLooks = mainSection && config.drop.mainLooks ? config.drop.mainLooks : config.drop.looks;
     switch (scene.kind) {
       case "intro":
         lookName = config.look; intensity = 18; width = 0.085; shot = config.shot; break;
@@ -668,7 +672,7 @@ function createRigShow() {
       case "build":
         lookName = "fan"; intensity = 14; shot = "wide"; break;
       case "drop":
-        lookName = config.drop.looks[Math.floor(beat) % 2]; intensity = 30; width = 0.06; shot = dropShot; chase = 1; lens = 1.3; break;
+        lookName = dropLooks[Math.floor(beat) % 2]; intensity = 30; width = 0.06; shot = dropShot; chase = 1; lens = 1.6; break;
       case "drive":
         lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.065;
         shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3]; chase = 0.5; lens = 0.7; break;
@@ -678,13 +682,14 @@ function createRigShow() {
         lookName = "fan"; intensity = 0; shot = "hero"; break;
     }
     // A drop's section runs at least eight bars, whatever the scene list calls them.
-    if (drop.phase === 3 && scene.kind !== "drop" && scene.kind !== "outro" && drop.since < 8 * song.barPeriod) {
-      lookName = config.drop.looks[Math.floor(beat) % 2];
+    const inDropSection = drop.phase === 3 && scene.kind !== "outro" && (scene.kind === "drop" || drop.since < 8 * song.barPeriod);
+    if (inDropSection && scene.kind !== "drop") {
+      lookName = dropLooks[Math.floor(beat) % 2];
       intensity = 30;
       width = 0.06;
       shot = dropShot;
       chase = 1;
-      lens = 1.3;
+      lens = 1.6;
       lit = rigSize;
     }
     // The song's first section always opens on its own composition (Outside opens on a groove).
@@ -707,6 +712,8 @@ function createRigShow() {
       sweep = Math.sin((bar / 4) * Math.PI * 2) * 0.3 * (0.4 + fade);
     }
     intensity *= turnLift;
+    // the song's main drop runs hotter than its other drops
+    if (inDropSection && mainSection && !inBookend) intensity *= 1.3;
     // Chord passages: a new look on each chord stab, at most one per beat; the camera holds.
     let stabHit = 0;
     if (peak && peak.kind === "chords") {
@@ -740,7 +747,7 @@ function createRigShow() {
       shimmerRate = progress < 0.5 ? 1 : progress < 0.75 ? 2 : progress < 0.9 ? 4 : 8;
       shimmer = 0.3 + 0.7 * progress;
       // the gathered beams brighten as they close (the build rises; it never ebbs)
-      intensity = mixValue(13, 30, progress * progress);
+      intensity = mixValue(13, 30, progress);
       width = mixValue(0.075, 0.058, progress);
     }
 
@@ -894,7 +901,9 @@ function createRigShow() {
     }
     if (inGap) useShot("hero");
 
-    state.haze = scene.kind === "break" ? 1.05 : 1.25;
+    // haze: thinner in breakdowns, thickening through a build, thickest in a drop's section
+    // (the drop outshines the drives whatever its look)
+    state.haze = inDropSection && !inBookend ? (mainSection ? 2.0 : 1.7) : drop.phase === 1 ? mixValue(1.25, 1.5, drop.progress) : scene.kind === "break" ? 1.05 : 1.25;
     state.hazeTexture = 0.75;
     state.gloss = 0.55;
     return state;
