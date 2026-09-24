@@ -141,9 +141,11 @@ controls are hidden.
 - **Plate (WebGL2 points, a Canvas2D caption layer).**
   - 196,608 + 65,536 grains. Each vertex runs 2 × 7 Newton steps on a two-mode Chladni field
     (about 700 operations), about 0.18 G operations per frame.
-  - About 1.3 M point fragments with alpha blending.
+  - About 1.3 M point fragments with alpha blending, now all inside the square plate
+    (about a third of the frame).
   - One full-screen ground pass.
-  - Estimate: under 1.5 ms GPU. The captions cost one text line a frame.
+  - Estimate: under 1.5 ms GPU. The captions cost two short text lines and the striker a
+    frame.
 
 ## The four
 
@@ -221,4 +223,25 @@ each has a column of its own.
 
 ### 4 · Plate
 
-(Written after its review pass 2.)
+**Concept.** A Chladni plate: one square plate on an engraved sheet, with sand lying on the
+nodal lines of the figure the harmony sets, and a second, vermilion sand for the voice. It
+moves at the pace of the harmony, not the beat: a figure re-forms at most once a bar and
+holds while the voice sings, so it is the calmest of the four until a drop.
+
+**Mapping.**
+
+| Musical element | What it drives |
+| --- | --- |
+| Harmony | The figure: the chord's root (around the circle of fifths) picks the family, minor flips its sign, the section's energy sets its complexity; re-formed at most once a bar, on the downbeat |
+| Held chord | A neighbouring figure every four bars |
+| Voice | Vermilion sand in one figure per sung line; the black sand steps back while it sings |
+| Key word | Its own figure, rings about the centre, used for nothing else, held at least 0.6 s |
+| Bass | Line weight: heavy while a bass note sounds, light otherwise (two levels, solid) |
+| Kick | The striker at the centre jumps, a wave runs out to the plate's edge, the plate darkens for an instant |
+| Breakdown | The simplest figure; the voice carries the plate |
+| Chord passages (NBLY) | The plate inverts (ivory sand on a black plate) and every chord re-forms it |
+| Build | The figure contracts a step on each downbeat |
+| Gap | The knot alone, shrinking beat by beat |
+| Drop | The knot thrown out into a new figure on the exact frame |
+| Song's turn | The sheet turns vermilion; later sections alternate vermilion and ink |
+| Outro | The sand drains away |
