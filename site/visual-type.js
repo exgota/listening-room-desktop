@@ -249,7 +249,7 @@ registerVisualizer({
 
       const margin = Math.round(width * 0.034);
       // The title owns the top band; everything set here stays below it.
-      const top = height * 0.215,
+      const top = Math.max(height * 0.2, (frame.titleBottom || 0) + height * 0.035),
         bottom = height * 0.93;
       const anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
       const line = lineAt(time);

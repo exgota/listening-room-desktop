@@ -24,7 +24,8 @@ const visualizerInstances = new Map();
 let visualizerActive = null;
 let visualizerSize = { width: 0, height: 0, ratio: 1 };
 const visualizerClock = { reported: -1, time: 0, now: 0 };
-const visualizerFrameInfo = { time: 0, now: 0, playing: false, width: 0, height: 0, ratio: 1, song: null };
+const visualizerFrameInfo = { time: 0, now: 0, playing: false, width: 0, height: 0, ratio: 1, song: null, titleBottom: 0 };
+let visualizerTitleBottom = 0;
 let visualizerReadyResolve;
 const visualizerReady = new Promise((resolve) => (visualizerReadyResolve = resolve));
 
@@ -91,6 +92,9 @@ function selectVisualizer(key, remember = true) {
 }
 
 function measureVisualizer() {
+  const intro = document.querySelector("#player-view > .intro");
+  const stageTop = elements.visualizer.getBoundingClientRect().top;
+  visualizerTitleBottom = intro ? Math.max(0, intro.getBoundingClientRect().bottom - stageTop) : 0;
   const bounds = elements.visualizer.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
   if (bounds.width === visualizerSize.width && bounds.height === visualizerSize.height && ratio === visualizerSize.ratio) return;
@@ -115,6 +119,7 @@ function visualizerSongTime(now) {
 
 function prepareVisualizer(track, version) {
   visualizerTrack = track;
+  visualizerSize = { width: 0, height: 0, ratio: 1 };
   visualizerSong = null;
   for (const instance of visualizerInstances.values()) instance.setSong(null);
   applyVisualizerTheme();
@@ -151,6 +156,7 @@ function drawVisualizer(timestamp = performance.now()) {
   frame.height = visualizerSize.height;
   frame.ratio = visualizerSize.ratio;
   frame.song = visualizerSong;
+  frame.titleBottom = visualizerTitleBottom;
   visualizerActive.render(frame.time, frame);
 }
 

@@ -1281,6 +1281,46 @@ html[data-visual="type"] {
   --vz-credits-spacing: 0.06em;
   --vz-credits-transform: uppercase;
 }
+
+/* Pocket: cut paper; the field changes by scene and the page follows it. */
+html[data-visual="pocket"] {
+  --vz-background: var(--pocket-field, #eab12c);
+  --vz-ink: var(--pocket-ink, #151413);
+  --vz-secondary: var(--pocket-ink, #151413);
+  --vz-accent: var(--pocket-ink, #151413);
+  --vz-button: var(--pocket-ink, #151413);
+  --vz-button-ink: var(--pocket-field, #eab12c);
+  --waveform-played: var(--pocket-ink, #151413);
+  --waveform-rest: color-mix(in srgb, var(--pocket-ink, #151413) 35%, transparent);
+  --vz-title-font: "Jost", "Futura", sans-serif;
+  --vz-title-weight: 600;
+  --vz-title-spacing: -0.01em;
+  --vz-credits-font: "Jost", "Futura", sans-serif;
+  --vz-credits-size: 15px;
+  --vz-credits-spacing: 0.02em;
+}
+
+/* Plate: an engraved plate; ivory ground (vermilion after the main drop), black ink. */
+html[data-visual="plate"] {
+  --vz-background: var(--plate-ground, #efe9dc);
+  --vz-ink: #171513;
+  --vz-secondary: #171513;
+  --vz-accent: #171513;
+  --vz-button: #171513;
+  --vz-button-ink: var(--plate-ground, #efe9dc);
+  --waveform-played: #171513;
+  --waveform-rest: color-mix(in srgb, #171513 30%, transparent);
+  --vz-title-font: "Instrument Serif", "Times New Roman", serif;
+  --vz-title-weight: 400;
+  --vz-title-spacing: -0.01em;
+  --vz-title-scale: 1.25;
+  --vz-credits-font: "Instrument Serif", "Times New Roman", serif;
+  --vz-credits-size: 19px;
+  --vz-credits-spacing: 0;
+}
+html[data-visual="plate"] #player-view > .intro h1 {
+  font-style: italic;
+}
 </style>
   </head>
   <body>
@@ -2335,7 +2375,8 @@ const visualizerInstances = new Map();
 let visualizerActive = null;
 let visualizerSize = { width: 0, height: 0, ratio: 1 };
 const visualizerClock = { reported: -1, time: 0, now: 0 };
-const visualizerFrameInfo = { time: 0, now: 0, playing: false, width: 0, height: 0, ratio: 1, song: null };
+const visualizerFrameInfo = { time: 0, now: 0, playing: false, width: 0, height: 0, ratio: 1, song: null, titleBottom: 0 };
+let visualizerTitleBottom = 0;
 let visualizerReadyResolve;
 const visualizerReady = new Promise((resolve) => (visualizerReadyResolve = resolve));
 
@@ -2402,6 +2443,9 @@ function selectVisualizer(key, remember = true) {
 }
 
 function measureVisualizer() {
+  const intro = document.querySelector("#player-view > .intro");
+  const stageTop = elements.visualizer.getBoundingClientRect().top;
+  visualizerTitleBottom = intro ? Math.max(0, intro.getBoundingClientRect().bottom - stageTop) : 0;
   const bounds = elements.visualizer.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
   if (bounds.width === visualizerSize.width && bounds.height === visualizerSize.height && ratio === visualizerSize.ratio) return;
@@ -2426,6 +2470,7 @@ function visualizerSongTime(now) {
 
 function prepareVisualizer(track, version) {
   visualizerTrack = track;
+  visualizerSize = { width: 0, height: 0, ratio: 1 };
   visualizerSong = null;
   for (const instance of visualizerInstances.values()) instance.setSong(null);
   applyVisualizerTheme();
@@ -2462,6 +2507,7 @@ function drawVisualizer(timestamp = performance.now()) {
   frame.height = visualizerSize.height;
   frame.ratio = visualizerSize.ratio;
   frame.song = visualizerSong;
+  frame.titleBottom = visualizerTitleBottom;
   visualizerActive.render(frame.time, frame);
 }
 
@@ -3611,7 +3657,7 @@ registerVisualizer({
 
       const margin = Math.round(width * 0.034);
       // The title owns the top band; everything set here stays below it.
-      const top = height * 0.215,
+      const top = Math.max(height * 0.2, (frame.titleBottom || 0) + height * 0.035),
         bottom = height * 0.93;
       const anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
       const line = lineAt(time);
@@ -3736,7 +3782,28 @@ registerVisualizer({
   },
 });
 
-// Pocket: placeholder while the real visualizer is built.
+// Pocket: a troupe of cut-paper figures, one per instrument, on a small stage. Every
+// movement is keyed to that instrument's own onsets, so the groove on screen is the band's
+// groove: the drum (a black disc) touches the floor exactly on each kick; the bass (a red
+// dome) winds up before each note and lands on it, wherever the bass line pushes or lays
+// back; the hands clap on the backbeat; the fringe marks every hi-hat where it actually
+// falls against a faint sixteenth grid, so swing shows as uneven spacing; the singer
+// stretches with the sung pitch. Figures walk on when their instrument enters and leave when
+// it stops. Builds wind everyone up, the gap holds them in the air, the drop lands them.
+
+const pocketColors = {
+  cream: "#f2e8d3",
+  black: "#151413",
+  tomato: "#e4472b",
+  mustard: "#eab12c",
+  cobalt: "#2749b5",
+  pink: "#f2a6b8",
+  teal: "#17806f",
+};
+// Field colours by scene, chosen so no figure disappears into the field.
+const pocketFields = ["mustard", "pink", "teal", "cobalt", "tomato", "cream"];
+const pocketFigureColor = { drum: "black", bass: "tomato", hands: "mustard", singer: "cobalt", fringe: "black" };
+
 registerVisualizer({
   key: "pocket",
   name: "Pocket",
@@ -3745,59 +3812,796 @@ registerVisualizer({
     const canvas = createVisualCanvas();
     const context = canvas.getContext("2d");
     let song = null;
+    let scale = 1;
+    let presence = null;
+    let sceneFields = [];
+    let themeField = "";
+    // A cut edge per figure: fixed small irregularities so the shapes read as cut paper.
+    const cutEdge = Array.from({ length: 64 }, (_, index) => 1 + (hash01(index * 31 + 7) - 0.5) * 0.035);
+
+    function fieldFor(sceneIndex, kind) {
+      return sceneFields[sceneIndex] || "mustard";
+    }
+
+    function setSong(model) {
+      song = model;
+      presence = null;
+      sceneFields = [];
+      if (!model) return;
+      // Scene colours: breaks cool, drops hot, the rest cycling, never the same twice in a row.
+      let previous = "";
+      model.scenes.forEach((scene, index) => {
+        let name;
+        if (scene.kind === "drop") name = "tomato";
+        else if (scene.kind === "break" || scene.kind === "gap") name = "cobalt";
+        else if (scene.kind === "build") name = "pink";
+        else name = ["mustard", "teal", "pink", "cream"][(scene.kindIndex + index) % 4];
+        if (name === previous) name = name === "mustard" ? "teal" : "mustard";
+        sceneFields.push(name);
+        previous = name;
+      });
+      // Who is on stage: each stem present from the first bar it plays until two quiet bars.
+      const bars = model.downbeats;
+      const performance = model;
+      const present = (series, start, end, floor) => performance.mean(series, start, end) > floor;
+      presence = {};
+      for (const [figure, series, floor] of [["drum", null, 0], ["bass", "bass", 0.18], ["singer", "vocal", 0.2], ["hands", null, 0], ["fringe", "hats", 0.12]]) {
+        const spans = [];
+        let open = null,
+          quiet = 0;
+        for (let index = 0; index < bars.length; index++) {
+          const start = bars[index],
+            end = index + 1 < bars.length ? bars[index + 1] : model.duration;
+          let on;
+          if (figure === "drum") {
+            const first = model.kicks.last(start) + 1,
+              last = model.kicks.last(end - 0.001);
+            on = last - first + 1 >= 2;
+          } else if (figure === "hands") {
+            const first = model.snares.last(start) + 1,
+              last = model.snares.last(end - 0.001);
+            let strong = 0;
+            for (let event = first; event <= last; event++) if (model.snares.strength[event] > 0.5) strong++;
+            on = strong >= 1;
+          } else on = present(series, start, end, floor);
+          if (on) {
+            quiet = 0;
+            if (!open) open = { start, end };
+            open.end = end;
+          } else if (open && ++quiet >= 2) {
+            spans.push(open);
+            open = null;
+          }
+        }
+        if (open) spans.push(open);
+        presence[figure] = spans;
+      }
+    }
+
+    // How awake a figure is: 0 resting (its instrument is not playing), 1 playing. Everyone
+    // stays on stage so every frame is composed; a figure wakes over the half second before
+    // its instrument's first bar and settles over the half second after its last.
+    function onStage(figure, time) {
+      const spans = presence?.[figure];
+      if (!spans) return { amount: 1, entering: 0 };
+      for (const span of spans) {
+        if (time >= span.start - 0.45 && time < span.end + 0.6) {
+          if (time < span.start) return { amount: easeInCubic(1 - (span.start - time) / 0.45), entering: 0 };
+          if (time > span.end) return { amount: 1 - easeInOutCubic((time - span.end) / 0.6), entering: 0 };
+          return { amount: 1, entering: 0 };
+        }
+      }
+      return { amount: 0, entering: 0 };
+    }
+
+    function paperShape(points, color) {
+      context.fillStyle = pocketColors[color] || color;
+      context.beginPath();
+      points.forEach(([x, y], index) => (index ? context.lineTo(x, y) : context.moveTo(x, y)));
+      context.closePath();
+      context.fill();
+    }
+
+    function disc(cx, cy, rx, ry, color, seed = 0) {
+      const points = [];
+      for (let index = 0; index < 48; index++) {
+        const angle = (index / 48) * Math.PI * 2;
+        const wobble = cutEdge[(index + seed) % 64];
+        points.push([cx + Math.cos(angle) * rx * wobble, cy + Math.sin(angle) * ry * wobble]);
+      }
+      paperShape(points, color);
+    }
+
+    function dome(cx, floor, width, height, lean, color) {
+      const points = [];
+      for (let index = 0; index <= 32; index++) {
+        const angle = Math.PI + (index / 32) * Math.PI;
+        const wobble = cutEdge[(index + 11) % 64];
+        const y = floor + Math.sin(angle) * height * wobble;
+        const x = cx + Math.cos(angle) * width * 0.5 * wobble + lean * (floor - y);
+        points.push([x, y]);
+      }
+      paperShape(points, color);
+    }
+
+    // Height of a figure bouncing between events: on the floor at each event, a parabola
+    // between them, lower when the events come faster. With no event for a while it rests,
+    // and hops up in time to land on the next one.
+    function bounce(events, time, maximum, perSecond) {
+      const index = events.last(time);
+      const next = index + 1 < events.length ? events.time[index + 1] : Infinity;
+      const last = index >= 0 ? events.time[index] : -Infinity;
+      const gap = next - last;
+      if (gap <= 1.6) {
+        const u = (time - last) / gap;
+        return { height: Math.min(maximum, gap * perSecond) * 4 * u * (1 - u), age: time - last };
+      }
+      const toNext = next - time;
+      if (toNext < 0.4) {
+        const u = 1 - toNext / 0.4;
+        return { height: Math.min(maximum, 0.4 * perSecond) * 4 * u * (1 - u), age: time - last };
+      }
+      return { height: 0, age: time - last };
+    }
+
+    // ---- figures: each drawn at a song time, so echoes are the same figure a beat late ----
+
+    function drawDrum(time, x, floor, unit, color, size, windUp, hang) {
+      const radius = 195 * unit * size;
+      // the bounce stays under the title band
+      const jump = bounce(song.kicks, time, 300 * unit * size, 1300 * unit * size);
+      const contact = hitDecay(jump.age, 0.06);
+      const rx = radius * (1 + 0.3 * contact - 0.12 * windUp);
+      const ry = radius * (1 - 0.32 * contact + 0.12 * windUp);
+      const cy = floor - ry - jump.height * (1 - windUp * 0.6) - hang * 330 * unit;
+      disc(x, cy, rx, ry, color, 3);
+    }
+
+    function bassX(index, width) {
+      if (index < 0) return width * 0.62;
+      return width * (0.3 + 0.62 * fract((song.bassNotes.pitch[index] - 24) / 24));
+    }
+
+    function drawBass(time, floor, unit, width, color, size, windUp, hang, slam, awake = 1) {
+      const notes = song.bassNotes;
+      const last = notes.last(time);
+      const next = last + 1 < notes.length ? last + 1 : -1;
+      let x = bassX(last, width),
+        lift = 0,
+        lean = 0;
+      if (next >= 0) {
+        const nextStart = notes.start[next];
+        const gapToNext = nextStart - (last >= 0 ? notes.start[last] : nextStart - 1);
+        const flight = Math.min(0.2, gapToNext * 0.8);
+        if (time > nextStart - flight) {
+          const u = (time - (nextStart - flight)) / flight;
+          x = mixValue(bassX(last, width), bassX(next, width), easeInOutCubic(u));
+          lift = 4 * u * (1 - u) * Math.min(240, 1300 * flight) * unit * size;
+          lean = bassX(next, width) > bassX(last, width) ? 0.22 : -0.22;
+        }
+      }
+      const squash = last >= 0 ? hitDecay(time - notes.start[last], 0.07) * notes.strength[last] : 0;
+      const w = 600 * unit * size * (1 + 0.2 * squash) * (1 + windUp * 0.15);
+      const h = 290 * unit * size * (1 - 0.28 * squash) * (1 - windUp * 0.35) * (1 + slam * 0.3) * (0.5 + 0.5 * awake);
+      dome(x, floor - lift * awake - hang * 180 * unit, w, h, lean * awake, color);
+    }
+
+    function render(time, frame) {
+      const width = frame.width,
+        height = frame.height;
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      if (!song) {
+        context.fillStyle = pocketColors.mustard;
+        context.fillRect(0, 0, width, height);
+        return;
+      }
+      const scene = song.scene(time);
+      const drop = song.dropContext(time);
+      const inGap = drop.phase === 2;
+      const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
+      const unit = height / 1080;
+      const floor = height * 0.885;
+
+      // Fields: the scene's colour on the left; the harmony's panel on the right, its edge
+      // moving to a new place on each chord change.
+      let fieldName = fieldFor(scene.index, scene.kind);
+      if (inGap) fieldName = "black";
+      const field = pocketColors[fieldName] || pocketColors.black;
+      const dark = fieldName === "black" || fieldName === "cobalt" || fieldName === "teal" || fieldName === "tomato";
+      if (fieldName !== themeField) {
+        themeField = fieldName;
+        document.documentElement.style.setProperty("--pocket-field", field);
+        document.documentElement.style.setProperty("--pocket-ink", dark ? pocketColors.cream : pocketColors.black);
+        waveformTheme = null;
+      }
+      context.fillStyle = field;
+      context.fillRect(0, 0, width, height);
+      const panelNames = ["cream", "pink", "mustard", "teal", "cobalt", "tomato"].filter((name) => name !== fieldName);
+      const chordIndex = song.chordIndex(time);
+      if (!inGap && chordIndex >= 0) {
+        const chord = song.chords[chordIndex];
+        const previous = chordIndex > 0 ? song.chords[chordIndex - 1] : chord;
+        const edgeFor = (entry) => width * (0.52 + 0.3 * fract(entry.root * 5 / 12 + entry.minor * 0.37));
+        const move = easeOutCubic((time - chord.start) / 0.18);
+        const edge = mixValue(edgeFor(previous), edgeFor(chord), move);
+        const panel = panelNames[(chord.root + chord.minor * 3) % panelNames.length];
+        context.fillStyle = pocketColors[panel];
+        context.fillRect(edge, 0, width - edge, floor);
+      }
+      const floorColor = dark ? pocketColors.cream : pocketColors.black;
+      context.fillStyle = floorColor;
+      context.fillRect(0, floor, width, height - floor);
+      const onField = (name) => (name === fieldName ? "cream" : name === "black" && dark && fieldName !== "tomato" && fieldName !== "teal" ? "cream" : name);
+
+      // Wind-up through a build; hold in the air through the gap; slam on the drop.
+      const windUp = drop.phase === 1 ? easeInCubic(drop.progress) : 0;
+      const hang = inGap ? easeOutCubic(clamp01((time - drop.drop.gapStart) / 0.25)) : 0;
+      const slam = sinceDrop < 0.25 ? 1 - sinceDrop / 0.25 : 0;
+      const shake = windUp > 0 ? Math.sin(time * 90) * windUp * 9 * unit : 0;
+      // Echoes join later in the song: the same figures an eighth and a quarter note late.
+      const echoes = scene.kind === "drive" || scene.kind === "drop" ? (time / song.duration > 0.55 ? 2 : 1) : 0;
+
+      // Hats → the fringe along the top: each hat of the last beat and a half is a tick at its
+      // true phase in the bar, over a faint grid of the bar's sixteenths.
+      const gridLeft = width * 0.44,
+        gridRight = width * 0.975,
+        gridTop = 0;
+      const fringe = onStage("fringe", time);
+      {
+        const tickWidth = 34 * unit,
+          tickHeight = 210 * unit * (0.3 + 0.7 * fringe.amount);
+        const ink = hexColor(pocketColors[onField(pocketFigureColor.fringe)]);
+        context.fillStyle = cssColor(ink, 0.18);
+        for (let step = 0; step < 16; step++) {
+          const x = gridLeft + (step / 16) * (gridRight - gridLeft);
+          context.fillRect(x - 3 * unit, gridTop, 6 * unit, tickHeight * (step % 4 === 0 ? 0.42 : 0.24));
+        }
+        let index = song.hats.last(time);
+        while (index >= 0) {
+          const hatTime = song.hats.time[index];
+          const age = time - hatTime;
+          if (age > song.beatPeriod * 1.5) break;
+          const barAt = song.barPosition(hatTime);
+          const x = gridLeft + (barAt - Math.floor(barAt)) * (gridRight - gridLeft);
+          const fresh = hitDecay(age, song.beatPeriod * 0.4);
+          const length = tickHeight * (0.5 + 0.5 * song.hats.strength[index]) * (0.3 + 0.7 * fresh);
+          context.fillStyle = cssColor(ink, 0.3 + 0.7 * fresh);
+          context.fillRect(x - tickWidth / 2, gridTop, tickWidth, length * (1 - hang * 0.4));
+          index--;
+        }
+      }
+
+      // Voice → the singer: a tall column, taller with the pitch, its mouth open with the level.
+      const singer = onStage("singer", time);
+      const singerX = width * 0.6 + shake;
+      {
+        const pitch = song.value("pitch", time);
+        const level = clamp01((song.value("vocal", time) - 0.15) / 0.6);
+        const range = pitch > 0 ? clamp01((pitch - 50) / 28) : 0.2;
+        const bodyHeight = (420 + 420 * range) * unit * (0.62 + 0.38 * level) * (0.45 + 0.55 * singer.amount);
+        const bodyWidth = 230 * unit;
+        const lift = hang * 140 * unit;
+        const top = floor - bodyHeight - lift;
+        context.fillStyle = pocketColors[onField(pocketFigureColor.singer)];
+        context.beginPath();
+        context.moveTo(singerX - bodyWidth / 2, floor - lift);
+        context.lineTo(singerX - bodyWidth / 2, top + bodyWidth / 2);
+        context.arc(singerX, top + bodyWidth / 2, bodyWidth / 2, Math.PI, 0);
+        context.lineTo(singerX + bodyWidth / 2, floor - lift);
+        context.closePath();
+        context.fill();
+        context.fillStyle = field;
+        const mouthHeight = 10 * unit + 120 * unit * level;
+        context.beginPath();
+        context.ellipse(singerX, top + bodyWidth * 0.66, 60 * unit, mouthHeight / 2, 0, 0, Math.PI * 2);
+        context.fill();
+      }
+
+      // Snare → the hands: two big triangles that meet on each backbeat.
+      const hands = onStage("hands", time);
+      {
+        const next = song.snares.until(time);
+        const last = song.snares.since(time);
+        const approach = song.beatPeriod * 0.5;
+        let apart = 1;
+        if (next < approach) apart = next / approach;
+        if (last < 0.14) apart = Math.min(apart, easeOutCubic(last / 0.14));
+        apart = mixValue(1.25, apart, hands.amount);
+        const cx = width * 0.8 + shake,
+          cy = height * 0.4 - hang * 80 * unit + (1 - hands.amount) * 150 * unit;
+        const gap = 14 * unit + 260 * unit * apart;
+        const size = 200 * unit;
+        const color = onField(pocketFigureColor.hands);
+        paperShape([[cx - gap / 2, cy], [cx - gap / 2 - size, cy - size * 0.8], [cx - gap / 2 - size, cy + size * 0.8]], color);
+        paperShape([[cx + gap / 2, cy], [cx + gap / 2 + size, cy - size * 0.8], [cx + gap / 2 + size, cy + size * 0.8]], color);
+      }
+
+      // Bass → the dome, with echoes behind it.
+      const bass = onStage("bass", time);
+      {
+        const entering = 0;
+        for (let echo = echoes; echo >= 1; echo--) {
+          context.save();
+          context.translate(0, -entering);
+          drawBass(time - echo * song.beatPeriod * 0.5, floor, unit, width, onField(echo === 1 ? "pink" : "mustard"), 1 - 0.18 * echo, windUp, hang, 0, bass.amount);
+          context.restore();
+        }
+        context.save();
+        context.translate(shake, -entering);
+        drawBass(time, floor, unit, width, onField(pocketFigureColor.bass), 1, windUp, hang, slam, bass.amount);
+        context.restore();
+      }
+
+      // Kick → the drum: a big disc that touches the floor exactly on each kick.
+      const drum = onStage("drum", time);
+      {
+        context.save();
+        for (let echo = echoes; echo >= 1; echo--)
+          drawDrum(time - echo * song.beatPeriod * 0.5, width * 0.17 + echo * 150 * unit, floor, unit, onField(echo === 1 ? "cobalt" : "teal"), 1 - 0.25 * echo, windUp, hang);
+        drawDrum(time, width * 0.17 + shake, floor, unit, onField(pocketFigureColor.drum), 1, windUp, hang);
+        context.restore();
+      }
+
+      // The key word leaves the singer as big cut-paper letters.
+      const anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
+      if (anchor >= 0) {
+        const moment = song.anchor.moments[anchor];
+        const age = time - moment.start;
+        const size = 230 * unit;
+        context.font = `700 ${size}px "Jost", sans-serif`;
+        context.textAlign = "center";
+        context.fillStyle = pocketColors[onField("cream")];
+        const rise = easeOutBack(age / 0.22) * 230 * unit;
+        context.fillText(song.anchor.word.toUpperCase(), singerX, floor - 420 * unit - rise);
+        context.textAlign = "left";
+      }
+
+      // The drop: the floor rises to meet everything for its first frames.
+      if (slam > 0) {
+        context.fillStyle = floorColor;
+        context.fillRect(0, floor - height * 0.05 * slam, width, height * 0.05 * slam);
+      }
+    }
+
     return {
       canvas,
-      setSong(model) { song = model; },
-      setActive(on) { canvas.hidden = !on; },
+      setSong(model) {
+        themeField = "";
+        setSong(model);
+      },
+      themeFor() {
+        return { "--pocket-field": pocketColors.mustard, "--pocket-ink": pocketColors.black };
+      },
+      setActive(on) {
+        canvas.hidden = !on;
+      },
       resize(width, height, ratio) {
-        const [w, h] = canvasPixels(width, height, ratio, 1920 * 1080);
-        canvas.width = w; canvas.height = h;
+        const [w, h, s] = canvasPixels(width, height, Math.min(ratio, 2), 2560 * 1440);
+        canvas.width = w;
+        canvas.height = h;
+        scale = s;
       },
-      render(time, frame) {
-        context.setTransform(canvas.width / frame.width, 0, 0, canvas.height / frame.height, 0, 0);
-        context.fillStyle = "#e8b62c";
-        context.fillRect(0, 0, frame.width, frame.height);
-        context.fillStyle = "#141414";
-        context.font = "600 40px 'IBM Plex Mono'";
-        context.fillText("Pocket " + time.toFixed(2) + (song ? " " + song.scene(time).kind : " (no song)"), 80, frame.height - 300);
-        if (song) {
-          const beat = song.beatPosition(time);
-          context.fillRect(80 + (beat % 4) * 200, frame.height / 2, 150 * (1 - (beat % 1)), 150);
-        }
-      },
+      render,
     };
   },
 });
 
-// Plate: placeholder while the real visualizer is built.
+// Plate: Chladni figures. A plate fills the frame and sand lies on its nodal lines. The
+// harmony and the bass choose the plate's mode, and the sand migrates to the new lines when
+// they change; the kick strikes the centre and a wave runs out through the sand; the voice
+// is a second sand, vermilion, tuned to the sung pitch. A build gathers all the sand into
+// the centre, the gap shrinks that knot beat by beat, and the drop throws it out into the
+// new figure on the exact frame. The main drop turns the ground from ivory to vermilion.
+// Every grain is placed in the vertex shader from song time alone: its fixed seed position
+// is projected onto the current figure's nodal lines by Newton steps, so a seek anywhere
+// lands on the right picture and nothing accumulates.
+
+const plateGrains = 196608; // 384 x 512
+const plateVoiceGrains = 65536;
+
+const plateVertexShader = `#version 300 es
+precision highp float;
+layout(location = 0) in vec4 aSeed;
+uniform vec4 uModeA;     // pattern the sand is leaving: n1 m1 n2 m2
+uniform vec4 uModeB;     // pattern it is moving to
+uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w sign
+uniform vec2 uAspect;    // pattern units across x, y
+uniform vec4 uRect;      // plate in clip space: x0 y0 x1 y1
+uniform vec4 uGather;    // x pull to the centre 0..1, y knot radius, z present 0..1, w hat shimmer
+uniform vec4 uRipple[4]; // x age s, y strength, z speed, w unused
+uniform float uTime;
+uniform float uPointSize;
+uniform float uSeedOffset;
+out float vAlpha;
+out float vShade;
+
+const float PI = 3.14159265;
+
+float field(vec2 p, vec4 mode, float second, float sign) {
+  vec2 a = PI * p;
+  float first = cos(mode.x * a.x) * cos(mode.y * a.y) - sign * cos(mode.y * a.x) * cos(mode.x * a.y);
+  float extra = cos(mode.z * a.x) * cos(mode.w * a.y) - sign * cos(mode.w * a.x) * cos(mode.z * a.y);
+  return first + second * extra;
+}
+
+vec2 gradient(vec2 p, vec4 mode, float second, float sign) {
+  vec2 a = PI * p;
+  float n = mode.x, m = mode.y;
+  vec2 g1 = PI * vec2(
+    -n * sin(n * a.x) * cos(m * a.y) + sign * m * sin(m * a.x) * cos(n * a.y),
+    -m * cos(n * a.x) * sin(m * a.y) + sign * n * cos(m * a.x) * sin(n * a.y));
+  n = mode.z; m = mode.w;
+  vec2 g2 = PI * vec2(
+    -n * sin(n * a.x) * cos(m * a.y) + sign * m * sin(m * a.x) * cos(n * a.y),
+    -m * cos(n * a.x) * sin(m * a.y) + sign * n * cos(m * a.x) * sin(n * a.y));
+  return g1 + second * g2;
+}
+
+// Newton steps onto f = 0, each clamped so a grain moves to a nearby line, never far.
+vec2 settle(vec2 p, vec4 mode, float second, float sign, out float residual) {
+  for (int i = 0; i < 7; i++) {
+    float f = field(p, mode, second, sign);
+    vec2 g = gradient(p, mode, second, sign);
+    vec2 step = f * g / (dot(g, g) + 1e-3);
+    float len = length(step);
+    if (len > 0.045) step *= 0.045 / len;
+    p -= step;
+  }
+  float f = field(p, mode, second, sign);
+  residual = abs(f) / (length(gradient(p, mode, second, sign)) + 1e-3);
+  return p;
+}
+
+float hash(float n) { return fract(sin(n * 12.9898 + uSeedOffset) * 43758.5453); }
+
+void main() {
+  // seed in pattern space: [0, aspect.x] x [0, aspect.y]
+  vec2 home = aSeed.xy * uAspect;
+  float r1, r2;
+  vec2 a = settle(home, uModeA, uMix.x, uMix.w, r1);
+  vec2 b = settle(home, uModeB, uMix.y, uMix.w, r2);
+  float s = uMix.z;
+  vec2 p = mix(a, b, s);
+  float residual = mix(r1, r2, s);
+  // a band of sand, not a hairline: each grain sits a little off the line
+  vec2 grad = gradient(p, uModeB, uMix.y, uMix.w);
+  vec2 normal = length(grad) > 1e-4 ? normalize(grad) : vec2(0.0, 1.0);
+  p += normal * (aSeed.z - 0.5) * 0.018;
+  // hats: a shimmer along the line
+  p += vec2(sin(aSeed.w * 40.0 + uTime * 31.0), cos(aSeed.w * 33.0 + uTime * 27.0)) * uGather.w * 0.004;
+
+  // to plate-normalized coordinates -1..1 around the centre
+  vec2 q = p / uAspect * 2.0 - 1.0;
+  vec2 aspectScale = vec2(uAspect.x / uAspect.y, 1.0);
+  // kick: waves run out from the centre and throw the sand they pass
+  for (int i = 0; i < 4; i++) {
+    vec4 ripple = uRipple[i];
+    if (ripple.y <= 0.0) continue;
+    float radius = ripple.x * ripple.z;
+    vec2 qs = q * aspectScale;
+    float distance = length(qs);
+    float band = exp(-pow((distance - radius) / 0.07, 2.0));
+    float fade = exp(-ripple.x / 0.45);
+    q += (distance > 1e-4 ? qs / distance : vec2(0.0)) / aspectScale * band * ripple.y * fade * 0.05;
+  }
+  // gather: the whole figure contracts toward the centre through a build (it stays a
+  // figure, only smaller and denser); fully gathered it is a knot of the given radius
+  vec2 knot = vec2(cos(aSeed.w * 6.2831853), sin(aSeed.w * 6.2831853)) * sqrt(aSeed.z) * uGather.y / aspectScale;
+  float contract = 1.0 - 0.8 * uGather.x;
+  q *= contract;
+  q = mix(q, knot, smoothstep(0.9, 1.0, uGather.x));
+
+  vec2 clip = mix(uRect.xy, uRect.zw, q * 0.5 + 0.5);
+  gl_Position = vec4(clip, 0.0, 1.0);
+  gl_PointSize = uPointSize * (0.75 + 0.5 * aSeed.w);
+  // grains that did not reach a line are faint (real sand leaves the antinodes empty)
+  float onLine = 1.0 - smoothstep(0.004, 0.02, residual);
+  vAlpha = mix(onLine, 1.0, uGather.x) * uGather.z;
+  vShade = aSeed.z;
+}`;
+
+const plateFragmentShader = `#version 300 es
+precision highp float;
+in float vAlpha;
+in float vShade;
+uniform vec3 uColor;
+out vec4 outColor;
+void main() {
+  vec2 d = gl_PointCoord - 0.5;
+  float r = dot(d, d);
+  if (r > 0.25 || vAlpha < 0.02) discard;
+  outColor = vec4(uColor * (0.85 + 0.3 * vShade), vAlpha * 0.9);
+}`;
+
+const plateGroundShader = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 outColor;
+uniform vec3 uGround;
+uniform vec3 uInk;
+uniform vec2 uResolution;
+uniform vec4 uFrame; // inset frame in uv: x0 y0 x1 y1
+void main() {
+  vec3 color = uGround;
+  vec2 px = 1.0 / uResolution;
+  // an engraving border: one hairline inset
+  float line = 0.0;
+  vec2 lo = abs(vUv - uFrame.xy), hi = abs(vUv - uFrame.zw);
+  bool inside = vUv.x > uFrame.x - px.x && vUv.x < uFrame.z + px.x && vUv.y > uFrame.y - px.y && vUv.y < uFrame.w + px.y;
+  if (inside && (lo.x < 1.2 * px.x || hi.x < 1.2 * px.x || lo.y < 1.2 * px.y || hi.y < 1.2 * px.y)) line = 1.0;
+  color = mix(color, uInk, line * 0.85);
+  // a faint darkening toward the edges of the sheet
+  vec2 c = vUv - 0.5;
+  color *= 1.0 - 0.06 * dot(c, c) * 2.0;
+  outColor = vec4(color, 1.0);
+}`;
+
+// Mode pairs by complexity; harmony picks among them.
+const plateModes = [
+  [1, 2], [1, 3], [2, 3], [1, 4], [2, 5], [3, 4], [1, 5], [3, 5], [2, 7], [4, 5],
+  [1, 6], [3, 7], [4, 7], [2, 9], [5, 6], [1, 8], [3, 8], [5, 7], [4, 9], [6, 7],
+];
+const plateCircle = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+
 registerVisualizer({
   key: "plate",
   name: "Plate",
   order: 4,
   create() {
-    const canvas = createVisualCanvas();
-    const context = canvas.getContext("2d");
+    const container = document.createElement("div");
+    container.hidden = true;
+    const canvas = document.createElement("canvas");
+    const overlay = document.createElement("canvas");
+    for (const layer of [canvas, overlay]) {
+      layer.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";
+      container.append(layer);
+    }
+    const gl = canvas.getContext("webgl2", { alpha: false, antialias: true, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: "high-performance" });
+    const labels = overlay.getContext("2d");
+    const sand = compileWebGLProgram(gl, plateVertexShader, plateFragmentShader);
+    const ground = compileWebGLProgram(gl, fullscreenVertexShader, plateGroundShader);
+    const emptyVertexArray = gl.createVertexArray();
+
+    // Fixed grain seeds: uniform over the plate, with two random attributes each.
+    function seedBuffer(count, offset) {
+      const data = new Float32Array(count * 4);
+      for (let index = 0; index < count; index++) {
+        data[index * 4] = hash01(index * 2 + offset);
+        data[index * 4 + 1] = hash01(index * 2 + 1 + offset);
+        data[index * 4 + 2] = hash01(index * 7 + 3 + offset);
+        data[index * 4 + 3] = hash01(index * 13 + 5 + offset);
+      }
+      const vertexArray = gl.createVertexArray();
+      gl.bindVertexArray(vertexArray);
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+      gl.bindVertexArray(null);
+      return vertexArray;
+    }
+    const sandArray = seedBuffer(plateGrains, 11);
+    const voiceArray = seedBuffer(plateVoiceGrains, 9001);
+
+    const ivory = hexColor("#efe9dc");
+    const ink = hexColor("#171513");
+    const vermilion = hexColor("#e2401c");
     let song = null;
+    let scale = 1;
+    let size = { width: 1, height: 1 };
+    let themeGround = "";
+    const ripples = new Float32Array(16);
+
+    function setSong(model) {
+      song = model;
+      themeGround = "";
+    }
+
+    // The figure for the harmony at a time: chord root around the circle of fifths picks the
+    // family, minor flips the sign, the scene's intensity adds complexity, and the sounding
+    // bass note adds a second mode.
+    function harmonyMode(time, into) {
+      const chordIndex = song ? song.chordIndex(time) : -1;
+      const scene = song ? song.scene(time) : null;
+      let root = 0,
+        minor = 0;
+      if (chordIndex >= 0) {
+        root = song.chords[chordIndex].root;
+        minor = song.chords[chordIndex].minor;
+      }
+      const intensity = scene ? scene.intensity : 0.5;
+      const base = Math.min(plateModes.length - 1, Math.round(plateCircle.indexOf(root) * 0.7 + intensity * 8));
+      const [n, m] = plateModes[base];
+      const note = song ? song.bassNotes.active(time) : -1;
+      const pitchClass = note >= 0 ? Math.round(song.bassNotes.pitch[note]) % 12 : root;
+      const [n2, m2] = plateModes[(plateCircle.indexOf(pitchClass) + 3) % 10];
+      into.mode[0] = n; into.mode[1] = m; into.mode[2] = n2; into.mode[3] = m2;
+      into.second = note >= 0 ? 0.3 : 0;
+      into.sign = minor ? -1 : 1;
+      into.start = Math.max(chordIndex >= 0 ? song.chords[chordIndex].start : 0, note >= 0 ? song.bassNotes.start[note] : 0);
+      return into;
+    }
+
+    function voiceMode(time, into) {
+      const note = song ? song.vocalNotes.active(time) : -1;
+      const anchor = song && song.anchor.kind === "word" ? song.anchorAt(time) : -1;
+      if (anchor >= 0) {
+        into.mode[0] = 3; into.mode[1] = 3; into.mode[2] = 1; into.mode[3] = 7;
+        into.second = 0.6;
+        into.sign = -1;
+        into.start = song.anchor.moments[anchor].start;
+        into.present = 1;
+        return into;
+      }
+      if (note < 0) {
+        into.present = 0;
+        into.start = 0;
+        return into;
+      }
+      const pitch = Math.round(song.vocalNotes.pitch[note]);
+      const [n, m] = plateModes[(plateCircle.indexOf(pitch % 12) + Math.max(0, Math.floor((pitch - 48) / 12)) * 3) % plateModes.length];
+      into.mode[0] = n; into.mode[1] = m; into.mode[2] = m; into.mode[3] = n + 1;
+      into.second = 0.25;
+      into.sign = 1;
+      into.start = song.vocalNotes.start[note];
+      into.present = clamp01((song.vocalNotes.strength[note] - 0.15) / 0.3);
+      return into;
+    }
+
+    const current = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 1 };
+    const previous = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 1 };
+    const voiceNow = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 0 };
+    const voiceBefore = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 0 };
+
+    let density = 1.1;
+    function drawSand(vertexArray, count, modeA, modeB, settle, gather, knot, present, color, time, pointSize, rippleData, shimmer, seedOffset) {
+      const u = sand.uniforms;
+      gl.useProgram(sand.program);
+      gl.uniform4f(u.uModeA, modeA.mode[0], modeA.mode[1], modeA.mode[2], modeA.mode[3]);
+      gl.uniform4f(u.uModeB, modeB.mode[0], modeB.mode[1], modeB.mode[2], modeB.mode[3]);
+      gl.uniform4f(u.uMix, modeA.second, modeB.second, settle, modeB.sign);
+      // the plate: 95.5% of the width, 80% of the height, below the title band
+      const aspect = (0.955 * size.width) / Math.max(1, 0.8 * size.height);
+      gl.uniform2f(u.uAspect, density * aspect, density);
+      gl.uniform4f(u.uRect, -0.955, -0.94, 0.955, 0.66);
+      gl.uniform4f(u.uGather, gather, knot, present, shimmer);
+      gl.uniform4fv(u.uRipple, rippleData);
+      gl.uniform1f(u.uTime, time);
+      gl.uniform1f(u.uPointSize, pointSize);
+      gl.uniform1f(u.uSeedOffset, seedOffset);
+      gl.uniform3f(u.uColor, color[0], color[1], color[2]);
+      gl.bindVertexArray(vertexArray);
+      gl.drawArrays(gl.POINTS, 0, count);
+    }
+
+    function render(time, frame) {
+      const width = frame.width,
+        height = frame.height;
+      size = { width, height };
+      const drop = song ? song.dropContext(time) : null;
+      const afterMain = song && song.mainDrop >= 0 && time >= song.drops[song.mainDrop].time;
+      const groundColor = afterMain ? vermilion : ivory;
+      const voiceColor = afterMain ? ivory : vermilion;
+      const groundHex = afterMain ? "#e2401c" : "#efe9dc";
+      if (groundHex !== themeGround) {
+        themeGround = groundHex;
+        document.documentElement.style.setProperty("--plate-ground", groundHex);
+        waveformTheme = null;
+      }
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.disable(gl.BLEND);
+      gl.useProgram(ground.program);
+      gl.uniform3f(ground.uniforms.uGround, groundColor[0], groundColor[1], groundColor[2]);
+      gl.uniform3f(ground.uniforms.uInk, ink[0], ink[1], ink[2]);
+      gl.uniform2f(ground.uniforms.uResolution, canvas.width, canvas.height);
+      gl.uniform4f(ground.uniforms.uFrame, 0.016, 0.022, 0.984, 0.836);
+      gl.bindVertexArray(emptyVertexArray);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      if (!song) {
+        drawLabels(time, width, height, null);
+        return;
+      }
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      // Each drop makes the plate finer: more cells in the same frame.
+      let dropsPassed = 0;
+      for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
+      density = 1.1 + 0.28 * Math.min(2, dropsPassed);
+      // Harmony: the figure now, and the one before it for the migration.
+      harmonyMode(time, current);
+      harmonyMode(Math.max(0, current.start - 0.01), previous);
+      const settle = easeInOutCubic((time - current.start) / 0.32);
+
+      // Gather through a build; in the gap a knot that shrinks each beat; the drop throws it.
+      let gather = 0,
+        knot = 0.2;
+      if (drop.phase === 1) gather = easeInCubic(drop.progress) * 0.88;
+      if (drop.phase === 2) {
+        const beatsLeft = Math.ceil((drop.drop.time - time) / song.beatPeriod - 1e-6);
+        gather = 1;
+        knot = 0.03 + 0.035 * Math.max(0, beatsLeft);
+      }
+      const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
+      if (sinceDrop < 0.12) gather = 0;
+
+      // Kick: the last four strikes, as waves.
+      let rippleIndex = song.kicks.last(time);
+      for (let slot = 0; slot < 4; slot++) {
+        const age = rippleIndex >= 0 ? time - song.kicks.time[rippleIndex] : Infinity;
+        const alive = age < 1.2;
+        ripples[slot * 4] = alive ? age : 0;
+        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] * (drop.phase === 2 ? 0 : 1) : 0;
+        ripples[slot * 4 + 2] = 1.8;
+        ripples[slot * 4 + 3] = 0;
+        rippleIndex--;
+      }
+      if (sinceDrop < 1.2) {
+        ripples[0] = sinceDrop;
+        ripples[1] = 2.5;
+      }
+      const shimmer = clamp01(song.hats.impulse(time, 0.05, 0.2));
+      const pointSize = Math.max(1.5, 2.3 * (canvas.height / 1080));
+      const grains = afterMain ? plateGrains : Math.round(plateGrains * (0.62 + 0.38 * Math.min(1, time / Math.max(1, song.drops[song.mainDrop]?.time || song.duration))));
+      drawSand(sandArray, grains, previous, current, settle, gather, knot, 1, ink, time, pointSize, ripples, shimmer, 0);
+
+      // Voice: vermilion sand in the figure of the sung note; away when nobody sings.
+      voiceMode(time, voiceNow);
+      if (voiceNow.present > 0 || voiceNow.start > 0) {
+        voiceMode(Math.max(0, voiceNow.start - 0.01), voiceBefore);
+        const voiceSettle = easeOutCubic((time - voiceNow.start) / 0.12);
+        const present = voiceNow.present * (voiceBefore.present > 0 ? 1 : voiceSettle);
+        drawSand(voiceArray, plateVoiceGrains, voiceBefore.present > 0 ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather * 0.6, knot * 1.6, present, voiceColor, time, pointSize * 1.1, ripples, 0, 3.7);
+      }
+      drawLabels(time, width, height, drop);
+    }
+
+    // Captions, as on an engraved plate: figure number, mode, harmony, bar and time.
+    function drawLabels(time, width, height, drop) {
+      labels.setTransform(scale, 0, 0, scale, 0, 0);
+      labels.clearRect(0, 0, width, height);
+      if (!song) return;
+      const unit = height / 1080;
+      labels.fillStyle = "#171513";
+      labels.font = `italic 400 ${Math.round(34 * unit)}px "Instrument Serif", serif`;
+      const chordIndex = song.chordIndex(time);
+      const names = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+      const chord = chordIndex >= 0 ? song.chords[chordIndex] : null;
+      const figureNumber = chordIndex >= 0 ? chordIndex + 1 : 0;
+      labels.textAlign = "right";
+      labels.fillText(`Fig. ${figureNumber}`, width * 0.9825 - 6 * unit, height * 0.975);
+      labels.textAlign = "left";
+      labels.font = `400 ${Math.round(13 * unit)}px "IBM Plex Mono", monospace`;
+      const bar = Math.max(0, Math.floor(song.barPosition(time)) + 1);
+      const beat = Math.floor(fract(song.barPosition(time)) * 4) + 1;
+      const mode = `(${current.mode[0]}, ${current.mode[1]})${current.second > 0 ? ` + (${current.mode[2]}, ${current.mode[3]})` : ""}`;
+      const harmony = chord ? `${names[chord.root]}${chord.minor ? " minor" : " major"}` : "";
+      const line = `MODE ${mode}   ${harmony.toUpperCase()}   BAR ${String(bar).padStart(3, "0")}.${beat}   ${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, "0")}`;
+      labels.fillText(line, width * 0.0175 + 6 * unit, height * 0.975 - 8 * unit);
+    }
+
     return {
-      canvas,
-      setSong(model) { song = model; },
-      setActive(on) { canvas.hidden = !on; },
+      canvas: container,
+      setSong,
+      themeFor() {
+        return { "--plate-ground": "#efe9dc" };
+      },
+      setActive(on) {
+        container.hidden = !on;
+      },
       resize(width, height, ratio) {
-        const [w, h] = canvasPixels(width, height, ratio, 1920 * 1080);
-        canvas.width = w; canvas.height = h;
+        const [w, h, s] = canvasPixels(width, height, Math.min(ratio, 2), 1920 * 1080);
+        canvas.width = w;
+        canvas.height = h;
+        const [lw, lh, ls] = canvasPixels(width, height, Math.min(ratio, 2), 2560 * 1440);
+        overlay.width = lw;
+        overlay.height = lh;
+        scale = ls;
       },
-      render(time, frame) {
-        context.setTransform(canvas.width / frame.width, 0, 0, canvas.height / frame.height, 0, 0);
-        context.fillStyle = "#f1ede4";
-        context.fillRect(0, 0, frame.width, frame.height);
-        context.fillStyle = "#161616";
-        context.font = "600 40px 'IBM Plex Mono'";
-        context.fillText("Plate " + time.toFixed(2) + (song ? " " + song.scene(time).kind : " (no song)"), 80, frame.height - 300);
-        if (song) {
-          const beat = song.beatPosition(time);
-          context.fillRect(80 + (beat % 4) * 200, frame.height / 2, 150 * (1 - (beat % 1)), 150);
-        }
-      },
+      render,
     };
   },
 });
