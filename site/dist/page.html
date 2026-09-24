@@ -1,0 +1,2499 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/artwork/home-screen-icon-180.png?v=1"
+    />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%0A%20%20%3Cstyle%3Erect%20%7B%20fill%3A%20%2320242b%20%7D%20%40media%20(prefers-color-scheme%3A%20dark)%20%7B%20rect%20%7B%20fill%3A%20%23f7f8fa%20%7D%20%7D%3C%2Fstyle%3E%0A%20%20%3Crect%20x%3D%221%22%20y%3D%228%22%20width%3D%222%22%20height%3D%228%22%20rx%3D%221%22%20%2F%3E%0A%20%20%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%222%22%20height%3D%2216%22%20rx%3D%221%22%20%2F%3E%0A%20%20%3Crect%20x%3D%2211%22%20y%3D%221%22%20width%3D%222%22%20height%3D%2222%22%20rx%3D%221%22%20%2F%3E%0A%20%20%3Crect%20x%3D%2216%22%20y%3D%224%22%20width%3D%222%22%20height%3D%2216%22%20rx%3D%221%22%20%2F%3E%0A%20%20%3Crect%20x%3D%2221%22%20y%3D%228%22%20width%3D%222%22%20height%3D%228%22%20rx%3D%221%22%20%2F%3E%0A%3C%2Fsvg%3E" />
+    __PAGE_METADATA__
+    <style>:root {
+  --background: #f7f8fa;
+  --ink: #20242b;
+  --secondary: #69717d;
+  --line: #dce0e6;
+  --accent: #3d5cca;
+  --radius: 12px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+::selection {
+  background: #cad5f8;
+  color: #20242b;
+}
+[hidden] {
+  display: none !important;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a,
+input {
+  outline-offset: 5px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+a {
+  color: inherit;
+  text-underline-offset: 4px;
+}
+svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+button svg,
+a svg {
+  pointer-events: none;
+}
+.shell {
+  max-width: 840px;
+  padding: 0 44px;
+  margin: auto;
+}
+/* Keep the player's preferred sizing, yielding only when the viewport is shorter. */
+.shell:has(#player-view:not([hidden])) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.shell:has(#player-view:not([hidden])) > main,
+#content:has(> #player-view:not([hidden])),
+#player-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.shell:has(#player-view:not([hidden])) > .header,
+#content > .notice,
+#player-view > .intro,
+#player-view > .download-row,
+#player-view .waveform,
+#player-view .transport {
+  flex-shrink: 0;
+}
+#player-view .player {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 0 1 auto;
+}
+#player-view .stage {
+  min-height: 0;
+  flex-shrink: 1;
+}
+.header {
+  height: 106px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  height: 44px;
+  padding: 11px;
+  margin-left: -11px;
+  text-decoration: none;
+}
+.player-link {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -11px;
+}
+.player-link svg {
+  width: 26px;
+  height: 26px;
+}
+.brand span {
+  display: block;
+  width: 2px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+.brand span:nth-child(1),
+.brand span:nth-child(5) {
+  height: 8px;
+}
+.brand span:nth-child(2),
+.brand span:nth-child(4) {
+  height: 16px;
+}
+.brand span:nth-child(3) {
+  height: 22px;
+}
+.intro {
+  padding-top: 22px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+h1 {
+  font-size: clamp(38px, 5.5vw, 58px);
+  font-weight: 520;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.player {
+  margin-top: 6px;
+}
+.credits {
+  margin: 14px 0 0;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.credits:empty {
+  display: none;
+}
+.stage {
+  position: relative;
+  height: 316px;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+.stage > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.play-orbit {
+  position: relative;
+}
+.play {
+  width: 68px;
+  height: 68px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: white;
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.25s ease-out,
+    box-shadow 0.35s ease-out;
+}
+@media (hover: hover) {
+  .play:hover {
+    background: var(--accent);
+    transform: scale(1.07);
+    box-shadow: 0 6px 20px #263f7826;
+  }
+}
+.play:active {
+  transform: scale(0.96);
+}
+.play svg {
+  width: 24px;
+  height: 24px;
+}
+.play .triangle {
+  fill: currentColor;
+  stroke: none;
+  transform: translateX(2px);
+}
+.is-playing .play {
+  background: var(--accent);
+}
+.waveform {
+  height: 66px;
+  position: relative;
+  isolation: isolate;
+  touch-action: none;
+  margin: 0 0 12px;
+}
+.waveform canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.waveform input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: crosshair;
+  z-index: 2;
+  touch-action: none;
+}
+.waveform:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+.cursor {
+  position: absolute;
+  left: 0;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.cursor:before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.preview-needle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 0;
+  width: 1px;
+  background: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease-out;
+}
+.preview-needle span {
+  position: absolute;
+  top: -25px;
+  left: 0;
+  transform: translateX(-50%);
+  padding: 4px 7px;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .waveform:hover .preview-needle {
+    opacity: 0.8;
+  }
+}
+.waveform:active .preview-needle {
+  opacity: 0;
+}
+.transport {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  min-height: 44px;
+}
+.time {
+  font-size: 12px;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.transport-controls,
+.track-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.track-controls {
+  gap: 4px;
+  margin-right: -10px;
+}
+.track-controls .icon-button {
+  width: 44px;
+  height: 44px;
+}
+@media (hover: hover) {
+  .track-controls .icon-button:hover:disabled {
+    background: none;
+  }
+}
+.current {
+  color: var(--ink);
+  font-weight: 550;
+}
+.separator {
+  padding: 0 6px;
+  color: #929baa;
+}
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+}
+@media (hover: hover) {
+  .icon-button:hover {
+    background: #e9ecf2;
+  }
+}
+.icon-button svg {
+  width: 17px;
+  height: 17px;
+}
+.volume input {
+  width: 134px;
+  height: 3px;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+.download-row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 30px;
+  padding: 25px 0;
+  border-top: 1px solid var(--line);
+}
+.file-description {
+  min-width: 0;
+}
+.quality {
+  display: block;
+  font-size: 12px;
+  color: var(--secondary);
+  line-height: 1.8;
+}
+.file-meta {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--secondary);
+}
+.download {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  padding: 13px 19px;
+  font-size: 13px;
+  font-weight: 550;
+  transition:
+    background 0.2s ease-out,
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  .download:hover {
+    background: var(--accent);
+  }
+}
+.download:active {
+  transform: translateY(1px);
+}
+.download svg {
+  width: 16px;
+  height: 16px;
+}
+.notice {
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 15px 0;
+  color: var(--ink);
+  margin: 12px 0 0;
+}
+.empty {
+  padding: 90px 0;
+}
+.empty h1 {
+  font-size: 32px;
+}
+.empty p {
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 50ch;
+}
+.track-description > span,
+.track-credits {
+  display: block;
+}
+.track-credits {
+  margin-top: 2px;
+  line-height: 1.5;
+}
+.library-view {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - 106px);
+  padding-bottom: 0;
+}
+.library-tabs {
+  display: flex;
+  gap: 28px;
+  margin-top: 24px;
+}
+.library-tabs button {
+  position: relative;
+  border: 0;
+  padding: 10px 0 12px;
+  min-height: 44px;
+  color: var(--secondary);
+  background: none;
+  font-size: 16px;
+  font-weight: 550;
+}
+.library-tabs button[aria-selected="true"] {
+  color: var(--accent);
+}
+.library-tabs button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.library-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 0 14px;
+  background: #eceff4;
+  border-radius: 9px;
+  color: var(--secondary);
+}
+.library-search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.library-search input {
+  border: 0;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  background: none;
+  color: var(--ink);
+  caret-color: var(--accent);
+  font-size: 16px;
+}
+.library-search input:focus-visible {
+  outline: none;
+}
+.library-search input::placeholder {
+  color: var(--secondary);
+  opacity: 1;
+}
+.library-selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
+  padding-top: 8px;
+}
+#library-selection-count {
+  font-size: 15px;
+  font-weight: 550;
+}
+.library-selection-actions {
+  display: flex;
+  gap: 16px;
+}
+.text-button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 14px;
+}
+@media (hover: hover) {
+  .text-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+.library-tracks {
+  margin: 0;
+}
+.library-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.library-track-link {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  text-decoration: none;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .library-track-link:hover .library-track-heading {
+    color: var(--accent);
+  }
+}
+.library-track-link,
+.library-save,
+.library-play-next,
+.library-selection-control input {
+  scroll-margin-block: 16px 180px;
+}
+.library-track .track-description {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.library-track .library-track-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 16px;
+  font-weight: 550;
+}
+.library-current-indicator {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.library-current-indicator svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+.library-track small {
+  font-size: 12px;
+  color: var(--secondary);
+}
+.library-track .track-detail {
+  flex: 0 0 auto;
+  text-align: right;
+  font-size: 13px;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+.library-save {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--secondary);
+}
+@media (hover: hover) {
+  .library-save:hover {
+    background: #e9ecf2;
+  }
+}
+.library-save[aria-pressed="true"] {
+  color: var(--accent);
+}
+.library-save[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+.library-save svg {
+  width: 18px;
+  height: 18px;
+}
+.library-track-actions {
+  display: flex;
+  flex-shrink: 0;
+  margin-right: -10px;
+}
+.library-track-actions .library-save {
+  margin-right: 0;
+}
+.library-play-next {
+  width: 44px;
+  height: 44px;
+  color: var(--secondary);
+}
+.library-selection-control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin-left: -10px;
+}
+.library-selection-control input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.library-selection-control > span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #7a8596;
+  border-radius: 50%;
+  color: transparent;
+  pointer-events: none;
+}
+.library-selection-control input:checked + span {
+  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.library-selection-control input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.library-selection-control svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2;
+}
+.library-download {
+  margin-top: 18px;
+}
+.library-download .download {
+  min-height: 46px;
+  width: 100%;
+}
+.library-download p {
+  margin: 10px 0 0;
+  text-align: center;
+  color: var(--secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.library-empty,
+.library-storage-notice {
+  margin: 0;
+  padding: 20px 0;
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.mini-player {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  padding: 16px 0 max(20px, env(safe-area-inset-bottom));
+  background: var(--background);
+}
+#library-results,
+.library-download {
+  margin-bottom: 28px;
+}
+.mini-transport {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+.mini-return {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-decoration: none;
+  min-width: 0;
+  flex: 1;
+}
+.mini-description {
+  display: grid;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+#mini-title {
+  font-size: 16px;
+  font-weight: 550;
+}
+#mini-credits {
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mini-player .play {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.mini-player .play svg {
+  width: 20px;
+  height: 20px;
+}
+.mini-seek {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 2px 0 -8px;
+  touch-action: none;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+  --progress: 0%;
+}
+.mini-seek::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--progress), var(--line) var(--progress));
+}
+.mini-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 9px;
+  height: 9px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.mini-seek::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.mini-seek::-moz-range-progress {
+  height: 3px;
+  background: var(--accent);
+}
+.mini-seek::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.mini-times {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.queue-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 12px;
+}
+.queue-button svg {
+  width: 17px;
+  height: 17px;
+}
+#queue-count {
+  color: var(--secondary);
+}
+.screen-reader-only {
+  position: absolute;
+  inset: 0 auto auto 0;
+  margin: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.queue-dialog {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0 auto max(16px, env(safe-area-inset-bottom));
+  width: min(480px, calc(100% - 24px));
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 12px 22px 20px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--background);
+  color: var(--ink);
+  box-shadow: 0 12px 36px #20242b29;
+}
+.queue-dialog::backdrop {
+  background: #20242b38;
+}
+.queue-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+}
+.queue-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 550;
+  letter-spacing: -.02em;
+}
+.queue-dialog .icon-button {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin-right: -10px;
+}
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.queue-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.queue-list li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.queue-track-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.queue-track-credits,
+.queue-empty {
+  display: block;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.queue-track-credits {
+  margin-top: 4px;
+}
+.queue-empty {
+  margin: 12px 0 18px;
+}
+.queue-library {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.queue-library > span:first-child {
+  color: var(--secondary);
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .volume input {
+    width: 48px;
+  }
+  .library-view {
+    min-height: calc(100svh - 80px);
+  }
+  .shell {
+    padding: 0 27px;
+  }
+  .header {
+    height: 80px;
+  }
+  .intro {
+    padding-top: 16px;
+  }
+  h1 {
+    font-size: 44px;
+  }
+  .stage {
+    height: 290px;
+  }
+  .waveform {
+    height: 53px;
+  }
+  .play {
+    width: 62px;
+    height: 62px;
+  }
+  .download-row {
+    margin-top: 24px;
+    padding: 22px 0;
+    gap: 12px;
+  }
+  .download {
+    font-size: 12px;
+    padding: 13px 16px;
+  }
+  .quality,
+  .file-meta {
+    font-size: 11px;
+  }
+}
+@media (max-width: 360px) {
+  .shell {
+    padding: 0 20px;
+  }
+  .download-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .stage {
+    height: 250px;
+  }
+  .quality,
+  .file-meta {
+    display: inline;
+  }
+  .quality:after {
+    content: " · ";
+  }
+}
+/* Short landscape needs real content scrolling to retain the approved layout. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .shell:has(#player-view:not([hidden])) {
+    height: auto;
+    min-height: 100dvh;
+  }
+}
+@media (hover: none) {
+  .preview-needle {
+    display: none;
+  }
+}
+/* Touch screens keep :hover after a tap, so taps get a press state that ends with the touch. */
+@media (hover: none) {
+  .icon-button:active:not(:disabled),
+  .library-save:active {
+    background: #e9ecf2;
+  }
+  .download:active {
+    background: var(--accent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Desktop player: the whole window is the stage. The animation fills the space
+   above the transport, the title sits top left, the file and download top right,
+   and the waveform and controls run along the bottom. Narrow windows fall back to the
+   stacked layout. */
+@media (min-width: 901px) {
+  .shell:has(#player-view:not([hidden])) {
+    max-width: none;
+    padding: 0;
+  }
+  .shell:has(#player-view:not([hidden])) > .header {
+    position: fixed;
+    top: 0;
+    left: var(--gutter);
+    right: var(--gutter);
+    height: 96px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .shell:has(#player-view:not([hidden])) > .header > * {
+    pointer-events: auto;
+  }
+  #player-view > .intro {
+    position: fixed;
+    top: 96px;
+    left: var(--gutter);
+    max-width: min(42vw, 620px);
+    padding: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+  #player-view > .intro h1 {
+    font-size: clamp(44px, 4.6vw, 72px);
+  }
+  #player-view .player {
+    margin: 0;
+  }
+  #player-view .stage {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 150px;
+    height: auto;
+    z-index: 0;
+  }
+  #player-view .waveform {
+    position: fixed;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: 76px;
+    height: 52px;
+    margin: 0;
+    z-index: 2;
+  }
+  #player-view .transport {
+    position: fixed;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: 20px;
+    z-index: 2;
+  }
+  #player-view > .download-row {
+    position: fixed;
+    top: 104px;
+    right: var(--gutter);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    gap: 20px;
+    z-index: 2;
+  }
+  #player-view > .download-row .file-description {
+    text-align: right;
+  }
+}
+@media (min-width: 901px) {
+  :root {
+    --gutter: clamp(32px, 4vw, 64px);
+  }
+}
+</style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="header">
+        <a class="brand" id="library-link" href="/library" aria-label="Open library">
+          <span></span><span></span><span></span><span></span><span></span>
+        </a>
+        <a class="player-link" id="player-link" aria-label="Return to player" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4-8 8 8 8" /></svg>
+        </a>
+      </header>
+      <main>
+        <div class="empty" id="empty" hidden>
+          <h1>Nothing here yet.</h1>
+          <p></p>
+        </div>
+        <div id="content" hidden>
+          <p class="notice" id="notice" role="alert" hidden></p>
+          <div id="player-view">
+          <div class="intro">
+            <div>
+              <h1 id="title" tabindex="-1"></h1>
+              <p class="credits" id="credits"></p>
+            </div>
+          </div>
+          <section class="player" aria-label="Audio player">
+            <div class="stage" id="visualizer">
+              <div class="play-orbit">
+                <button
+                  class="play"
+                  id="play"
+                  aria-label="Play"
+                  disabled
+                ></button>
+              </div>
+            </div>
+            <div class="waveform">
+              <canvas id="waveform" aria-hidden="true"></canvas
+              ><span class="cursor" id="cursor" aria-hidden="true"></span
+              ><span
+                class="preview-needle"
+                id="preview-needle"
+                aria-hidden="true"
+                ><span id="preview-time">0:00</span></span
+              ><input
+                id="seek"
+                type="range"
+                min="0"
+                max="1000"
+                value="0"
+                step="1"
+                aria-label="Playback position"
+                aria-valuetext="0:00"
+                disabled
+              />
+            </div>
+            <div class="transport">
+              <div class="time">
+                <span class="current" id="position">0:00</span
+                ><span class="separator">/</span><span id="duration">0:00</span>
+              </div>
+              <div class="transport-controls">
+              <div class="volume">
+                <button class="icon-button" id="mute" aria-label="Mute">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="m11 5-6 4H2v6h3l6 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"
+                    />
+                  </svg></button
+                ><input
+                  id="volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step=".01"
+                  value="1"
+                  aria-label="Volume"
+                />
+              </div>
+              <div class="track-controls" role="group" aria-label="Change track">
+                <button class="icon-button" id="previous-track" aria-label="Previous track" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M19 4 7 12l12 8Z" /></svg>
+                </button>
+                <button class="icon-button" id="next-track" aria-label="Next track" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4v16M5 4l12 8-12 8Z" /></svg>
+                </button>
+              </div>
+              </div>
+            </div>
+          </section>
+          <div class="download-row">
+            <div class="file-description">
+              <span class="quality" id="quality"></span>
+              <div class="file-meta" id="file-meta"></div>
+            </div>
+            <a class="download" id="download" download
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" /></svg
+              ><span id="download-label">Download</span></a
+            >
+          </div>
+          </div>
+          <section class="library-view" id="library-view" aria-labelledby="library-title" hidden>
+            <div class="intro"><h1 id="library-title" tabindex="-1">Library</h1></div>
+            <div class="library-tabs" role="tablist" aria-label="Library filter">
+              <button id="library-all" role="tab" aria-selected="true" aria-controls="library-results" tabindex="0">All</button>
+              <button id="library-saved" role="tab" aria-selected="false" aria-controls="library-results" tabindex="-1">Saved</button>
+            </div>
+            <label class="library-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+              <input id="library-search" type="search" placeholder="Search" aria-label="Search library" autocomplete="off" />
+            </label>
+            <div class="library-selection-bar">
+              <span id="library-selection-count" aria-live="polite"></span>
+              <div class="library-selection-actions">
+                <button class="text-button" id="library-select-all" hidden>Select all</button>
+                <button class="text-button" id="library-select">Select</button>
+              </div>
+            </div>
+            <p class="library-storage-notice" id="library-storage-notice" role="status" hidden></p>
+            <div id="library-results" role="tabpanel" aria-labelledby="library-all">
+              <div class="library-tracks" id="library-track-list"></div>
+              <p class="library-empty" id="library-empty" hidden></p>
+            </div>
+            <div class="library-download" id="library-download" hidden>
+              <a class="download" id="library-download-link" download>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" /></svg>
+                <span id="library-download-label"></span>
+              </a>
+              <p id="library-download-size"></p>
+              <p id="library-download-error" role="alert" hidden></p>
+            </div>
+            <section class="mini-player" id="mini-player" aria-label="Current track">
+              <div class="mini-transport">
+                <a class="mini-return" id="mini-return">
+                                    <span class="mini-description"><span id="mini-title"></span><span id="mini-credits"></span></span>
+                </a>
+                <button class="play" id="mini-play" aria-label="Play" disabled></button>
+              </div>
+              <input class="mini-seek" id="mini-seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Current track playback position" aria-valuetext="0:00" disabled />
+              <div class="mini-times time">
+                <span id="mini-position">0:00</span>
+                <button class="queue-button" id="mini-queue" aria-label="Open queue" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h11M4 18h8m5-3 4 3-4 3Z"/></svg>
+                  <span>Queue</span><span id="queue-count"></span>
+                </button>
+                <span id="mini-duration">0:00</span>
+              </div>
+            </section>
+          </section>
+        </div>
+      </main>
+      <audio id="audio" preload="metadata"></audio>
+      <p class="screen-reader-only" id="queue-status" role="status"></p>
+      <dialog class="queue-dialog" id="queue-dialog" aria-labelledby="queue-title">
+        <div class="queue-heading">
+          <h2 id="queue-title">Queue</h2>
+          <button class="icon-button" id="queue-close" aria-label="Close queue" autofocus>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <p class="queue-empty" id="queue-empty">Your queue is empty.</p>
+        <ol class="queue-list" id="queue-list"></ol>
+        <button class="text-button" id="queue-clear" hidden>Clear queue</button>
+        <div class="queue-library" id="queue-library" hidden>
+          <span>Next in library</span><span id="queue-library-title"></span>
+        </div>
+      </dialog>
+    </div>
+    <script>async function requestTracks() {
+  const response = await fetch("/api/tracks", { cache: "no-store" });
+  if (!response.ok) throw Error();
+  return response.json();
+}
+
+async function requestPlaybackCopy(address, signal) {
+  const response = await fetch(address, { signal, cache: "no-store" });
+  if (!response.ok) throw Error();
+  return response.json();
+}
+
+async function requestBandAnalysis(address, signal) {
+  const response = await fetch(address, { signal });
+  if (!response.ok) throw Error("Analysis unavailable");
+  const analysis = await response.json();
+  if (
+    analysis.version !== 1 ||
+    analysis.band_count !== 40 ||
+    !Number.isInteger(analysis.frame_count) ||
+    analysis.frame_count < 1 ||
+    !(analysis.frame_rate > 0)
+  )
+    throw Error("Invalid analysis");
+  const samples = Uint8Array.from(atob(analysis.data), (character) =>
+    character.charCodeAt(0),
+  );
+  if (samples.length !== analysis.frame_count * 40)
+    throw Error("Incomplete analysis");
+  const envelopes = {};
+  for (const name of ["energy", "bass", "onset"]) {
+    const values = Uint8Array.from(atob(analysis[name]), (character) =>
+      character.charCodeAt(0),
+    );
+    if (values.length !== analysis.frame_count)
+      throw Error("Incomplete analysis envelope");
+    envelopes[name] = values;
+  }
+  return { ...analysis, samples, envelopes };
+}
+
+const elements = Object.fromEntries(
+  [...document.querySelectorAll("[id]")].map((element) => [
+    element.id,
+    element,
+  ]),
+);
+
+const audio = elements.audio;
+const isIOS =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const prefersPlaybackCopy = isIOS || /Android|Mobile/.test(navigator.userAgent);
+let volumeLevel = 1;
+let volumeMuted = false;
+elements.volume.closest(".volume").hidden = isIOS;
+if (navigator.audioSession) {
+  try {
+    navigator.audioSession.type = "playback";
+  } catch (error) {}
+}
+
+const playIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="triangle" d="M7 4.5v15L20 12Z"/></svg>';
+
+const pauseIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke-width="3"/></svg>';
+
+let tracks = [],
+  selected = null,
+  selectionVersion = 0,
+  playbackRequested = false,
+  pendingSeek = null,
+  fallbackLoading = false,
+  usingFallback = false,
+  fallbackController = null;
+let seekPreview = null;
+
+function requestedIdentifier() {
+  return location.pathname.match(/^\/track\/([a-f0-9]{24})$/)?.[1] || null;
+}
+
+function sourceIsCurrent() {
+  return (
+    selected && audio.currentSrc === new URL(audio.src, location.href).href
+  );
+}
+
+async function playSelected(version = selectionVersion) {
+  if (version !== selectionVersion || !playbackRequested) return;
+  const source = audio.src;
+  try {
+    await audio.play();
+    if (version === selectionVersion && source === audio.src) showNotice("");
+  } catch (error) {
+    if (
+      version !== selectionVersion ||
+      source !== audio.src ||
+      error.name === "AbortError"
+    )
+      return;
+    if (
+      error.name === "NotSupportedError" ||
+      [3, 4].includes(audio.error?.code)
+    ) {
+      await useStreamingCopy(version);
+      return;
+    }
+    playbackRequested = false;
+    setPlaybackBusy(false);
+    setPlaybackState();
+    showNotice(
+      error.name === "NotAllowedError"
+        ? "Tap play to continue."
+        : "Playback stopped. Try play again.",
+    );
+  }
+}
+
+async function useStreamingCopy(version = selectionVersion) {
+  if (version !== selectionVersion || !selected || fallbackLoading) return;
+  if (usingFallback) {
+    playbackRequested = false;
+    setPlaybackBusy(false);
+    setPlaybackState();
+    showNotice("Audio could not play. Download the file to listen.");
+    return;
+  }
+  fallbackLoading = true;
+  usingFallback = true;
+  pendingSeek = pendingSeek ?? audio.currentTime ?? 0;
+  audio.pause();
+  setPlaybackBusy(true);
+  setPlaybackState();
+  const controller = new AbortController();
+  fallbackController = controller;
+  try {
+    const result = await requestPlaybackCopy(
+      selected.streaming,
+      controller.signal,
+    );
+    if (version !== selectionVersion) return;
+    fallbackLoading = false;
+    audio.src = result.url;
+    audio.load();
+    if (playbackRequested) await playSelected(version);
+    else setPlaybackBusy(false);
+  } catch (error) {
+    if (version !== selectionVersion || error.name === "AbortError") return;
+    fallbackLoading = false;
+    usingFallback = false;
+    playbackRequested = false;
+    setPlaybackBusy(false);
+    setPlaybackState();
+    showNotice("Audio could not load. Try again or download the file.");
+  }
+}
+
+elements.play.innerHTML = playIcon;
+
+function time(value) {
+  value = Math.max(0, Math.floor(value || 0));
+  return value >= 3600
+    ? `${Math.floor(value / 3600)}:${String(Math.floor(value / 60) % 60).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`
+    : `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
+}
+
+function size(value) {
+  return value >= 1e9
+    ? `${(value / 1e9).toFixed(2)} GB`
+    : `${(value / 1e6).toFixed(1)} MB`;
+}
+
+function showNotice(message, kind = "playback") {
+  elements.notice.textContent = message;
+  elements.notice.dataset.kind = message ? kind : "";
+  elements.notice.hidden = !message;
+}
+
+function setPlaybackState() {
+  const playing = playbackRequested || (!audio.paused && !audio.ended);
+  for (const button of [elements.play, elements["mini-play"]]) {
+    button.innerHTML = playing ? pauseIcon : playIcon;
+    button.setAttribute("aria-label", playing ? "Pause" : "Play");
+  }
+  elements["mini-player"].classList.toggle("is-playing", playing);
+  updateLibraryPlaybackState();
+}
+
+function setPlaybackBusy(busy) {
+  for (const button of [elements.play, elements["mini-play"]]) {
+    if (busy) button.setAttribute("aria-busy", "true");
+    else button.removeAttribute("aria-busy");
+  }
+}
+
+function pausePlayback() {
+  playbackRequested = false;
+  audio.pause();
+  savePlaybackSession();
+  setPlaybackBusy(false);
+  setPlaybackState();
+  updateMediaSessionState();
+}
+
+async function resumePlayback() {
+  if (!selected) return;
+  playbackRequested = true;
+  setPlaybackState();
+  if (fallbackLoading) {
+    setPlaybackBusy(true);
+    return;
+  }
+  if (audio.error && usingFallback) {
+    usingFallback = false;
+    await useStreamingCopy(selectionVersion);
+    return;
+  }
+  await playSelected(selectionVersion);
+}
+
+for (const button of [elements.play, elements["mini-play"]]) {
+  button.addEventListener("click", () => {
+    if (playbackRequested || !audio.paused) pausePlayback();
+    else resumePlayback();
+  });
+}
+
+function previewSeekFromControl(event) {
+  const duration = Number.isFinite(audio.duration)
+    ? audio.duration
+    : selected?.duration || 0;
+  if (!duration) return;
+  seekPreview = {
+    control: event.currentTarget,
+    position: (Number(event.currentTarget.value) / 1000) * duration,
+    selectionVersion,
+  };
+  updatePosition();
+}
+
+function commitSeekFromControl(event) {
+  if (!seekPreview || seekPreview.control !== event.currentTarget) return;
+  const preview = seekPreview;
+  seekPreview = null;
+  if (preview.selectionVersion === selectionVersion) seekPlayback(preview.position);
+  else updatePosition();
+}
+
+function cancelSeekPreview() {
+  if (!seekPreview) return;
+  seekPreview = null;
+  updatePosition();
+}
+
+for (const control of [elements.seek, elements["mini-seek"]]) {
+  control.addEventListener("input", previewSeekFromControl);
+  control.addEventListener("change", commitSeekFromControl);
+  control.addEventListener("pointerup", commitSeekFromControl);
+  control.addEventListener("pointercancel", cancelSeekPreview);
+  control.addEventListener("blur", cancelSeekPreview);
+}
+
+// Touch range inputs move only when their small thumb is dragged. The mini seeker instead
+// follows the finger from anywhere on its bar and commits on release, like the waveform.
+const miniSeek = elements["mini-seek"];
+miniSeek.addEventListener("touchstart", (event) => event.preventDefault(), { passive: false });
+miniSeek.addEventListener("pointerdown", (event) => {
+  if (miniSeek.disabled || event.pointerType === "mouse") return;
+  miniSeek.setPointerCapture(event.pointerId);
+  const follow = (pointerEvent) => {
+    const bounds = miniSeek.getBoundingClientRect();
+    const fraction = Math.min(1, Math.max(0, (pointerEvent.clientX - bounds.left) / bounds.width));
+    miniSeek.value = String(Math.round(fraction * Number(miniSeek.max)));
+    miniSeek.dispatchEvent(new Event("input"));
+  };
+  const finish = () => {
+    miniSeek.removeEventListener("pointermove", follow);
+    miniSeek.removeEventListener("pointerup", finish);
+    miniSeek.removeEventListener("pointercancel", finish);
+  };
+  follow(event);
+  miniSeek.addEventListener("pointermove", follow);
+  miniSeek.addEventListener("pointerup", finish);
+  miniSeek.addEventListener("pointercancel", finish);
+});
+
+function applyVolume() {
+  audio.volume = volumeLevel;
+  audio.muted = volumeMuted;
+  const silent = volumeMuted || volumeLevel === 0;
+  elements.mute.setAttribute("aria-label", silent ? "Unmute" : "Mute");
+  elements.mute.setAttribute("aria-pressed", String(silent));
+  elements.volume.value = volumeMuted ? 0 : volumeLevel;
+  elements.mute.innerHTML = silent
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 5-6 4H2v6h3l6 4V5Zm5 4 5 6m0-6-5 6"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 5-6 4H2v6h3l6 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>';
+}
+
+elements.volume.addEventListener("input", () => {
+  volumeLevel = Number(elements.volume.value);
+  volumeMuted = false;
+  applyVolume();
+});
+
+elements.mute.addEventListener("click", () => {
+  if (volumeLevel === 0) {
+    volumeLevel = 1;
+    volumeMuted = false;
+  } else volumeMuted = !volumeMuted;
+  applyVolume();
+});
+
+audio.addEventListener("loadedmetadata", () => {
+  if (!sourceIsCurrent()) return;
+  elements.seek.disabled = !Number.isFinite(audio.duration);
+  elements["mini-seek"].disabled = elements.seek.disabled;
+  if (pendingSeek !== null && Number.isFinite(audio.duration)) {
+    audio.currentTime = Math.min(pendingSeek, audio.duration);
+    pendingSeek = null;
+  }
+  updatePosition();
+  updateMediaSessionPosition();
+});
+
+audio.addEventListener("timeupdate", () => {
+  updatePosition();
+  updateMediaSessionPosition();
+});
+audio.addEventListener("play", () => {
+  if (!sourceIsCurrent()) return;
+  playbackRequested = true;
+  setPlaybackState();
+  document.querySelector(".player").classList.add("is-playing");
+  startVisualizer();
+  updateMediaSessionState();
+});
+audio.addEventListener("pause", () => {
+  if (!fallbackLoading && !audio.error && audio.paused)
+    playbackRequested = false;
+  setPlaybackBusy(false);
+  setPlaybackState();
+  document.querySelector(".player").classList.remove("is-playing");
+  stopVisualizer();
+  updateMediaSessionState();
+  if (!fallbackLoading && audio.paused && sourceIsCurrent()) savePlaybackSession();
+});
+audio.addEventListener("ended", () => {
+  if (!sourceIsCurrent() || !audio.ended) return;
+  playbackRequested = false;
+  const shouldAdvance = queuedTracks().length > 0 || prefersPlaybackCopy;
+  if (!shouldAdvance || !nextPlaybackTrack(true, false)) {
+    setPlaybackState();
+    updateMediaSessionState();
+  }
+});
+
+audio.addEventListener("waiting", () => {
+  if (!audio.paused) {
+    setPlaybackBusy(true);
+  }
+});
+audio.addEventListener("playing", () => {
+  setPlaybackBusy(false);
+  setPlaybackState();
+});
+
+audio.addEventListener("error", () => {
+  if (!sourceIsCurrent()) return;
+  if ([3, 4].includes(audio.error?.code)) {
+    useStreamingCopy(selectionVersion);
+    return;
+  }
+  playbackRequested = false;
+  setPlaybackBusy(false);
+  setPlaybackState();
+  showNotice("Audio could not load. Reload the page to try again.");
+});
+
+// iOS Safari applies :active only when the page listens for touches.
+document.addEventListener("touchstart", () => {}, { passive: true });
+
+function drawWaveform() {
+  const canvas = elements.waveform,
+    context = canvas.getContext("2d"),
+    bounds = canvas.getBoundingClientRect(),
+    ratio = window.devicePixelRatio || 1;
+  if (!bounds.width || !bounds.height) return;
+  canvas.width = Math.round(bounds.width * ratio);
+  canvas.height = Math.round(bounds.height * ratio);
+  context.scale(ratio, ratio);
+  const progress = Number(elements.seek.value) / 1000,
+    peaks = selected?.peaks || [],
+    barCount = Math.max(1, Math.floor(bounds.width / 5)),
+    center = bounds.height / 2;
+  context.clearRect(0, 0, bounds.width, bounds.height);
+  if (!peaks.length) {
+    context.fillStyle = "#aeb6c2";
+    context.fillRect(0, center, bounds.width, 1);
+    return;
+  }
+  for (let index = 0; index < barCount; index++) {
+    const start = Math.floor((index * peaks.length) / barCount),
+      finish = Math.max(
+        start + 1,
+        Math.floor(((index + 1) * peaks.length) / barCount),
+      );
+    let height = 0;
+    for (let sample = start; sample < finish; sample++)
+      height = Math.max(height, peaks[sample] || 0);
+    height = Math.max(3, height * (bounds.height - 22));
+    context.fillStyle = index / barCount < progress ? "#315bca" : "#8290a3";
+    context.beginPath();
+    context.roundRect(
+      (index * bounds.width) / barCount,
+      center - height / 2,
+      Math.max(2, bounds.width / barCount - 2),
+      height,
+      1,
+    );
+    context.fill();
+  }
+}
+
+function updatePosition() {
+  const duration = Number.isFinite(audio.duration)
+    ? audio.duration
+    : selected?.duration || 0;
+  const position = seekPreview?.position ?? playbackPosition();
+  elements.position.textContent = time(position);
+  elements.duration.textContent = time(duration);
+  elements.seek.value = duration ? (position / duration) * 1000 : 0;
+  elements.seek.setAttribute(
+    "aria-valuetext",
+    `${time(position)} of ${time(duration)}`,
+  );
+  elements.cursor.style.left = `${Number(elements.seek.value) / 10}%`;
+  elements["mini-position"].textContent = elements.position.textContent;
+  elements["mini-duration"].textContent = elements.duration.textContent;
+  elements["mini-seek"].value = elements.seek.value;
+  elements["mini-seek"].setAttribute("aria-valuetext", elements.seek.getAttribute("aria-valuetext"));
+  elements["mini-seek"].style.setProperty("--progress", `${Number(elements.seek.value) / 10}%`);
+  drawWaveform();
+  updateTrackControls();
+}
+
+elements.seek.addEventListener("pointermove", (event) => {
+  const bounds = elements.seek.getBoundingClientRect(),
+    fraction = Math.max(
+      0,
+      Math.min(1, (event.clientX - bounds.left) / bounds.width),
+    ),
+    duration = Number.isFinite(audio.duration)
+      ? audio.duration
+      : selected?.duration || 0;
+  elements["preview-needle"].style.left = `${fraction * 100}%`;
+  elements["preview-time"].textContent = time(fraction * duration);
+  elements["preview-time"].style.transform =
+    fraction < 0.04
+      ? "translateX(0)"
+      : fraction > 0.96
+        ? "translateX(-100%)"
+        : "translateX(-50%)";
+});
+
+// The visualizer slot. The player calls these five functions; today they draw
+// nothing and only keep the frame loop that advances the time and waveform
+// while audio plays. A visualizer draws into #visualizer, the full-window stage
+// behind the title and controls.
+//
+//   prepareVisualizer(track, version)  a track was selected; `track.performance_url`
+//                                      and `track.analysis_url` point at its data
+//   visualizerSeekStarted()            a seek began; the time is about to jump
+//   drawVisualizer(timestamp)          draw now (resize, seek, selection)
+//   startVisualizer()                  audio started or resumed
+//   stopVisualizer()                   audio paused, ended or the page hid
+
+let visualizerFrame = 0;
+let visualizerTrack = null;
+
+function prepareVisualizer(track, version) {
+  visualizerTrack = track;
+  drawVisualizer();
+}
+
+function visualizerSeekStarted() {}
+
+function drawVisualizer(timestamp = performance.now()) {}
+
+function visualizerFrameLoop(timestamp) {
+  if (audio.paused || audio.ended || document.hidden) {
+    stopVisualizer();
+    return;
+  }
+  drawVisualizer(timestamp);
+  updatePosition();
+  visualizerFrame = requestAnimationFrame(visualizerFrameLoop);
+}
+
+function startVisualizer() {
+  cancelAnimationFrame(visualizerFrame);
+  drawVisualizer();
+  if (!audio.paused && !audio.ended && !document.hidden) visualizerFrame = requestAnimationFrame(visualizerFrameLoop);
+}
+
+function stopVisualizer() {
+  cancelAnimationFrame(visualizerFrame);
+  visualizerFrame = 0;
+  drawVisualizer();
+  drawWaveform();
+}
+
+document.addEventListener("visibilitychange", () => (document.hidden || audio.paused ? stopVisualizer() : startVisualizer()));
+
+const playbackQueue = [];
+const playbackHistory = [];
+
+// Manual track changes wrap around the library; the end of a song does not.
+function adjacentTrack(offset, wrap = true) {
+  const position = tracks.findIndex((track) => track.identifier === selected?.identifier);
+  if (wrap && position >= 0 && tracks.length > 1)
+    return tracks[(position + offset + tracks.length) % tracks.length];
+  return tracks[position + offset] || null;
+}
+
+function playbackPosition() {
+  return pendingSeek ?? audio.currentTime ?? 0;
+}
+
+function queuedTracks() {
+  return playbackQueue.map((identifier) => tracks.find((track) => track.identifier === identifier))
+    .filter(Boolean);
+}
+
+function previousTrackCandidate() {
+  for (let index = playbackHistory.length - 1; index >= 0; index--) {
+    const track = tracks.find((entry) => entry.identifier === playbackHistory[index]);
+    if (track) return track;
+  }
+  return adjacentTrack(-1);
+}
+
+function recordTrackSelection(track, options = {}) {
+  if (selected && options.recordHistory !== false &&
+      (selected.identifier !== track.identifier || options.restart)) {
+    playbackHistory.push(selected.identifier);
+  }
+}
+
+function queueTrackNext(track) {
+  playbackQueue.unshift(track.identifier);
+  elements["queue-status"].textContent = `${track.title} will play next.`;
+  updatePlaybackNavigation();
+}
+
+function nextPlaybackTrack(continuePlayback = playbackRequested || !audio.paused, wrap = true) {
+  let track = null;
+  while (playbackQueue.length && !track) {
+    const identifier = playbackQueue.shift();
+    track = tracks.find((entry) => entry.identifier === identifier);
+  }
+  if (track) selectTrack(track, "replace", continuePlayback, { restart: true });
+  else {
+    track = adjacentTrack(1, wrap);
+    if (track) selectTrack(track, "replace", continuePlayback);
+  }
+  updatePlaybackNavigation();
+  return Boolean(track);
+}
+
+function previousPlaybackTrack() {
+  if (playbackPosition() > 3) {
+    seekPlayback(0);
+    return;
+  }
+  let track = null;
+  while (playbackHistory.length && !track) {
+    const identifier = playbackHistory.pop();
+    track = tracks.find((entry) => entry.identifier === identifier);
+  }
+  track ||= adjacentTrack(-1);
+  if (track) selectTrack(track, "replace", playbackRequested || !audio.paused,
+    { recordHistory: false, restart: true });
+}
+
+function updateTrackControls() {
+  const canGoBack = Boolean(selected && (playbackPosition() > 3 || previousTrackCandidate()));
+  const canGoNext = Boolean(queuedTracks().length || adjacentTrack(1));
+  elements["previous-track"].disabled = !canGoBack;
+  elements["next-track"].disabled = !canGoNext;
+  setMediaSessionNavigation(canGoBack, canGoNext);
+}
+
+function updatePlaybackNavigation() {
+  updateTrackControls();
+  renderQueue();
+}
+
+function renderQueue() {
+  const entries = queuedTracks();
+  elements["queue-count"].textContent = entries.length ? String(entries.length) : "";
+  elements["mini-queue"].setAttribute("aria-label",
+    entries.length ? `Open queue, ${entries.length} ${entries.length === 1 ? "track" : "tracks"}` : "Open queue");
+  elements["queue-empty"].hidden = entries.length > 0;
+  elements["queue-clear"].hidden = entries.length === 0;
+  elements["queue-list"].replaceChildren();
+  playbackQueue.forEach((identifier, index) => {
+    const track = tracks.find((entry) => entry.identifier === identifier);
+    if (!track) return;
+    const row = document.createElement("li");
+    const description = document.createElement("span");
+    const title = document.createElement("span");
+    title.className = "queue-track-title";
+    title.textContent = track.title;
+    const credits = document.createElement("span");
+    credits.className = "queue-track-credits";
+    credits.textContent = [track.artist, track.remix].filter(Boolean).join(" · ");
+    description.append(title, credits);
+    const remove = document.createElement("button");
+    remove.className = "icon-button queue-remove";
+    remove.setAttribute("aria-label", `Remove ${track.title} from queue`);
+    remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+    remove.addEventListener("click", () => {
+      playbackQueue.splice(index, 1);
+      updatePlaybackNavigation();
+      const remaining = elements["queue-list"].querySelectorAll("button");
+      (remaining[Math.min(index, remaining.length - 1)] || elements["queue-close"]).focus();
+    });
+    row.append(description, remove);
+    elements["queue-list"].append(row);
+  });
+  const lastTrack = entries.at(-1) || selected;
+  const lastIndex = tracks.findIndex((track) => track.identifier === lastTrack?.identifier);
+  const next = tracks[lastIndex + 1];
+  elements["queue-library"].hidden = !next;
+  elements["queue-library-title"].textContent = next?.title || "";
+}
+
+elements["previous-track"].addEventListener("click", previousPlaybackTrack);
+elements["next-track"].addEventListener("click", () => nextPlaybackTrack());
+elements["mini-queue"].addEventListener("click", () => {
+  renderQueue();
+  elements["queue-dialog"].showModal();
+});
+elements["queue-close"].addEventListener("click", () => elements["queue-dialog"].close());
+elements["queue-dialog"].addEventListener("click", (event) => {
+  if (event.target !== event.currentTarget) return;
+  const bounds = event.currentTarget.getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right ||
+      event.clientY < bounds.top || event.clientY > bounds.bottom) event.currentTarget.close();
+});
+elements["queue-dialog"].addEventListener("close", () => elements["mini-queue"].focus());
+elements["queue-clear"].addEventListener("click", () => {
+  playbackQueue.length = 0;
+  updatePlaybackNavigation();
+  elements["queue-close"].focus();
+});
+
+const playbackSessionStorageKey = "listening-room.playback-session.v1";
+
+function readPlaybackSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(playbackSessionStorageKey));
+    if (session?.version !== 1 || !/^[a-f0-9]{24}$/.test(session.trackIdentifier) ||
+        !Number.isFinite(session.position) || session.position < 0) return null;
+    return session;
+  } catch (error) {
+    return null;
+  }
+}
+
+function savePlaybackSession() {
+  if (!selected) return;
+  const position = playbackPosition();
+  if (!Number.isFinite(position) || position < 0) return;
+  try {
+    localStorage.setItem(playbackSessionStorageKey, JSON.stringify({
+      version: 1,
+      trackIdentifier: selected.identifier,
+      position: Math.min(position, selected.duration),
+    }));
+  } catch (error) {
+    // Resume is optional when browser storage is unavailable.
+  }
+}
+
+window.addEventListener("pagehide", savePlaybackSession);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) savePlaybackSession();
+});
+
+let mediaSessionNavigation = "";
+
+function setMediaSessionNavigation(canGoBack, canGoNext) {
+  if (!navigator.mediaSession) return;
+  const availability = `${canGoBack}:${canGoNext}`;
+  if (availability === mediaSessionNavigation) return;
+  mediaSessionNavigation = availability;
+  for (const [action, handler] of [
+    ["previoustrack", canGoBack ? previousPlaybackTrack : null],
+    ["nexttrack", canGoNext ? () => nextPlaybackTrack() : null],
+  ]) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (error) {}
+  }
+}
+
+function setMediaSessionTrack(track) {
+  updatePlaybackNavigation();
+  if (!("mediaSession" in navigator) || !window.MediaMetadata) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: track.title,
+    artist: track.artist || "",
+    album: track.remix || "",
+    artwork: [512, 1024].map((size) => ({
+      src: new URL(`/artwork/cover-${size}.png?v=1`, location.origin).href,
+      sizes: `${size}x${size}`,
+      type: "image/png",
+    })),
+  });
+  const actions = {
+    play: resumePlayback,
+    pause: pausePlayback,
+    seekto: (detail) => seekPlayback(detail.seekTime),
+    seekbackward: (detail) =>
+      seekPlayback(audio.currentTime - (detail.seekOffset || 10)),
+    seekforward: (detail) =>
+      seekPlayback(audio.currentTime + (detail.seekOffset || 10)),
+  };
+  for (const [action, handler] of Object.entries(actions)) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (error) {}
+  }
+  updateMediaSessionState();
+}
+
+function seekPlayback(position) {
+  if (!selected || !Number.isFinite(position)) return;
+  seekPreview = null;
+  const duration = Number.isFinite(audio.duration) ? audio.duration : selected.duration;
+  pendingSeek = Math.max(0, Math.min(position, duration));
+  if (!fallbackLoading && sourceIsCurrent() && Number.isFinite(audio.duration)) {
+    visualizerSeekStarted();
+    audio.currentTime = pendingSeek;
+    pendingSeek = null;
+  }
+  updatePosition();
+  updateMediaSessionPosition();
+}
+
+function updateMediaSessionState() {
+  if (!("mediaSession" in navigator)) return;
+  navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing";
+}
+
+function updateMediaSessionPosition() {
+  if (
+    !navigator.mediaSession?.setPositionState ||
+    !Number.isFinite(audio.duration) ||
+    audio.duration <= 0
+  )
+    return;
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: audio.duration,
+      playbackRate: audio.playbackRate,
+      position: Math.min(audio.currentTime, audio.duration),
+    });
+  } catch (error) {}
+}
+
+const savedTracksStorageKey = "listening-room.saved-tracks.v1";
+let savedTrackIdentifiers = readSavedTracks();
+let libraryFilter = "all";
+let librarySelecting = false;
+const selectedTrackIdentifiers = new Set();
+
+function readSavedTracks() {
+  try {
+    const identifiers = JSON.parse(localStorage.getItem(savedTracksStorageKey) || "[]");
+    return new Set(Array.isArray(identifiers)
+      ? identifiers.filter((identifier) => /^[a-f0-9]{24}$/.test(identifier)) : []);
+  } catch (error) {
+    return new Set();
+  }
+}
+
+function normalizedSearch(value) {
+  return value.normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase();
+}
+
+function visibleLibraryTracks() {
+  const words = normalizedSearch(elements["library-search"].value).trim().split(/\s+/).filter(Boolean);
+  return tracks.filter((track) => {
+    if (libraryFilter === "saved" && !savedTrackIdentifiers.has(track.identifier)) return false;
+    const text = normalizedSearch([track.title, track.artist, track.remix].filter(Boolean).join(" "));
+    return words.every((word) => text.includes(word));
+  });
+}
+
+function updateLibraryPlaybackState() {
+  for (const row of elements["library-track-list"].children) {
+    const current = row.dataset.identifier === selected?.identifier;
+    row.querySelector(".library-track-link").setAttribute("aria-current", String(current));
+    row.querySelector(".library-current-indicator").hidden = !current || audio.paused || audio.ended;
+  }
+}
+
+function updateLibrarySelection() {
+  const visible = visibleLibraryTracks();
+  const chosen = tracks.filter((track) => selectedTrackIdentifiers.has(track.identifier));
+  elements["library-selection-count"].textContent = librarySelecting ? `${chosen.length} selected` : "";
+  elements["library-select"].textContent = librarySelecting ? "Cancel" : "Select";
+  elements["library-select"].disabled = !librarySelecting && visible.length === 0;
+  elements["library-select-all"].hidden = !librarySelecting || visible.length === 0;
+  elements["library-select-all"].textContent = visible.length && visible.every((track) => selectedTrackIdentifiers.has(track.identifier))
+    ? "Deselect all" : "Select all";
+  elements["library-download"].hidden = chosen.length === 0;
+  elements["library-download-error"].hidden = true;
+  if (!chosen.length) {
+    elements["library-download-link"].removeAttribute("href");
+    return;
+  }
+  const link = elements["library-download-link"];
+  if (chosen.length === 1) {
+    link.href = chosen[0].url + "?download=1";
+    link.download = chosen[0].name;
+  } else {
+    const parameters = new URLSearchParams();
+    for (const track of chosen) parameters.append("track", track.identifier);
+    link.href = `/download?${parameters}`;
+    link.download = "listening-room.zip";
+  }
+  elements["library-download-label"].textContent = `Download ${chosen.length} ${chosen.length === 1 ? "track" : "tracks"}`;
+  elements["library-download-size"].textContent = size(chosen.reduce((total, track) => total + track.size, 0));
+}
+
+// The server refuses an archive before sending any bytes, so a HEAD request finds the
+// reason first. Following a link that answers with an error would save the error as a zip.
+elements["library-download-link"].addEventListener("click", async (event) => {
+  const link = elements["library-download-link"];
+  if (!link.getAttribute("href")?.startsWith("/download?")) return;
+  event.preventDefault();
+  const address = link.href;
+  let message = "";
+  try {
+    const response = await fetch(address, { method: "HEAD", cache: "no-store" });
+    if (!response.ok)
+      message = response.status === 404
+        ? "A selected track is no longer available. Reload the library."
+        : response.status === 413
+          ? "This download is too large. Select fewer tracks."
+          : "These tracks could not be combined. Reload the library and try again.";
+  } catch (error) {
+    message = "The download could not start. Check the connection and try again.";
+  }
+  if (link.href !== address) return;
+  elements["library-download-error"].textContent = message;
+  elements["library-download-error"].hidden = !message;
+  if (!message) location.assign(address);
+});
+
+// Choosing a row plays it without leaving the library. The mini-player opens the full player.
+function playTrackInLibrary(track) {
+  if (selected?.identifier !== track.identifier) selectTrack(track, "replace", true);
+  else if (!playbackRequested && audio.paused) resumePlayback();
+}
+
+function toggleSavedTrack(track) {
+  if (savedTrackIdentifiers.has(track.identifier)) savedTrackIdentifiers.delete(track.identifier);
+  else savedTrackIdentifiers.add(track.identifier);
+  try {
+    localStorage.setItem(savedTracksStorageKey, JSON.stringify([...savedTrackIdentifiers]));
+    elements["library-storage-notice"].hidden = true;
+  } catch (error) {
+    elements["library-storage-notice"].textContent = "Saved for this visit. Browser storage is unavailable.";
+    elements["library-storage-notice"].hidden = false;
+  }
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const focusedElement = document.activeElement;
+  const focusedRow = focusedElement?.closest(".library-track");
+  const focusedIdentifier = focusedRow?.dataset.identifier;
+  const focusedControl = focusedElement?.matches("input[type=checkbox]")
+    ? "input" : focusedElement?.matches(".library-save") ? ".library-save"
+      : focusedElement?.matches(".library-play-next") ? ".library-play-next" : ".library-track-link";
+  const visible = visibleLibraryTracks();
+  const visibleIdentifiers = new Set(visible.map((track) => track.identifier));
+  for (const identifier of selectedTrackIdentifiers)
+    if (!visibleIdentifiers.has(identifier)) selectedTrackIdentifiers.delete(identifier);
+  elements["library-track-list"].replaceChildren();
+  for (const track of visible) {
+    const row = document.createElement("div");
+    row.className = "library-track";
+    row.dataset.identifier = track.identifier;
+    const link = document.createElement(librarySelecting ? "label" : "a");
+    link.className = "library-track-link";
+    if (librarySelecting) {
+      const control = document.createElement("label");
+      control.className = "library-selection-control";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.id = `library-selection-${track.identifier}`;
+      checkbox.setAttribute("aria-label", `Select ${track.title}`);
+      checkbox.checked = selectedTrackIdentifiers.has(track.identifier);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) selectedTrackIdentifiers.add(track.identifier);
+        else selectedTrackIdentifiers.delete(track.identifier);
+        updateLibrarySelection();
+      });
+      const mark = document.createElement("span");
+      mark.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
+      control.append(checkbox, mark);
+      row.append(control);
+      link.htmlFor = checkbox.id;
+    } else {
+      link.href = track.link;
+      link.addEventListener("click", (event) => followNavigation(event, () => playTrackInLibrary(track)));
+    }
+    const description = document.createElement("span");
+    description.className = "track-description";
+    const heading = document.createElement("span");
+    heading.className = "library-track-heading";
+    const title = document.createElement("span");
+    title.textContent = track.title;
+    const indicator = document.createElement("span");
+    indicator.className = "library-current-indicator";
+    indicator.setAttribute("aria-hidden", "true");
+    indicator.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 10v4m4-7v10m5-14v18m5-14v10m4-7v4"/></svg>';
+    heading.append(title, indicator);
+    const credits = document.createElement("small");
+    credits.className = "track-credits";
+    credits.textContent = [track.artist, track.remix].filter(Boolean).join(" · ");
+    description.append(heading, credits);
+    const detail = document.createElement("span");
+    detail.className = "track-detail";
+    detail.textContent = time(track.duration);
+    link.append(description, detail);
+    row.append(link);
+    if (!librarySelecting) {
+      const actions = document.createElement("span");
+      actions.className = "library-track-actions";
+      const playNext = document.createElement("button");
+      playNext.className = "library-play-next icon-button";
+      playNext.setAttribute("aria-label", `Play ${track.title} next`);
+      playNext.title = "Play next";
+      playNext.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h9M4 18h9m5-7v10m-5-5h10"/></svg>';
+      playNext.addEventListener("click", () => queueTrackNext(track));
+      const save = document.createElement("button");
+      save.className = "library-save";
+      const saved = savedTrackIdentifiers.has(track.identifier);
+      save.setAttribute("aria-label", saved ? `Remove ${track.title} from saved` : `Save ${track.title}`);
+      save.setAttribute("aria-pressed", String(saved));
+      save.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4Z"/></svg>';
+      save.addEventListener("click", () => toggleSavedTrack(track));
+      actions.append(playNext, save);
+      row.append(actions);
+    }
+    elements["library-track-list"].append(row);
+  }
+  elements["library-empty"].hidden = visible.length > 0;
+  elements["library-empty"].textContent = elements["library-search"].value.trim()
+    ? "No tracks found."
+    : libraryFilter === "saved" ? "No saved tracks yet. Use the bookmark beside a track to save it." : "No tracks yet.";
+  updateLibraryPlaybackState();
+  updateLibrarySelection();
+  if (focusedIdentifier) {
+    const replacement = elements["library-track-list"].querySelector(`[data-identifier="${focusedIdentifier}"] ${focusedControl}`);
+    (replacement || elements[`library-${libraryFilter}`]).focus({ preventScroll: true });
+  }
+}
+
+function setLibraryFilter(filter) {
+  libraryFilter = filter;
+  selectedTrackIdentifiers.clear();
+  for (const name of ["all", "saved"]) {
+    const button = elements[`library-${name}`];
+    button.setAttribute("aria-selected", String(name === filter));
+    button.tabIndex = name === filter ? 0 : -1;
+  }
+  elements["library-results"].setAttribute("aria-labelledby", `library-${filter}`);
+  renderLibrary();
+}
+
+for (const filter of ["all", "saved"]) {
+  elements[`library-${filter}`].addEventListener("click", () => setLibraryFilter(filter));
+  elements[`library-${filter}`].addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? "all" : event.key === "End" ? "saved" : filter === "all" ? "saved" : "all";
+    setLibraryFilter(next);
+    elements[`library-${next}`].focus();
+  });
+}
+elements["library-search"].addEventListener("input", () => {
+  selectedTrackIdentifiers.clear();
+  renderLibrary();
+});
+elements["library-select"].addEventListener("click", () => {
+  librarySelecting = !librarySelecting;
+  selectedTrackIdentifiers.clear();
+  renderLibrary();
+});
+elements["library-select-all"].addEventListener("click", () => {
+  const visible = visibleLibraryTracks();
+  const allSelected = visible.every((track) => selectedTrackIdentifiers.has(track.identifier));
+  for (const track of visible) {
+    if (allSelected) selectedTrackIdentifiers.delete(track.identifier);
+    else selectedTrackIdentifiers.add(track.identifier);
+  }
+  renderLibrary();
+});
+window.addEventListener("storage", (event) => {
+  if (event.key !== savedTracksStorageKey && event.key !== null) return;
+  savedTrackIdentifiers = readSavedTracks();
+  renderLibrary();
+});
+
+let currentView = ["/", "/library"].includes(location.pathname) ? "library" : "player";
+
+function updateRoute(historyMode) {
+  if (historyMode === "none") return;
+  const path = currentView === "library" ? "/library" : selected?.link || "/";
+  const replace = historyMode === "replace" || location.pathname === path;
+  history[replace ? "replaceState" : "pushState"](
+    { trackIdentifier: selected?.identifier }, "", path,
+  );
+}
+
+function renderCurrentView(focus = false) {
+  const libraryVisible = currentView === "library";
+  cancelSeekPreview();
+  if (elements.notice.dataset.kind === "route" &&
+      (libraryVisible || location.pathname === "/" || requestedIdentifier() === selected?.identifier))
+    showNotice("");
+  elements["player-view"].hidden = libraryVisible;
+  elements["library-view"].hidden = !libraryVisible;
+  elements["player-link"].hidden = !libraryVisible || !selected;
+  if (selected) elements["player-link"].href = selected.link;
+  document.title = libraryVisible
+    ? "Library · Listening room"
+    : selected
+      ? `${selected.title}${selected.artist ? ` · ${selected.artist}` : ""}${selected.remix ? ` (${selected.remix})` : ""}`
+      : "Listening room";
+  if (audio.paused) stopVisualizer();
+  else startVisualizer();
+  updatePosition();
+  if (focus) {
+    (libraryVisible ? elements["library-title"] : elements.title).focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }
+}
+
+function followNavigation(event, action) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  action();
+}
+
+function openTrack(track) {
+  currentView = "player";
+  selectTrack(track);
+  renderCurrentView(true);
+}
+
+elements["library-link"].addEventListener("click", (event) => followNavigation(event, () => {
+  currentView = "library";
+  updateRoute("push");
+  renderCurrentView(true);
+}));
+for (const link of [elements["player-link"], elements["mini-return"]]) {
+  link.addEventListener("click", (event) => followNavigation(event, () => {
+    if (selected) openTrack(selected);
+  }));
+}
+
+function selectTrack(
+  track,
+  historyMode = "push",
+  continuePlayback = playbackRequested || !audio.paused,
+  options = {},
+) {
+  seekPreview = null;
+  if (selected && (selected.identifier !== track.identifier || options.restart))
+    savePlaybackSession();
+  recordTrackSelection(track, options);
+  if (selected?.identifier === track.identifier) {
+    if (options.restart) {
+      seekPlayback(0);
+      if (continuePlayback) resumePlayback();
+      else pausePlayback();
+      savePlaybackSession();
+    }
+    updatePlaybackNavigation();
+    updateRoute(historyMode);
+    renderCurrentView();
+    return;
+  }
+  selectionVersion++;
+  fallbackController?.abort();
+  fallbackController = null;
+  playbackRequested = false;
+  fallbackLoading = false;
+  usingFallback = prefersPlaybackCopy && Boolean(track.playback_url);
+  audio.pause();
+  selected = track;
+  pendingSeek = options.position ?? 0;
+  showNotice("");
+  audio.src = usingFallback ? track.playback_url : track.url;
+  audio.load();
+  setPlaybackBusy(false);
+  elements.title.textContent = track.title;
+  elements.title.setAttribute("aria-label", track.title);
+  // The player names the original artist only; the library keeps the full credit.
+  elements.credits.textContent = track.artist || track.remix || "";
+  elements["file-meta"].textContent = size(track.size);
+  elements.quality.textContent = track.quality || "Original audio";
+  elements.download.href = track.url + "?download=1";
+  elements.download.setAttribute("download", track.name);
+  elements["download-label"].textContent = "Download";
+  elements.duration.textContent = time(track.duration);
+  elements.play.disabled = false;
+  elements["mini-play"].disabled = false;
+  elements.seek.disabled = true;
+  elements["mini-seek"].disabled = true;
+  elements.position.textContent = "0:00";
+  elements.seek.value = 0;
+  elements.cursor.style.left = "0%";
+  elements["mini-title"].textContent = track.title;
+  elements["mini-credits"].textContent = track.artist || track.remix || "";
+  elements["mini-return"].href = track.link;
+  elements["mini-return"].setAttribute("aria-label", `Return to ${track.title}`);
+  setPlaybackState();
+  updateRoute(historyMode);
+  setMediaSessionTrack(track);
+  prepareVisualizer(track, selectionVersion);
+  updateLibraryPlaybackState();
+  renderCurrentView();
+  if (!usingFallback && !audio.canPlayType(track.mime))
+    useStreamingCopy(selectionVersion);
+  if (continuePlayback) resumePlayback();
+  savePlaybackSession();
+}
+
+async function loadTracks() {
+  try {
+    tracks = await requestTracks();
+    elements.empty.querySelector("h1").textContent = "Nothing here yet.";
+    elements.empty.querySelector("p").textContent = "";
+    elements.empty.hidden = tracks.length > 0;
+    elements.content.hidden = tracks.length === 0;
+    renderLibrary();
+    if (tracks.length) {
+      const session = readPlaybackSession();
+      const sharedTrack = location.pathname.startsWith("/track/");
+      const requested = requestedIdentifier();
+      const identifier = sharedTrack ? requested : session?.trackIdentifier ||
+        (currentView === "library" ? history.state?.trackIdentifier : null);
+      const track =
+        tracks.find((value) => value.identifier === identifier) || tracks[0];
+      const missingTrack =
+        sharedTrack && requested !== track.identifier;
+      const position = !missingTrack && session?.trackIdentifier === track.identifier
+        ? Math.min(session.position, track.duration) : 0;
+      selectTrack(track, location.pathname === "/" ? "none" : "replace", false, { position });
+      if (missingTrack) showNotice("That file is no longer shared.", "route");
+    } else {
+      audio.pause();
+      selected = null;
+      document.title = "Listening room";
+    }
+  } catch (error) {
+    elements.empty.hidden = false;
+    elements.empty.querySelector("h1").textContent = "This room is offline.";
+    elements.empty.querySelector("p").textContent =
+      "Reload the page to try again.";
+    elements.content.hidden = true;
+  }
+}
+
+window.addEventListener("popstate", () => {
+  currentView = ["/", "/library"].includes(location.pathname) ? "library" : "player";
+  if (currentView === "library") {
+    renderCurrentView(true);
+    return;
+  }
+  const track =
+    tracks.find((value) => value.identifier === requestedIdentifier()) ||
+    tracks[0];
+  if (track && track !== selected) selectTrack(track, "none");
+  renderCurrentView(true);
+  if (location.pathname.startsWith("/track/") && requestedIdentifier() !== track?.identifier)
+    showNotice("That file is no longer shared.", "route");
+});
+
+const playerResizeObserver = new ResizeObserver(() => {
+  drawWaveform();
+  drawVisualizer();
+});
+playerResizeObserver.observe(elements.waveform);
+playerResizeObserver.observe(elements.visualizer);
+loadTracks();
+</script>
+  </body>
+</html>

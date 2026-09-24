@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/artwork/home-screen-icon-180.png?v=1"
+    />
+    <!-- TAB_ICON -->
+    __PAGE_METADATA__
+    <!-- PAGE_STYLES -->
+  </head>
+  <body>
+    <div class="shell">
+      <header class="header">
+        <a class="brand" id="library-link" href="/library" aria-label="Open library">
+          <span></span><span></span><span></span><span></span><span></span>
+        </a>
+        <a class="player-link" id="player-link" aria-label="Return to player" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 4-8 8 8 8" /></svg>
+        </a>
+      </header>
+      <main>
+        <div class="empty" id="empty" hidden>
+          <h1>Nothing here yet.</h1>
+          <p></p>
+        </div>
+        <div id="content" hidden>
+          <p class="notice" id="notice" role="alert" hidden></p>
+          <div id="player-view">
+          <div class="intro">
+            <div>
+              <h1 id="title" tabindex="-1"></h1>
+              <p class="credits" id="credits"></p>
+            </div>
+          </div>
+          <section class="player" aria-label="Audio player">
+            <div class="stage" id="visualizer">
+              <div class="play-orbit">
+                <button
+                  class="play"
+                  id="play"
+                  aria-label="Play"
+                  disabled
+                ></button>
+              </div>
+            </div>
+            <div class="waveform">
+              <canvas id="waveform" aria-hidden="true"></canvas
+              ><span class="cursor" id="cursor" aria-hidden="true"></span
+              ><span
+                class="preview-needle"
+                id="preview-needle"
+                aria-hidden="true"
+                ><span id="preview-time">0:00</span></span
+              ><input
+                id="seek"
+                type="range"
+                min="0"
+                max="1000"
+                value="0"
+                step="1"
+                aria-label="Playback position"
+                aria-valuetext="0:00"
+                disabled
+              />
+            </div>
+            <div class="transport">
+              <div class="time">
+                <span class="current" id="position">0:00</span
+                ><span class="separator">/</span><span id="duration">0:00</span>
+              </div>
+              <div class="transport-controls">
+              <div class="volume">
+                <button class="icon-button" id="mute" aria-label="Mute">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="m11 5-6 4H2v6h3l6 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"
+                    />
+                  </svg></button
+                ><input
+                  id="volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step=".01"
+                  value="1"
+                  aria-label="Volume"
+                />
+              </div>
+              <div class="track-controls" role="group" aria-label="Change track">
+                <button class="icon-button" id="previous-track" aria-label="Previous track" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M19 4 7 12l12 8Z" /></svg>
+                </button>
+                <button class="icon-button" id="next-track" aria-label="Next track" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4v16M5 4l12 8-12 8Z" /></svg>
+                </button>
+              </div>
+              </div>
+            </div>
+          </section>
+          <div class="download-row">
+            <div class="file-description">
+              <span class="quality" id="quality"></span>
+              <div class="file-meta" id="file-meta"></div>
+            </div>
+            <a class="download" id="download" download
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" /></svg
+              ><span id="download-label">Download</span></a
+            >
+          </div>
+          </div>
+          <section class="library-view" id="library-view" aria-labelledby="library-title" hidden>
+            <div class="intro"><h1 id="library-title" tabindex="-1">Library</h1></div>
+            <div class="library-tabs" role="tablist" aria-label="Library filter">
+              <button id="library-all" role="tab" aria-selected="true" aria-controls="library-results" tabindex="0">All</button>
+              <button id="library-saved" role="tab" aria-selected="false" aria-controls="library-results" tabindex="-1">Saved</button>
+            </div>
+            <label class="library-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+              <input id="library-search" type="search" placeholder="Search" aria-label="Search library" autocomplete="off" />
+            </label>
+            <div class="library-selection-bar">
+              <span id="library-selection-count" aria-live="polite"></span>
+              <div class="library-selection-actions">
+                <button class="text-button" id="library-select-all" hidden>Select all</button>
+                <button class="text-button" id="library-select">Select</button>
+              </div>
+            </div>
+            <p class="library-storage-notice" id="library-storage-notice" role="status" hidden></p>
+            <div id="library-results" role="tabpanel" aria-labelledby="library-all">
+              <div class="library-tracks" id="library-track-list"></div>
+              <p class="library-empty" id="library-empty" hidden></p>
+            </div>
+            <div class="library-download" id="library-download" hidden>
+              <a class="download" id="library-download-link" download>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" /></svg>
+                <span id="library-download-label"></span>
+              </a>
+              <p id="library-download-size"></p>
+              <p id="library-download-error" role="alert" hidden></p>
+            </div>
+            <section class="mini-player" id="mini-player" aria-label="Current track">
+              <div class="mini-transport">
+                <a class="mini-return" id="mini-return">
+                                    <span class="mini-description"><span id="mini-title"></span><span id="mini-credits"></span></span>
+                </a>
+                <button class="play" id="mini-play" aria-label="Play" disabled></button>
+              </div>
+              <input class="mini-seek" id="mini-seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Current track playback position" aria-valuetext="0:00" disabled />
+              <div class="mini-times time">
+                <span id="mini-position">0:00</span>
+                <button class="queue-button" id="mini-queue" aria-label="Open queue" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h11M4 18h8m5-3 4 3-4 3Z"/></svg>
+                  <span>Queue</span><span id="queue-count"></span>
+                </button>
+                <span id="mini-duration">0:00</span>
+              </div>
+            </section>
+          </section>
+        </div>
+      </main>
+      <audio id="audio" preload="metadata"></audio>
+      <p class="screen-reader-only" id="queue-status" role="status"></p>
+      <dialog class="queue-dialog" id="queue-dialog" aria-labelledby="queue-title">
+        <div class="queue-heading">
+          <h2 id="queue-title">Queue</h2>
+          <button class="icon-button" id="queue-close" aria-label="Close queue" autofocus>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <p class="queue-empty" id="queue-empty">Your queue is empty.</p>
+        <ol class="queue-list" id="queue-list"></ol>
+        <button class="text-button" id="queue-clear" hidden>Clear queue</button>
+        <div class="queue-library" id="queue-library" hidden>
+          <span>Next in library</span><span id="queue-library-title"></span>
+        </div>
+      </dialog>
+    </div>
+    <!-- PAGE_SCRIPTS -->
+  </body>
+</html>
