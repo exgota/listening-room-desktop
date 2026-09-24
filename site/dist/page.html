@@ -3724,7 +3724,7 @@ const typeFamily = '"Archivo", "Arial Narrow", sans-serif';
 const typeSharps = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 const typeFlats = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"];
 // Posters are made for the feed: a swear word keeps its first letter and loses the rest.
-const typeBleeped = /^(fuck\w*|motherfuck\w*|shit\w*|bitch\w*|nigg\w*)$/;
+const typeBleeped = /^(fuck\w*|motherfuck\w*|shit\w*|bitch\w*|nigg\w*|ass|asses)$/;
 const typeTint = 0.36; // an unsung word: the ink at this strength
 
 registerVisualizer({
@@ -3748,6 +3748,7 @@ registerVisualizer({
     const blockCache = new Map();
     let hitCache = { key: "", size: 0 };
     let tint = typeTint; // an unsung word's strength: more where field and ink are close in value
+    let tints = [typeTint, typeTint]; // for the palette as set, and swapped
     let thumbnailEnd = 0.6; // the song's word holds the first frames (to the first downbeat when a count follows)
 
     function setFont(target, weight, size, stretch) {
@@ -3870,7 +3871,7 @@ registerVisualizer({
       // Around each drop: no line may start from 0.3 s before it (or its gap) until its hit
       // ends, and a running line is cut where the gap (or the drop) begins.
       const reserved = model.drops.map((drop, index) => ({
-        from: Math.min(drop.gapStart, drop.time - 0.3),
+        from: Math.min(drop.gapStart, drop.time - Math.max(0.3, model.beatPeriod)),
         cut: drop.gapStart < drop.time - 0.01 ? drop.gapStart : drop.time,
         end: drop.time + hitLength(index),
       }));
@@ -3975,7 +3976,17 @@ registerVisualizer({
           // each section's modes, taken in turn through the song (never one twice running)
           let modes;
           if (peak && peak.kind === "chords") modes = ["chords"];
-          else if (piece.start < firstLine && scene.index <= 1) modes = ["count"];
+          else if (piece.start < firstLine && scene.index <= 1) {
+            // the intro steps with the kit; its last four bars count down to the voice
+            const countFrom = model.barTime(model.barIndex(firstLine - 0.05) - 3);
+            if (piece.end > countFrom + 0.5 && piece.start < countFrom - 0.5) {
+              states.push({ start: piece.start, end: countFrom, kind: "mode", mode: "step", text: modeWords[0], from: piece.start });
+              states.push({ start: countFrom, end: piece.end, kind: "mode", mode: "count", text: "", from: countFrom, until: firstLine });
+              lastMode = "count";
+              continue;
+            }
+            modes = piece.start >= countFrom - 0.5 ? ["count"] : ["step"];
+          }
           else if (scene.kind === "build") modes = ["buildcount"];
           else if (scene.kind === "break") modes = ["breathing", "letters"];
           else if (at >= model.lateStart) {
@@ -3986,7 +3997,7 @@ registerVisualizer({
           let mode = modes[turn % modes.length];
           if (mode === lastMode && modes.length > 1) mode = modes[++turn % modes.length];
           if (modes.length > 1) turn++;
-          states.push({ start: piece.start, end: piece.end, kind: "mode", mode, text: modeWords[block % modeWords.length], from: piece.start });
+          states.push({ start: piece.start, end: piece.end, kind: "mode", mode, text: modeWords[block % modeWords.length], from: piece.start, until: firstLine });
           lastMode = mode;
           block++;
         }
@@ -4014,8 +4025,30 @@ registerVisualizer({
         const [r, g, b] = hexColor(hex).map(channel);
         return 0.2126 * r + 0.7152 * g + 0.0722 * b;
       };
-      const [light, dark] = [luminance(palette.field), luminance(palette.ink)].sort((a, b) => b - a);
-      tint = (light + 0.05) / (dark + 0.05) < 8 ? 0.6 : typeTint;
+      // An unsung word: the ink at the strength that stands about 3:1 against the field (or
+      // three quarters of the way, in contrast, to the solid ink where that has less), for
+      // each way round of field and ink.
+      const contrastOf = (a, b) => {
+        const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+        return (x + 0.05) / (y + 0.05);
+      };
+      const mixHex = (a, b, amount) => {
+        const [p, q] = [hexColor(a), hexColor(b)];
+        return "#" + p.map((value, index) => Math.round((value + (q[index] - value) * amount) * 255).toString(16).padStart(2, "0")).join("");
+      };
+      const tintFor = (ground, ink) => {
+        const target = Math.min(3, contrastOf(ground, ink) ** 0.75);
+        let low = 0,
+          high = 1;
+        for (let step = 0; step < 20; step++) {
+          const middle = (low + high) / 2;
+          if (contrastOf(mixHex(ground, ink, middle), ground) < target) low = middle;
+          else high = middle;
+        }
+        return Math.max(typeTint, high);
+      };
+      tints = [tintFor(palette.field, palette.ink), tintFor(palette.ink, palette.field)];
+      tint = tints[0];
       // The song's end: the last moment anything sounds, or a bar before the file ends when
       // the mix never falls silent.
       const mix = model.series.mix;
@@ -4030,7 +4063,8 @@ registerVisualizer({
       thumbnailEnd = 0.6;
       const opening = timeline.find((state) => state.end > 0.6);
       const firstBar = model.downbeats.find((time) => time > 0.05);
-      if (opening && opening.kind === "mode" && opening.mode === "count" && firstBar > 0.6 && firstBar < 4) thumbnailEnd = firstBar;
+      const secondBar = model.downbeats.find((time) => time > (firstBar || 0) + 0.05);
+      if (opening && opening.kind === "mode" && opening.mode !== "word") thumbnailEnd = Math.max(0.6, Math.min(4, secondBar || 0, opening.end));
     }
 
     // The modes' words: the hook without the drop's word, which is kept for the drops.
@@ -4163,6 +4197,21 @@ registerVisualizer({
       }
     }
 
+    // The groove before the voice: the hook hops from side to side on every kick and widens
+    // for an instant on every snare.
+    function drawStep(time, text, left, top, right, bottom, field, ink, edge, maximum) {
+      const boxWidth = right - left;
+      const size = Math.min((100 * boxWidth * 0.8) / textWidth(text, 900, 100, "expanded"), (bottom - top) / 0.74, maximum);
+      const kick = song.kicks.last(time);
+      const side = kick >= 0 ? (kick % 2 ? 1 : -1) : 0;
+      const hop = kick >= 0 ? easeOutCubic(clamp01(song.kicks.since(time) / 0.08)) : 1;
+      const shift = mixValue(-side, side, hop) * boxWidth * 0.09;
+      const stretch = song.snares.since(time) < 0.12 ? "expanded" : "normal";
+      setFont(context, 900, size, stretch);
+      const width = context.measureText(text).width;
+      drawTextInverted(text, left + (boxWidth - width) / 2 + shift, (top + bottom) / 2 + size * 0.36, field, ink, edge, size);
+    }
+
     // The hook spelled on the beat: a letter more each beat, the waiting letters as tints; the
     // whole word holds for one beat, then it starts again.
     function drawLetters(time, state, left, top, right, bottom, field, ink, edge, maximum) {
@@ -4204,12 +4253,14 @@ registerVisualizer({
       }
     }
 
-    // A flat or sharp sign drawn in the face's weight (the font has neither), as tall as the
-    // capital, its top at the capital's top.
+    // A flat or sharp sign drawn in the face's weight (the font has neither), 60 % of the
+    // capital's height, hung from its top.
     function drawAccidental(kind, x, baseline, size, field, ink, edge) {
+      const top = baseline - size * 0.72;
+      size *= 0.6;
+      baseline = top + size * 0.72;
       const cap = size * 0.72,
-        stroke = size * 0.1,
-        top = baseline - cap;
+        stroke = size * 0.14;
       context.save();
       context.beginPath();
       if (kind === "flat") {
@@ -4244,7 +4295,7 @@ registerVisualizer({
       context.fillStyle = field;
       if (edge < baseline + size) context.fillRect(x - size, Math.max(edge, top - size), size * 3, baseline + size - Math.max(edge, top - size));
       context.restore();
-      return kind === "flat" ? size * 0.36 : size * 0.44;
+      return kind === "flat" ? size * 0.4 : size * 0.48;
     }
 
     // A chord's name: the root letter, its accidental as a drawn sign, then "m" for minor.
@@ -4256,7 +4307,7 @@ registerVisualizer({
       const measureAt = (size) => {
         setFont(context, 900, size, "normal");
         const main = context.measureText(letter).width + (suffix ? context.measureText(suffix).width : 0);
-        return main + (accidental ? (accidental === "flat" ? 0.36 : 0.44) * size + size * 0.06 : 0);
+        return main + (accidental ? (accidental === "flat" ? 0.4 : 0.48) * 0.6 * size + size * 0.06 : 0);
       };
       const size = Math.min(maximum, (bottom - top) / 0.74, (100 * (right - left)) / measureAt(100));
       const total = measureAt(size);
@@ -4309,6 +4360,7 @@ registerVisualizer({
         ink = palette.ink;
       const swap = late && !(mainHit && Math.abs(song.lateStart - song.drops[mainDrop].time) < 0.1);
       if (swap) [field, ink] = [ink, field];
+      tint = tints[swap ? 1 : 0];
       context.fillStyle = field;
       context.fillRect(0, 0, width, height);
 
@@ -4331,7 +4383,7 @@ registerVisualizer({
       if (hitCache.key !== hitKey) hitCache = { key: hitKey, size: bigWordFit(hitWord, boxWidth, bottom - top).size * 0.82 };
       const cap = hitCache.size * 0.6;
       // numerals, the intro's and a build's alike: as tall as the box allows, under the drop's word
-      const numeralCap = Math.min((bottom - top) * 0.9 / 0.74, hitCache.size * 0.9);
+      const numeralCap = Math.min((bottom - top) * 0.9 / 0.74, hitCache.size * 0.75);
       // A build with no line counts its bars down: the flood stops at the numeral's edges.
       const buildCount = drop.phase === 1 && !inGap && !inHit && time <= songEnd && time >= thumbnailEnd && !(state && (state.kind === "line" || state.mode === "chords" || state.mode === "word"));
       let numeralBand = null;
@@ -4390,6 +4442,43 @@ registerVisualizer({
       let anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
       let showTab = frame.playing !== false && !inGap && !inHit && time <= songEnd && !breakdown;
 
+      // The main drop's word: the whole frame below the title (a long word split over two rows,
+      // a short one run off the bottom edge); its hold after the hit is the same frame.
+      const drawMainHit = () => {
+        if (hitWord.length >= 5 && !hitWord.includes(" ")) {
+          const half = Math.ceil(hitWord.length / 2);
+          const rows = palette.split || [hitWord.slice(0, half), hitWord.slice(half)];
+          const inkWidth = (text, stretch) => {
+            setFont(context, 900, 100, stretch);
+            const metrics = context.measureText(text);
+            return metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+          };
+          const room = height - top - height * 0.02;
+          let size = 0,
+            stretch = "normal";
+          for (const candidate of ["expanded", "normal", "condensed"]) {
+            const fit = Math.min((room * 1.08) / (0.72 * 2 + 0.08), ...rows.map((row) => (100 * width * 0.97) / inkWidth(row, candidate)));
+            if (fit > size) [size, stretch] = [fit, candidate];
+          }
+          setFont(context, 900, size, stretch);
+          rows.forEach((row, index) => {
+            const metrics = context.measureText(row);
+            const x = (width - (metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight)) / 2 + metrics.actualBoundingBoxLeft;
+            drawTextInverted(row, x, top + height * 0.02 + size * 0.72 + index * size * 0.8, field, ink, edge, size);
+          });
+        } else {
+          // centred on its ink (not its advance), spanning the frame to a hair of each edge
+          const fitted = bigWordFit(hitWord, boxWidth, height - top);
+          setFont(context, 900, 100, fitted.rows[0].stretch);
+          const probe = context.measureText(hitWord);
+          const size = Math.min((100 * width * 0.97) / (probe.actualBoundingBoxLeft + probe.actualBoundingBoxRight), (height - top) / 0.74);
+          setFont(context, 900, size, fitted.rows[0].stretch);
+          const metrics = context.measureText(hitWord);
+          const x = (width - (metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight)) / 2 + metrics.actualBoundingBoxLeft;
+          drawTextInverted(hitWord, x, height + size * 0.02, field, ink, edge, size);
+        }
+      };
+
       if (time > songEnd) {
         // After the last sound: the song's word, still, as a tint.
         drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, hitCache.size, Math.max(0.55, tint + 0.15));
@@ -4402,42 +4491,9 @@ registerVisualizer({
         const beatsLeft = Math.max(1, song.beatIndex(end - 0.02) - song.beatIndex(time) + 1);
         drawPips(beatsLeft, margin, top, width - margin, bottom, field, ink, edge, hitCache.size);
       } else if (inHit) {
-        // The hit: the song's word. The main drop's fills the whole frame below the title: a
-        // long word split over two rows, a short one run off the bottom edge.
-        if (mainHit) {
-          if (hitWord.length >= 5 && !hitWord.includes(" ")) {
-            const half = Math.ceil(hitWord.length / 2);
-            const rows = palette.split || [hitWord.slice(0, half), hitWord.slice(half)];
-            const inkWidth = (text, stretch) => {
-              setFont(context, 900, 100, stretch);
-              const metrics = context.measureText(text);
-              return metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-            };
-            const room = height - top - height * 0.02;
-            let size = 0,
-              stretch = "normal";
-            for (const candidate of ["expanded", "normal", "condensed"]) {
-              const fit = Math.min((room * 1.08) / (0.72 * 2 + 0.08), ...rows.map((row) => (100 * width * 0.97) / inkWidth(row, candidate)));
-              if (fit > size) [size, stretch] = [fit, candidate];
-            }
-            setFont(context, 900, size, stretch);
-            rows.forEach((row, index) => {
-              const metrics = context.measureText(row);
-              const x = (width - (metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight)) / 2 + metrics.actualBoundingBoxLeft;
-              drawTextInverted(row, x, top + height * 0.02 + size * 0.72 + index * size * 0.8, field, ink, edge, size);
-            });
-          } else {
-            // centred on its ink (not its advance), spanning the frame to a hair of each edge
-            const fitted = bigWordFit(hitWord, boxWidth, height - top);
-            setFont(context, 900, 100, fitted.rows[0].stretch);
-            const probe = context.measureText(hitWord);
-            const size = Math.min((100 * width * 0.97) / (probe.actualBoundingBoxLeft + probe.actualBoundingBoxRight), (height - top) / 0.74);
-            setFont(context, 900, size, fitted.rows[0].stretch);
-            const metrics = context.measureText(hitWord);
-            const x = (width - (metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight)) / 2 + metrics.actualBoundingBoxLeft;
-            drawTextInverted(hitWord, x, height + size * 0.02, field, ink, edge, size);
-          }
-        } else drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, hitCache.size);
+        // The hit: the song's word; the main drop's fills the whole frame below the title.
+        if (mainHit) drawMainHit();
+        else drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, hitCache.size);
       } else if (!state && time < thumbnailEnd) {
         // The first frame (the thumbnail): the song's word, solid.
         drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, cap * 1.2);
@@ -4472,20 +4528,20 @@ registerVisualizer({
       } else if (buildCount) {
         // a build without words counts its bars down to the drop
         drawCount(numeralBand.value, margin, top, width - margin, bottom, field, ink, edge, numeralCap);
-        showTab = false;
       } else if (state) {
         // Instrumental: the passage's mode.
         if (state.mode === "word") {
-          // the drop's word held until the voice returns
-          drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, hitCache.size);
+          // the drop's word held until the voice returns, as the hit left it
+          if (drop.phase === 3 && drop.index === mainDrop) drawMainHit();
+          else drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge, hitCache.size);
         } else if (state.mode === "count") {
-          // the intro counts its bars, until the voice comes in (the corner keeps the kick)
-          drawCount(Math.max(1, song.barIndex(time) + 1), margin, top, width - margin, bottom, field, ink, edge, numeralCap);
+          // the intro's last bars count down to the voice (the corner keeps the kick)
+          drawCount(Math.max(1, song.barIndex(state.until - 0.02) - song.barIndex(time) + 1), margin, top, width - margin, bottom, field, ink, edge, numeralCap);
         } else if (state.mode === "chords") {
           const index = song.chordIndex(time);
           if (index >= 0) drawChord(song.chords[index], margin, top, width - margin, bottom, field, ink, edge, cap);
-          showTab = false;
-        } else if (state.mode === "breathing") drawBreathing(time, margin, top, width - margin, bottom, state.text, field, ink, edge, cap);
+        } else if (state.mode === "step") drawStep(time, state.text, margin, top, width - margin, bottom, field, ink, edge, hitCache.size * 0.75);
+        else if (state.mode === "breathing") drawBreathing(time, margin, top, width - margin, bottom, state.text, field, ink, edge, cap);
         else if (state.mode === "letters") drawLetters(time, state, margin, top, width - margin, bottom, field, ink, edge, cap);
         else if (state.mode === "stack") drawStack(time, state, margin, top, width - margin, bottom, field, ink, edge);
         else drawWall(time, width, top, bottom, state.text, field, ink, edge);
@@ -4500,9 +4556,11 @@ registerVisualizer({
         const keyCount = anchor >= 0 ? String(anchor + 1).padStart(2, "0") : "";
         const beatNumber = Math.min(4, Math.floor(fract(song.barPosition(time)) * 4) + 1);
         const kicked = song.kicks.since(time) < 0.13;
-        const text = keyCount || String(beatNumber);
+        // while a count runs, the tab only blinks on the kick: one counter at a time
+        const counting = buildCount || (state && state.kind === "mode" && state.mode === "count");
+        const text = keyCount || (counting ? "" : String(beatNumber));
         setFont(context, 900, size, "normal");
-        const tabWidth = Math.max(size * 0.78, context.measureText(text).width + size * 0.2);
+        const tabWidth = Math.max(size * (text ? 0.78 : 0.5), context.measureText(text).width + size * 0.2);
         const tabX = width - margin * 0.5 - tabWidth,
           tabY = height * 0.03;
         const solid = kicked || keyCount;
