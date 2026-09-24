@@ -4,17 +4,22 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- Grades: Type C- → C+ (pass 3 running on v3); Pocket D+ → C- → C+ (v4 in pass 4);
-  Plate D+ (old build) → C (v3 in pass 3); Rig C (old build) → C+ (v4 in pass 3).
-- Frozen review builds: port 8084 `scratchpad/page-pass3.html` (Type pass 3), port 8085
-  `scratchpad/page-plate3.html` (Plate pass 3), port 8086 `scratchpad/page-pass4.html` (Rig
-  pass 3, Pocket pass 4). Each review dir holds a snapshot of the code it reviews.
+- Grades so far: Type C- → C+ (pass 3 cut off by a usage limit before its grade); Pocket
+  D+ → C- → C+ (pass 4 cut off after three songs); Plate D+ → C → B- (pass 4 cut off at its
+  start); Rig C → C+ (pass 3 complete in its notes, cut off before its grade).
+- Built since: Type v4 and Plate v4 (from their pass-3 notes), Rig v5 (from Rig pass 3),
+  Pocket v5 (from Pocket pass 4's three songs).
+- Final review round (pass 4 for Type, Plate and Rig; pass 5 for Pocket), two at a time to
+  stay under the usage limit: frozen build `scratchpad/page-final-a.html` on ports 8090
+  (Type) and 8091 (Plate); Rig v5 and Pocket v5 next on their own snapshot. Review dirs
+  `scratchpad/review5/<variant>` hold the code snapshot each reviews.
 - Dev loop: `cd site && node build.mjs --out dist-dev/page.html`; dev server on port 8081
   (`tools/render/test_server.py --port 8081 --page site/dist-dev/page.html --mp3`);
   render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments,
   Type timelines and Plate schedules in the scratchpad (`pocketdbg.js`, `typedbg.js`,
-  `platedbg.js`).
-- Next: act on Type pass 3 and Plate pass 3; final acceptance; NOTES.md; default visualizer.
+  `platedbg.js`); `shots.js` projects the Rig's truss and lenses onto each camera shot.
+- Next: act on the final reviews; acceptance run on the final build; NOTES.md measurements,
+  "more time" and the default visualizer.
 - Housekeeping: a stray `/pl3` directory (8 render PNGs from a render run with an unset
   variable) exists outside the repo; removing it needs the user's approval.
 
@@ -69,6 +74,38 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 - Rig (C, old build): dead breakdowns and bass → heads pan together with the bass note;
   thumbnails → per-song openings (downward "rain" looks added); one drop image → per-song
   drop looks; outro relight → one fade; swing → a sideways chase on the swung eighth.
+
+## Review findings acted on (passes 3 and 4)
+
+- Type (pass 3 notes → v4): floods cascaded to the bottom of the block → the ink's edge
+  snaps to the nearer edge of its row, so a build climbs through the lines; hits drew in the
+  gap's palette → hits keep the current palette and flip from the flood; long drop words →
+  split at a syllable; two-word fragments of long lines → most words must be confirmed and
+  sub-second lines merge; spelled-out counts → numerals; weak unsung tints on close palettes
+  → stronger tints and ending.
+- Plate (B-, pass 3 → v4): one look across songs → a family of figures per song and a drop
+  figure used for nothing else (also the first frame); the X everywhere → only in
+  breakdowns; a small plate → as tall as the frame, rising beside short titles; a weak kick
+  → the whole plate darkens, a bigger striker, the wave to the rim; bass flicker → a 150 ms
+  hold and 0.2 s release; voice gaps → phrases from sung notes; frozen harmony under long
+  singing → re-forms at least every eight bars.
+- Rig (pass 3 notes → v5): the chase only ever lit the two left pairs (a bug) → it steps
+  across all four; lit truss cells on the credits in the left, floor, wide and high shots →
+  every shot re-aimed and checked by projection, the left shot mirrored to the right;
+  three songs' drop pictures were their thumbnails and matched their drives (0.84-0.93) →
+  each drop camera is used by no other section of its song; a collapse after the hit →
+  a two-beat eased tail and hotter drop sections, drives with dimmer lenses (drive glare
+  beat Outside's drop); builds ebbing into the gap → they brighten as they gather; hard
+  circular halo edges and a floor-line step → both smoothed; the spot strobing with a
+  chopped vocal in a gap → held at its peak; invisible intro breathing → stronger; a
+  one-second bookend and static outros → the opening composition returns for the last eight
+  bars with a sweep; the long-breakdown wake never fired → from eight bars.
+- Pocket (pass 4, three songs → v5): grey partner tones and a grey slice before an approach
+  → named partner fields, scene-relative, never mixed; 46-52 s single compositions → the
+  feature changes every eight bars (longest now about 16 s); the singer lifted through the
+  ceiling in a hold → clamped; Ophelia's bottle-green main drop read as its next dark
+  section → emerald; the singer matched the kit's cream on dark blue fields → pink; the
+  play button merged with a figure on Desire's poster → the poster's gap is centred on it.
 
 ## Decisions (newest last)
 

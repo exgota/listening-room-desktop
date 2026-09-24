@@ -91,7 +91,7 @@ Type shows only lines that are at least 70% confirmed, and only their confirmed 
   Desire, 4:36.3 for NBLY and 1:34.7 for Ophelia. Each visualizer saves something for it:
   - Rig: the gel colour.
   - Type: the permanent palette swap.
-  - Pocket: the night stage and a larger cast.
+  - Pocket: the song's own colour for the whole section and a larger cast.
   - Plate: the vermilion ground.
 - **Of the drops without a hole in the data:**
   - Ophelia's drops and American Boy's have none.
@@ -162,17 +162,18 @@ time the analysis says it happens, and each song has its own opening, drop and s
 | --- | --- |
 | Kick | The floor jets fire (one row of upward shafts at the stage lip) |
 | Bass note | Every head pans together with the note, low left to high right across the song's own bass range, snapping with an overshoot; a repeated note nods them |
-| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch |
+| Opening | The song's own composition (its thumbnail), breathing over two bars: the heads rise and swell, then sink |
+| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch (a visit to a neighbouring mark under half a second is ignored) |
 | Snare / hats | Truss strobe cells flash on the backbeat; hats sparkle |
 | Swing (American Boy, Outside) | The heads chase sideways on the beat and on the swung sixteenth, from the first bar |
 | Section | Look (fan, cross, vee, curtain, blade, rain, scissor…) and camera per section and per eight bars; each song's signature look recurs in its drives |
-| Breakdown | A different look per breakdown; a long one wakes the rig pair by pair |
+| Breakdown | A look per breakdown, in each song's own order; one of eight bars or more wakes the rig pair by pair |
 | Key word | Every head sweeps onto the singer's mark just before the word, holds, and lets go over a beat |
-| Build | Beams converge steadily into a spike high over the stage; the camera pushes in |
-| Gap / breath | Blackout; four big blinders light a pair per beat; the spot stays lit if someone sings into the hole. A drop without a hole breathes only where the music dips |
-| Drop | Everything fires at the audience on the exact frame, the brightest state of the song for two beats, then a chase steps across the rig on the eighths; each song lands with its own camera (Desire's main drop pours every head onto the singer) |
+| Build | Beams converge steadily into a spike high over the stage and brighten as they close; the camera pushes in |
+| Gap / breath | Blackout; four big blinders light a pair per beat; the spot stays lit (held at its peak) if someone sings into the hole. A drop without a hole breathes only where the music dips |
+| Drop | Everything fires at the audience on the exact frame, the brightest state of the song for two beats, eased over two more into the drop section, where a pair of heads chases across the rig on the eighths. Each song's drop has a camera no other section of that song uses (NBLY and Outside from above, Desire from the floor, Ophelia from the side, American Boy from below); Desire's main drop pours every head onto the singer, seen from the side. Only drops glare: drives keep their lenses down |
 | Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta); a hit of its own when the turn is not a drop |
-| End | The last two bars fade to black |
+| End | The opening composition returns for at least the last eight bars, heads dropping out, with a slow sweep; the last two bars fade to black |
 
 ### 2 · Type
 
@@ -216,12 +217,13 @@ frame.
 | Snare (strong, beats 2 and 4) | The mustard hands clap; through a build they close a notch per bar |
 | Voice | The singer, a cut-paper profile: taller with pitch, the jaw dropping with the level, a lean that snaps on the beat and on the song's measured swung sixteenth |
 | The pocket (lane) | One beat in four cells; the last two bars of voice, hats, claps, kick and bass stamped at their place in the beat |
-| Arrangement | Performers on stage only while their part plays (they rise through the floor onto their first note); one featured per eight bars |
+| Arrangement | Performers on stage only while their part plays (they rise through the floor onto their first note); the featured performer changes every eight bars (singer and band take turns in verses and breakdowns) |
+| Section | A pale field per scene; every second eight bars of a scene on a partner field |
 | Key word | Large cut-paper letters in the band beside the title; then a slip in a growing pile |
 | Chord passages | The field changes colour with each chord |
 | Build | The field steps darker each bar, the troupe gathers inward, the last bar trembles |
 | Gap | Night; the troupe held in the air |
-| Drop | The troupe lands together on new marks with a slam; the main drop lands in the song's own colour for its whole section (NBLY cobalt, Desire tomato, Ophelia bottle green, Outside mustard, American Boy violet) |
+| Drop | The troupe lands together on new marks with a slam; the main drop lands in the song's own colour for its whole section (NBLY cobalt, Desire tomato, Ophelia emerald, Outside mustard, American Boy violet) |
 | Song's turn | The stage goes dark, a different dark per section; later drops flash cream |
 | First frame and ending | The song's poster: the troupe posed in its colour |
 
