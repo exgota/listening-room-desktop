@@ -4,16 +4,22 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- All four variants built; each reworked once after review pass 1 (v2/v3 in the source).
-- Review pass 1: Type C- (done), Pocket (notes done; rewritten), Plate and Rig (agents still
-  rendering the OLD build on port 8080 — do not rebuild site/dist/page.html until they end).
-- Review pass 2 running for Type and Pocket against a frozen snapshot served on port 8082
-  (scratchpad/page-pass2.html). Rig v3 and Plate v2 are newer than that snapshot.
+- Review grades so far: Type C- (pass 1) → C+ (pass 2); Pocket D+ → C-; Plate D+ (pass 1,
+  old build); Rig C (pass 1, old 16-head build).
+- Reworked after those: Type v3 (timeline plan), Pocket v3 (presence-driven stage, columns),
+  Rig v3+ (bass pan, swing chase, openings, breath), song model (four-bar approach, lateStart).
+- Running now (frozen snapshot `scratchpad/page-pass3.html` on port 8084, code snapshots in
+  the review dirs): Rig pass 2, Type pass 3, Pocket pass 3. Plate pass 2 runs on port 8083
+  (`scratchpad/page-plate2.html`); do not edit `site/visual-plate.js` until it ends (the
+  reviewer reads it). Pending Plate change: use `song.lateStart` for the vermilion ground.
+- Acceptance (dev build, before the Type/Pocket v3 commit): 217/218; the one failure was the
+  seek check reading the time a round trip late under load, now read from `seeked`.
 - Dev loop: `cd site && node build.mjs --out dist-dev/page.html`; dev server on port 8081
   (`tools/render/test_server.py --port 8081 --page site/dist-dev/page.html --mp3`);
-  render with `node render.mjs --port 8081 ...`.
-- Next: finish pass 1 (Rig, Plate); pass 2 for Rig and Plate; rework; pass 3 for all four;
-  acceptance run; NOTES.md; commit a consistent dist/page.html.
+  render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments and
+  Type timelines in the scratchpad (`pocketdbg.js`, `typedbg.js`).
+- Next: act on the four verdicts; Plate rework; pass 3 for Rig and Plate (every variant
+  reviewed three times); final acceptance; NOTES.md; default visualizer.
 
 ## Review findings acted on (pass 1)
 
@@ -42,6 +48,31 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 - Pocket (after v2): the groove lane (hats against a sixteenth grid), claps only on the
   backbeat, a pile of slipped notes, the slot mouth, and the cast growing on the main drop.
 
+## Review findings acted on (pass 2)
+
+- Type (C+): mode churn and texture share → the song is planned once as a timeline (one
+  mode per piece of at most eight bars, none under two bars, never the same mode twice);
+  skipped lines → half-confirmed lines shown, held through short pauses; hierarchy → the
+  drop's word is the largest type, others capped at 60 %, the main drop fills the frame in
+  two rows; hairline outlines → tints; key word cutting lines → reversed in its line, counted
+  in the corner tab; title lost in gaps → it swaps colours under the ink; tab collisions →
+  tab moved to the top corner; breakdowns → small, low lines, no band; chords → spelled in
+  the key, chords win in chord passages; stale lines after hits → the drop's word holds;
+  Desire/AB openings → a bar count; swear bars → asterisks; ending for AB.
+- Pocket (C-): occlusion → one column per performer, nothing overlaps by construction;
+  static formations → the stage follows who is playing plus a feature every eight bars and
+  a new order at each drop; identical drops → pale field on pre-main drops, tomato on the
+  main drop, cream flashes after the turn; late night over-applied → a dark family by
+  section, American Boy's turn moved to its last third; claps on every snare event → strong
+  events on beats two and four; builds late → linear dimming, inward gather, sixteenth
+  tremble, four-bar approach for drops without a build; key-word flash → at least 0.8 s;
+  thumbnails → per-song field and order, the singer waits on stage; debris → performers rise
+  and sink through the floor; mouth read as an eye → a low wide slot; groove legibility →
+  a larger groove lane and a swing snap in the singer.
+- Rig (C, old build): dead breakdowns and bass → heads pan together with the bass note;
+  thumbnails → per-song openings (downward "rain" looks added); one drop image → per-song
+  drop looks; outro relight → one fade; swing → a sideways chase on the swung eighth.
+
 ## Decisions (newest last)
 
 - Beat grid corrected per song against kick transients (Desire -28 ms, Ophelia -19,
@@ -59,6 +90,12 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 - Fonts vendored from @fontsource (Archivo variable, Inter Tight, Jost, Instrument Serif,
   IBM Plex Mono), inlined as data URLs.
 - Renders: `tools/render/render.mjs` (one browser per worker; transitions disabled).
+- The song's turn (`lateStart`): the late look of every visualizer (Rig's gel, Type's palette
+  swap, Pocket's dark stage, Plate's vermilion) starts at the main drop, unless that drop
+  comes before 45 % of the song (American Boy, 19 %): then at the first full section after
+  60 % (American Boy 2:34.6). The main drop keeps its own landing either way.
+- Drops without a build in the data (Ophelia 1:34.7, American Boy 0:48.8, NBLY 4:36.3) get a
+  four-bar approach, so each visualizer gathers before them.
 
 ## Environment notes (for a fresh context)
 

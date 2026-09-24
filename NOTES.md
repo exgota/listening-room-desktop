@@ -145,7 +145,80 @@ controls are hidden.
   - One full-screen ground pass.
   - Estimate: under 1.5 ms GPU. The captions cost one text line a frame.
 
-## The four (draft)
+## The four
 
-(Concept, mapping, measurements, and more-time notes per visualizer are written at the end
-of the review passes.)
+### 1 · Rig
+
+**Concept.** A timecoded lighting show in a black room: eight moving heads on a truss, a row
+of floor jets, a follow-spot and truss strobes, each fixture played by one part of the song.
+Nothing is a spectrum or a meter; every cue is a lighting designer's cue, placed at the exact
+time the analysis says it happens.
+
+**Mapping.**
+
+| Musical element | What it drives |
+| --- | --- |
+| Kick | The floor jets fire (one row of upward shafts at the stage lip) |
+| Bass note | Every head pans together with the note, low left to high right, snapping with an overshoot; a repeated note nods them |
+| Voice | The warm follow-spot from above, on the singer's mark, moving with the pitch |
+| Snare / hats | Truss strobe cells flash on the backbeat; hats sparkle |
+| Swing (American Boy, Outside) | In grooves and drives the heads chase sideways on the beat and on the swung eighth |
+| Section | Look (fan, cross, vee, curtain, blade, rain…) and camera shot per section and per eight bars |
+| Key word | Every head sweeps onto the singer's spot, holds, and sweeps back |
+| Build | Beams converge on one point and the camera pushes in |
+| Gap / breath | Blackout; blinders light pair by pair on the beats; the spot stays lit if someone sings into the hole |
+| Drop | Everything fires at the audience on the exact frame with a flash, holds two beats, then chases |
+| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta) |
+
+Each song opens on its own composition (its thumbnail) and has its own pair of drop looks.
+
+### 2 · Type
+
+**Concept.** The sung words set as posters in a heavy grotesque: each line appears as a pale
+tint and fills in word by word on the frame each word is sung. Around the words there is
+only typography, and the song is planned once as a timeline so each passage keeps one
+treatment; the drop's word is the largest type the song ever shows.
+
+**Mapping.**
+
+| Musical element | What it drives |
+| --- | --- |
+| Voice (sung words) | Each confirmed word fills in solid as it is sung, with a rule under the word being sung |
+| Key word | Reversed out of an ink box inside its line; its running count (01–12) in the corner tab |
+| Kick | The corner tab shows the beat of the bar, solid on each kick |
+| Bass | A block of ink rising from the bottom to the note's height, inverting the rows it covers (it stops between rows) |
+| Harmony | In NBLY's chord passages the chord names, spelled in the song's key |
+| Instrumental passages | One mode per piece of at most eight bars: intro bar count, hook wall stepping on kick and snare, the hook breathing once a bar in breakdowns, a late stack that grows bar by bar |
+| Build | The ink floods up the frame and the bars to the drop count down |
+| Gap | Full flood and the beats counted down on the grid |
+| Drop | The song's word across the frame, colours swapped; the main drop fills the whole frame in two rows and holds a bar |
+| Song's turn | Field and ink swap for good |
+
+### 3 · Pocket
+
+**Concept.** A troupe of cut-paper figures, one per instrument, on a small stage, each moving
+only on its own instrument's onsets, so the groove on screen is the band's groove. The stage
+shows who is playing: a performer rises through the floor to arrive on its first note, and
+each has a column of its own.
+
+**Mapping.**
+
+| Musical element | What it drives |
+| --- | --- |
+| Kick | The drum (a black disc) touches the floor exactly on each kick |
+| Bass | The dome winds up before each note and lands on it, taller for higher notes: syncopation shows as a landing off the drum's |
+| Snare (strong, beats 2 and 4) | The mustard hands clap |
+| Hats | Ticks along the top right against a sixteenth grid |
+| Voice | The singer: taller with pitch, mouth open with level, a lean that snaps on the beat and on the swung eighth (the song's measured swing) |
+| Groove lane | Along the floor, one bar: every onset stamped where it actually landed, the previous bar ghosted ahead of the playhead |
+| Arrangement | Performers on stage only while their part plays; one featured per eight bars |
+| Key word | Big cut-paper letters from the singer, then a slip in a growing pile |
+| Chord passages | The field changes colour with each chord |
+| Build | The field dims, the troupe gathers inward and trembles on the sixteenths |
+| Gap | Night; the troupe held in the air |
+| Drop | The troupe lands together on new marks with a slam; the main drop lands on tomato |
+| Song's turn | The stage goes dark, a different dark per section; later drops flash cream |
+
+### 4 · Plate
+
+(Written after its review pass 2.)
