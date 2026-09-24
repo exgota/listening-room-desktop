@@ -1,7 +1,7 @@
 // Main-thread cost of drawing one frame, per visualizer and song, in headless Chromium.
 //
 //   python3 tools/render/test_server.py --port 8081 --page site/dist/page.html --mp3 &
-//   node tools/render/frametime.mjs --port 8081 [--frames 400] [--scale 1]
+//   node tools/render/frametime.mjs --port 8081 [--frames 150] [--scale 1]
 //
 // Each frame is one call of the page's own drawVisualizer at a song time spread evenly over
 // the song (so every section is sampled), timed with performance.now() around the call. This
@@ -17,7 +17,7 @@ const args = Object.fromEntries(
   }, []),
 );
 const port = args.port || 8081;
-const frames = Number(args.frames || 400);
+const frames = Number(args.frames || 150);
 const scale = Number(args.scale || 1);
 const SONGS = {
   nbly: "5ff86d6cd02ebd7308e03df8",
@@ -43,11 +43,14 @@ for (const variant of VARIANTS) {
     await page.waitForFunction(() => window.visualizerDebug, { timeout: 20000 });
     await page.evaluate(() => window.visualizerDebug.ready());
     await page.evaluate(() => window.visualizerDebug.renderAt(0));
-    const times = await page.evaluate((count) => {
+    const times = await page.evaluate(async (count) => {
       /* global visualizerDebugTime:writable, visualizerSong, drawVisualizer */
       const length = visualizerSong?.duration || 200;
       const result = [];
       for (let index = 0; index < count; index++) {
+        // a frame between draws, as in playback, so the GPU queue drains and cannot stall the
+        // timed call
+        await new Promise((resolve) => requestAnimationFrame(resolve));
         visualizerDebugTime = ((index + 0.5) / count) * length;
         const start = performance.now();
         drawVisualizer(start);
