@@ -8,10 +8,10 @@
 // song's word across the whole frame, the largest type the song ever shows. The key word is
 // reversed out of its line and numbered in the corner. The song is planned once as a
 // timeline, so a passage keeps its treatment: instrumental stretches take one typographic
-// mode per eight bars by section (an intro counts its bars until the voice comes in; then
-// the hook as a wall stepping on kick and snare, the hook breathing bar by bar in a
-// breakdown, the chord names where the harmony leads, and after the song's turn a stack
-// that grows bar by bar).
+// mode per eight bars, in turn by section (an intro counts its bars until the voice comes
+// in; then the hook as a wall stepping on kick and snare, the hook spelled a letter a beat,
+// the hook breathing bar by bar, the chord names where the harmony leads, and after the
+// song's turn a stack that grows bar by bar). The drop's word is kept for the drops.
 
 const typePalettes = {
   "5ff86d6cd02ebd7308e03df8": { field: "#2530f2", ink: "#f3efe4", hook: ["NBLY", "LIKE YOU", "NEVER", "LIKE YOU"] },
@@ -133,10 +133,10 @@ registerVisualizer({
       if (!blockCache.has(key)) {
         if (blockCache.size > 60) blockCache.clear();
         const words = line.shown.map((word) => {
-          const clean = word.text.replace(/[.,!?;:"]/g, "").toUpperCase();
+          const clean = word.text.replace(/[.,!?;:"]/g, "").replace(/^-+/, "").toUpperCase();
           const bleep = typeBleeped.test(word.text.toLowerCase().replace(/[^a-z']/g, ""));
           return { ...word, display: bleep ? clean[0] + "*".repeat(Math.max(2, clean.length - 1)) : clean };
-        });
+        }).filter((word) => word.display.length);
         blockCache.set(key, { words, ...layout(words, boxWidth, boxHeight, rowCap) });
       }
       return blockCache.get(key);
@@ -183,9 +183,10 @@ registerVisualizer({
       const lines = [];
       for (const line of model.lyrics.lines) {
         line.shown = line.words.filter((word) => word.votes > 0 || word.probability >= 0.85);
-        // a line is set when most of it is confirmed (a two-word fragment of a long line is not)
-        if (line.shown.length < line.words.length && line.shown.length < Math.max(2, Math.ceil(line.words.length * 0.6))) continue;
-        lines.push({ line, start: line.shown[0].start - 0.35, sungEnd: line.shown[line.shown.length - 1].end });
+        // a line is set when half of it is confirmed (a two-word fragment of a long line is not)
+        if (line.shown.length < line.words.length && line.shown.length < Math.max(2, Math.ceil(line.words.length * 0.5))) continue;
+        // nothing is set inside the thumbnail's first 0.6 s, so an opening line cannot blink
+        lines.push({ line, start: Math.max(0.6, line.shown[0].start - 0.35), sungEnd: line.shown[line.shown.length - 1].end });
       }
       // a line that would show for under a second is set together with the next one
       for (let index = 0; index + 1 < lines.length; index++) {
@@ -225,8 +226,12 @@ registerVisualizer({
       }
       if (cursor < model.duration) free.push({ start: cursor, end: model.duration, previous });
       const firstLine = states.length ? states[0].start : model.duration;
+      // the modes' words: the hook without the drop's word, which is kept for the drops
+      const modeWords = hookWords.length > 1 ? hookWords.slice(1) : hookWords;
       let lastMode = "";
-      let block = 0;
+      let block = 0,
+        turn = 0,
+        lateSeen = false;
       for (const stretch of free) {
         if (stretch.previous && stretch.end - stretch.start < 2 * model.barPeriod) {
           if (stretch.previous.state) stretch.previous.state.end = stretch.end;
@@ -250,22 +255,25 @@ registerVisualizer({
           else if (last && !chordEdge && (last.end - last.start < 2 * model.barPeriod || piece.end - piece.start < 2 * model.barPeriod)) last.end = piece.end;
           else pieces.push(piece);
         });
-        let flip = false;
         for (const piece of pieces) {
           const at = piece.start + 0.01;
           const scene = model.scene(at);
           const peak = model.peakAt(piece.start + (piece.end - piece.start) / 2);
-          let primary, secondary;
-          if (peak && peak.kind === "chords") primary = secondary = "chords";
-          else if (piece.start < firstLine && scene.index <= 1) primary = secondary = "count";
-          else if (scene.kind === "build") primary = secondary = "buildcount";
-          else if (scene.kind === "break") [primary, secondary] = ["breathing", "wall"];
-          else if (at >= model.lateStart) [primary, secondary] = ["stack", "wall"];
-          else [primary, secondary] = ["wall", "breathing"];
-          let mode = flip ? secondary : primary;
-          if (mode === lastMode && primary !== secondary) mode = mode === primary ? secondary : primary;
-          flip = !flip;
-          states.push({ start: piece.start, end: piece.end, kind: "mode", mode, text: hookWords[block % hookWords.length], from: piece.start });
+          // each section's modes, taken in turn through the song (never one twice running)
+          let modes;
+          if (peak && peak.kind === "chords") modes = ["chords"];
+          else if (piece.start < firstLine && scene.index <= 1) modes = ["count"];
+          else if (scene.kind === "build") modes = ["buildcount"];
+          else if (scene.kind === "break") modes = ["breathing", "letters"];
+          else if (at >= model.lateStart) {
+            modes = ["stack", "letters", "wall"];
+            // the late look opens on its own mode, the stack
+            if (!lateSeen) [lateSeen, turn] = [true, 0];
+          } else modes = ["wall", "letters", "breathing"];
+          let mode = modes[turn % modes.length];
+          if (mode === lastMode && modes.length > 1) mode = modes[++turn % modes.length];
+          if (modes.length > 1) turn++;
+          states.push({ start: piece.start, end: piece.end, kind: "mode", mode, text: modeWords[block % modeWords.length], from: piece.start });
           lastMode = mode;
           block++;
         }
@@ -414,32 +422,118 @@ registerVisualizer({
       drawTextInverted(text, left + (boxWidth - width) / 2, (top + bottom) / 2 + size * 0.36, field, ink, edge, size);
     }
 
-    // After the turn: the hook stacked, a row more each bar of the phrase.
+    // After the turn: the hook stacked from the bottom, a row more each bar (the newest solid,
+    // the rows under it tints), until four rows stand; each row the next of the hook's words.
     function drawStack(time, state, left, top, right, bottom, field, ink, edge) {
-      const rows = 2 + (((song.barIndex(time) - song.barIndex(state.from + 0.01)) % 2) + 2) % 2;
-      const rowHeight = (bottom - top) / 3;
-      const size = Math.min(rowHeight / 0.78, (100 * (right - left)) / textWidth(state.text, 900, 100, "condensed"));
-      setFont(context, 900, size, "condensed");
-      const width = context.measureText(state.text).width;
-      const stackBottom = (top + bottom) / 2 + (rows * rowHeight) / 2;
+      const bars = Math.max(0, song.barIndex(time) - song.barIndex(state.from + 0.01));
+      const rows = 1 + Math.min(3, bars);
+      const rowHeight = (bottom - top) / 4;
+      const words = hookWords.length > 1 ? hookWords.slice(1) : hookWords;
+      const first = Math.max(0, words.indexOf(state.text));
       for (let row = 0; row < rows; row++) {
-        const baseline = stackBottom - rowHeight * row - rowHeight * 0.13;
-        drawTextInverted(state.text, left + (right - left - width) / 2, baseline, field, ink, edge, rowHeight, row === rows - 1 ? 1 : tint + 0.15);
+        const text = words[(first + row) % words.length];
+        const size = Math.min(rowHeight / 0.76, (100 * (right - left)) / textWidth(text, 900, 100, "condensed"));
+        setFont(context, 900, size, "condensed");
+        const width = context.measureText(text).width;
+        const baseline = bottom - rowHeight * row - (rowHeight - size * 0.72) / 2;
+        drawTextInverted(text, left + (right - left - width) / 2, baseline, field, ink, edge, size, row === rows - 1 ? 1 : tint + 0.15);
       }
     }
 
-    // A chord's name: the root letter, its accidental as a raised small letter of the same
-    // heavy face (the font has no flat or sharp sign), then "m" for minor.
+    // The hook spelled on the beat: a letter more each beat, the waiting letters as tints; the
+    // whole word holds for one beat, then it starts again.
+    function drawLetters(time, state, left, top, right, bottom, field, ink, edge, maximum) {
+      const text = state.text;
+      const count = text.replace(/ /g, "").length;
+      const beats = Math.max(0, song.beatIndex(time) - song.beatIndex(state.from + 0.01));
+      const shown = (beats % (count + 1)) + 1;
+      const fitted = bigWordFit(text, right - left, bottom - top);
+      const size = Math.min(fitted.size, maximum);
+      const rowPitch = fitted.rows.length > 1 ? (bottom - top) / 2 : 0;
+      let letter = 0;
+      fitted.rows.forEach((row, index) => {
+        setFont(context, 900, size, row.stretch);
+        const width = context.measureText(row.text).width;
+        const x0 = left + (right - left - width) / 2;
+        const baseline = fitted.rows.length > 1 ? top + (index + 1) * rowPitch - (rowPitch - size * 0.72) / 2 : (top + bottom) / 2 + size * 0.36;
+        for (let position = 0; position < row.text.length; position++) {
+          const glyph = row.text[position];
+          if (glyph === " ") continue;
+          const x = x0 + context.measureText(row.text.slice(0, position)).width;
+          drawTextInverted(glyph, x, baseline, field, ink, edge, size, letter < shown ? 1 : tint);
+          letter++;
+        }
+      });
+    }
+
+    // Beats before a drop: a row of full stops, one fewer each beat (numerals are for bars, so
+    // the countdown never goes up again when the bars give way to beats).
+    function drawPips(count, left, top, right, bottom, field, ink, edge, maximum) {
+      const radius = Math.min(maximum * 0.3, (bottom - top) * 0.2, (right - left) / (Math.max(3, count) * 3.2));
+      const spacing = radius * 3.2;
+      const y = (top + bottom) / 2;
+      let x = (left + right) / 2 - ((count - 1) * spacing) / 2;
+      for (let index = 0; index < count; index++, x += spacing) {
+        context.fillStyle = y - radius > edge ? field : ink;
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+
+    // A flat or sharp sign drawn in the face's weight (the font has neither), as tall as the
+    // capital, its top at the capital's top.
+    function drawAccidental(kind, x, baseline, size, field, ink, edge) {
+      const cap = size * 0.72,
+        stroke = size * 0.1,
+        top = baseline - cap;
+      context.save();
+      context.beginPath();
+      if (kind === "flat") {
+        // a stem and an open bowl on its lower half
+        const width = size * 0.34;
+        context.rect(x, top, stroke, cap);
+        context.moveTo(x + stroke, baseline);
+        context.lineTo(x + stroke, baseline - cap * 0.5);
+        context.bezierCurveTo(x + width * 1.25, baseline - cap * 0.66, x + width * 1.2, baseline - cap * 0.12, x + stroke, baseline);
+        context.closePath();
+        context.moveTo(x + stroke, baseline - stroke * 0.9);
+        context.lineTo(x + stroke, baseline - cap * 0.5 + stroke * 1.3);
+        context.bezierCurveTo(x + width * 0.9, baseline - cap * 0.52, x + width * 0.82, baseline - cap * 0.2, x + stroke, baseline - stroke * 0.9);
+        context.closePath();
+      } else {
+        // two uprights and two rising bars
+        const width = size * 0.42;
+        context.rect(x + width * 0.22, top, stroke * 0.8, cap);
+        context.rect(x + width * 0.62, top - cap * 0.04, stroke * 0.8, cap);
+        for (const level of [0.36, 0.68]) {
+          const y = top + cap * level;
+          context.moveTo(x, y + stroke * 0.5);
+          context.lineTo(x + width, y - stroke * 0.3);
+          context.lineTo(x + width, y - stroke * 1.3);
+          context.lineTo(x, y - stroke * 0.5);
+          context.closePath();
+        }
+      }
+      context.clip(kind === "flat" ? "evenodd" : "nonzero");
+      context.fillStyle = ink;
+      context.fillRect(x - size, top - size, size * 3, Math.max(0, Math.min(edge, baseline + size) - (top - size)));
+      context.fillStyle = field;
+      if (edge < baseline + size) context.fillRect(x - size, Math.max(edge, top - size), size * 3, baseline + size - Math.max(edge, top - size));
+      context.restore();
+      return kind === "flat" ? size * 0.36 : size * 0.44;
+    }
+
+    // A chord's name: the root letter, its accidental as a drawn sign, then "m" for minor.
     function drawChord(chord, left, top, right, bottom, field, ink, edge, maximum) {
       const name = chordNames[chord.root];
       const letter = name[0],
-        accidental = name.length > 1 ? (name[1] === "♭" ? "b" : "#") : "",
+        accidental = name.length > 1 ? (name[1] === "♭" ? "flat" : "sharp") : "",
         suffix = chord.minor ? "m" : "";
       const measureAt = (size) => {
         setFont(context, 900, size, "normal");
         const main = context.measureText(letter).width + (suffix ? context.measureText(suffix).width : 0);
-        setFont(context, 900, size * 0.6, "normal");
-        return main + (accidental ? context.measureText(accidental).width + size * 0.04 : 0);
+        return main + (accidental ? (accidental === "flat" ? 0.36 : 0.44) * size + size * 0.06 : 0);
       };
       const size = Math.min(maximum, (bottom - top) / 0.74, (100 * (right - left)) / measureAt(100));
       const total = measureAt(size);
@@ -447,12 +541,8 @@ registerVisualizer({
       const baseline = (top + bottom) / 2 + size * 0.36;
       setFont(context, 900, size, "normal");
       drawTextInverted(letter, x, baseline, field, ink, edge, size);
-      x += context.measureText(letter).width + size * 0.02;
-      if (accidental) {
-        setFont(context, 900, size * 0.6, "normal");
-        drawTextInverted(accidental, x, baseline - size * 0.3, field, ink, edge, size * 0.6);
-        x += context.measureText(accidental).width + size * 0.02;
-      }
+      x += context.measureText(letter).width + size * 0.03;
+      if (accidental) x += drawAccidental(accidental, x, baseline, size, field, ink, edge) + size * 0.03;
       if (suffix) {
         setFont(context, 900, size, "normal");
         drawTextInverted(suffix, x, baseline, field, ink, edge, size);
@@ -560,7 +650,7 @@ registerVisualizer({
       const hitKey = `${width}x${height}:${top}:${bottom}`;
       if (hitCache.key !== hitKey) hitCache = { key: hitKey, size: bigWordFit(hitWord, boxWidth, bottom - top).size };
       const cap = hitCache.size * 0.6;
-      // numerals are not words: a count may stand as tall as the box allows
+      // numerals are not words: the intro's count may stand as tall as the box allows
       const countCap = (bottom - top) * 0.9 / 0.74;
       let anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
       let showTab = frame.playing !== false && !inGap && !inHit && time <= songEnd && !breakdown;
@@ -572,10 +662,10 @@ registerVisualizer({
         // The key word sung into the gap: a tint in the flood, filled by the drop.
         drawBigWord(song.anchor.word.toUpperCase(), margin, top, width - margin, bottom, field, ink, edge, Infinity, tint + 0.2);
       } else if (inGap) {
-        // The gap: the flood and a countdown of the beats left before the drop, on the grid.
+        // The gap: the flood and the beats left before the drop, on the grid, as full stops.
         const end = drop.phase === 2 ? drop.drop.time : song.anchor.moments[leadIn].end;
         const beatsLeft = Math.max(1, song.beatIndex(end - 0.02) - song.beatIndex(time) + 1);
-        drawCount(beatsLeft, margin, top, width - margin, bottom, field, ink, edge, countCap);
+        drawPips(beatsLeft, margin, top, width - margin, bottom, field, ink, edge, hitCache.size);
       } else if (inHit) {
         // The hit: the song's word. The main drop's fills the whole frame below the title: a
         // long word split over two rows, a short one run off the bottom edge.
@@ -596,11 +686,15 @@ registerVisualizer({
               drawTextInverted(row, (width - rowWidth) / 2, top + rowHeight * (index + 1) - (rowHeight - size * 0.72) / 2, field, ink, edge, size);
             });
           } else {
+            // centred on its ink (not its advance), spanning the frame to a hair of each edge
             const fitted = bigWordFit(hitWord, boxWidth, height - top);
-            const size = fitted.size * 1.08;
+            setFont(context, 900, 100, fitted.rows[0].stretch);
+            const probe = context.measureText(hitWord);
+            const size = Math.min((100 * width * 0.97) / (probe.actualBoundingBoxLeft + probe.actualBoundingBoxRight), (height - top) / 0.74);
             setFont(context, 900, size, fitted.rows[0].stretch);
-            const wordWidth = context.measureText(hitWord).width;
-            drawTextInverted(hitWord, (width - wordWidth) / 2, height + size * 0.02, field, ink, edge, size);
+            const metrics = context.measureText(hitWord);
+            const x = (width - (metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight)) / 2 + metrics.actualBoundingBoxLeft;
+            drawTextInverted(hitWord, x, height + size * 0.02, field, ink, edge, size);
           }
         } else drawBigWord(hitWord, margin, top, width - margin, bottom, field, ink, edge);
       } else if (!state && time < 0.6) {
@@ -652,7 +746,8 @@ registerVisualizer({
           const index = song.chordIndex(time);
           if (index >= 0) drawChord(song.chords[index], margin, top, width - margin, bottom, field, ink, edge, cap);
           showTab = false;
-        } else if (state.mode === "breathing") drawBreathing(time, margin, top, width - margin, bottom, state.text.length <= 8 || state.text.includes(" ") ? state.text : hitWord, field, ink, edge, cap);
+        } else if (state.mode === "breathing") drawBreathing(time, margin, top, width - margin, bottom, state.text, field, ink, edge, cap);
+        else if (state.mode === "letters") drawLetters(time, state, margin, top, width - margin, bottom, field, ink, edge, cap);
         else if (state.mode === "stack") drawStack(time, state, margin, top, width - margin, bottom, field, ink, edge);
         else drawWall(time, width, top, bottom, state.text, field, ink, edge);
       }
