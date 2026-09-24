@@ -1,13 +1,17 @@
 // Plate: Chladni figures. One square plate stands in the middle of the sheet and sand lies
-// on its nodal lines. The harmony chooses the figure, and it re-forms at most once a bar,
-// never while the voice sings; the voice is a second sand, vermilion, one figure per sung
-// line; the bass sets the lines' weight (thin, or heavy while a bass note sounds); the kick
-// strikes the plate: the striker at its centre jumps, a wave runs out to its edge and the
-// plate darkens for an instant. Sections change the plate: a breakdown clears it to the
-// simplest figure and leaves the voice; a chord passage inverts it; a build contracts the
-// figure bar by bar into the centre; the gap shrinks that knot beat by beat; the drop throws
-// it out into the new figure on the exact frame. At the song's turn the sheet goes vermilion,
-// and later sections alternate vermilion and ink; the outro drains the sand away.
+// on its nodal lines. Each song has its own family of figures (rings for NBLY, hourglass
+// bands for Desire, pills for Ophelia, a ruled grid for Outside, columns for American Boy),
+// and a figure of its own that only its drops land on. The harmony chooses the figure from
+// the family and it re-forms at most once a bar, holding while the voice sings; the voice
+// is a second sand, vermilion, one figure per sung phrase; the key word is the one set of
+// concentric rings. The bass sets the lines' weight (heavy while a bass note sounds, with a
+// release); the kick strikes the plate: it darkens, the striker at its centre jumps and a
+// wave runs out to the rim; the snare slaps the plate's frame; the hats tick along its top
+// edge at their place in the bar. Sections change the plate: a breakdown clears it to a bare
+// X (the only X), a chord passage inverts it, a build contracts the figure bar by bar into
+// the centre, the gap shrinks that knot beat by beat, and the drop throws it out into the
+// song's drop figure on the exact frame. At the song's turn the sheet goes vermilion, and
+// later sections alternate vermilion and ink; the outro drains the sand to the bare knot.
 // Every grain is placed in the vertex shader from song time alone: its fixed seed position
 // is projected onto the current figure's nodal lines by Newton steps, so a seek anywhere
 // lands on the right picture and nothing accumulates.
@@ -18,10 +22,10 @@ const plateVoiceGrains = 65536;
 const plateVertexShader = `#version 300 es
 precision highp float;
 layout(location = 0) in vec4 aSeed;
-uniform vec4 uModeA;     // figure the sand is leaving: n1 m1 n2 m2
+uniform vec4 uModeA;     // figure the sand is leaving: n1 m1 n2 m2 (n1 < 0: rings, m1 of them)
 uniform vec4 uModeB;     // figure it is moving to
-uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w sign (B)
-uniform float uSignA;    // sign of figure A
+uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w symmetry (B)
+uniform float uSignA;    // symmetry of figure A
 uniform float uScale;    // pattern units per plate half-side
 uniform vec4 uRect;      // plate in clip space: x0 y0 x1 y1
 uniform vec4 uGather;    // x pull to the centre 0..1, y knot radius, z present 0..1, w line weight
@@ -33,38 +37,46 @@ out float vShade;
 
 const float PI = 3.14159265;
 
-float field(vec2 p, vec4 mode, float second, float sign) {
+// A Chladni figure: two plate modes mixed with a symmetry s (s = 1 gives the diagonals,
+// s = -1 closed rings, s = 0 a ruled grid), plus a second pair for character. A negative
+// first number means concentric rings instead.
+float field(vec2 p, vec4 mode, float second, float s) {
+  if (mode.x < 0.0) return cos(mode.y * PI * length(p));
   vec2 a = PI * p;
-  float first = cos(mode.x * a.x) * cos(mode.y * a.y) - sign * cos(mode.y * a.x) * cos(mode.x * a.y);
-  float extra = cos(mode.z * a.x) * cos(mode.w * a.y) - sign * cos(mode.w * a.x) * cos(mode.z * a.y);
+  float first = cos(mode.x * a.x) * cos(mode.y * a.y) - s * cos(mode.y * a.x) * cos(mode.x * a.y);
+  float extra = cos(mode.z * a.x) * cos(mode.w * a.y) - s * cos(mode.w * a.x) * cos(mode.z * a.y);
   return first + second * extra;
 }
 
-vec2 gradient(vec2 p, vec4 mode, float second, float sign) {
+vec2 gradient(vec2 p, vec4 mode, float second, float s) {
+  if (mode.x < 0.0) {
+    float r = max(length(p), 1e-4);
+    return -mode.y * PI * sin(mode.y * PI * r) * p / r;
+  }
   vec2 a = PI * p;
   float n = mode.x, m = mode.y;
   vec2 g1 = PI * vec2(
-    -n * sin(n * a.x) * cos(m * a.y) + sign * m * sin(m * a.x) * cos(n * a.y),
-    -m * cos(n * a.x) * sin(m * a.y) + sign * n * cos(m * a.x) * sin(n * a.y));
+    -n * sin(n * a.x) * cos(m * a.y) + s * m * sin(m * a.x) * cos(n * a.y),
+    -m * cos(n * a.x) * sin(m * a.y) + s * n * cos(m * a.x) * sin(n * a.y));
   n = mode.z; m = mode.w;
   vec2 g2 = PI * vec2(
-    -n * sin(n * a.x) * cos(m * a.y) + sign * m * sin(m * a.x) * cos(n * a.y),
-    -m * cos(n * a.x) * sin(m * a.y) + sign * n * cos(m * a.x) * sin(n * a.y));
+    -n * sin(n * a.x) * cos(m * a.y) + s * m * sin(m * a.x) * cos(n * a.y),
+    -m * cos(n * a.x) * sin(m * a.y) + s * n * cos(m * a.x) * sin(n * a.y));
   return g1 + second * g2;
 }
 
 // Newton steps onto f = 0, each clamped so a grain moves to a nearby line, never far.
-vec2 settle(vec2 p, vec4 mode, float second, float sign, out float residual) {
+vec2 settle(vec2 p, vec4 mode, float second, float s, out float residual) {
   for (int i = 0; i < 7; i++) {
-    float f = field(p, mode, second, sign);
-    vec2 g = gradient(p, mode, second, sign);
+    float f = field(p, mode, second, s);
+    vec2 g = gradient(p, mode, second, s);
     vec2 step = f * g / (dot(g, g) + 1e-3);
     float len = length(step);
     if (len > 0.03) step *= 0.03 / len;
     p -= step;
   }
-  float f = field(p, mode, second, sign);
-  residual = abs(f) / (length(gradient(p, mode, second, sign)) + 1e-3);
+  float f = field(p, mode, second, s);
+  residual = abs(f) / (length(gradient(p, mode, second, s)) + 1e-3);
   return p;
 }
 
@@ -84,15 +96,15 @@ void main() {
   p += normal * (aSeed.z - 0.5) * uGather.w;
 
   vec2 q = p / uScale; // -1..1 across the plate
-  // Kick: a wave runs out from the centre to the edge and throws the sand it passes outward.
+  // Kick: a wave runs out from the centre to the rim and throws the sand it passes outward.
   for (int i = 0; i < 4; i++) {
     vec4 ripple = uRipple[i];
     if (ripple.y <= 0.0) continue;
     float radius = ripple.x * ripple.z;
     float distance = length(q);
-    float band = exp(-pow((distance - radius) / 0.12, 2.0));
-    float fade = exp(-ripple.x / 0.35);
-    q += (distance > 1e-4 ? q / distance : vec2(0.0)) * band * ripple.y * fade * 0.06;
+    float band = exp(-pow((distance - radius) / 0.14, 2.0));
+    float fade = exp(-ripple.x / 0.5);
+    q += (distance > 1e-4 ? q / distance : vec2(0.0)) * band * ripple.y * fade * 0.075;
   }
   // Gather: the figure contracts toward the centre; fully gathered it is a knot of the given
   // radius.
@@ -106,12 +118,12 @@ void main() {
   vec2 clip = mix(uRect.xy, uRect.zw, q * 0.5 + 0.5);
   gl_Position = vec4(clip, 0.0, 1.0);
   gl_PointSize = uPointSize * (0.75 + 0.5 * aSeed.w);
-  // grains that did not reach a line are faint (real sand leaves the antinodes empty); in
-  // mid-migration they dim, so a re-form is a quick fade across, not a grey smear
+  // grains that did not reach a line are faint (real sand leaves the antinodes empty) until
+  // the knot closes; in mid-migration they dim, so a re-form is a quick fade across
   float onLine = 1.0 - smoothstep(0.004, 0.02, residual);
   float flight = 1.0 - 0.75 * 4.0 * s * (1.0 - s);
   float drained = step(uDrain, fract(aSeed.w * 7.31 + aSeed.x * 3.17));
-  vAlpha = mix(onLine * flight, 1.0, uGather.x) * uGather.z * (1.0 - outside) * drained;
+  vAlpha = mix(onLine * flight, 1.0, smoothstep(0.9, 1.0, uGather.x)) * uGather.z * (1.0 - outside) * drained;
   vShade = aSeed.z;
 }`;
 
@@ -136,33 +148,60 @@ uniform vec3 uGround;
 uniform vec3 uPlate;
 uniform vec3 uInk;
 uniform vec2 uResolution;
-uniform vec4 uFrame; // plate in uv: x0 y0 x1 y1
-uniform float uFlash; // the plate darkening (or lightening) for a kick
+uniform vec4 uFrame;  // plate in uv: x0 y0 x1 y1
+uniform vec2 uFlash;  // x the plate darkening (or lightening) for a kick, y the frame slap for a snare
 void main() {
   vec2 px = 1.0 / uResolution;
   bool inside = vUv.x > uFrame.x && vUv.x < uFrame.z && vUv.y > uFrame.y && vUv.y < uFrame.w;
-  vec3 color = inside ? uPlate * (1.0 - uFlash) : uGround;
-  // an engraved border: a rule round the plate, and a hairline just outside it
+  vec3 color = inside ? uPlate * (1.0 - uFlash.x) : uGround;
+  // an engraved border: a rule round the plate and a hairline outside it; a snare fills the
+  // band between them
   vec2 lo = abs(vUv - uFrame.xy) / px, hi = abs(vUv - uFrame.zw) / px;
-  bool within = vUv.x > uFrame.x - 12.0 * px.x && vUv.x < uFrame.z + 12.0 * px.x && vUv.y > uFrame.y - 12.0 * px.y && vUv.y < uFrame.w + 12.0 * px.y;
+  bool within = vUv.x > uFrame.x - 16.0 * px.x && vUv.x < uFrame.z + 16.0 * px.x && vUv.y > uFrame.y - 16.0 * px.y && vUv.y < uFrame.w + 16.0 * px.y;
   float edge = min(min(lo.x, hi.x), min(lo.y, hi.y));
-  if (within && edge < 2.2) color = mix(color, uInk, 0.9);
-  if (within && !inside && edge > 8.0 && edge < 9.3) color = mix(color, uInk, 0.6);
+  if (within && edge < 2.4) color = mix(color, uInk, 0.9);
+  if (within && !inside && edge > 13.0 && edge < 14.5) color = mix(color, uInk, 0.6);
+  if (within && !inside && edge <= 13.0) color = mix(color, uInk, 0.9 * uFlash.y);
   // a faint darkening toward the edges of the sheet
   vec2 c = vUv - 0.5;
   color *= 1.0 - 0.05 * dot(c, c) * 2.0;
   outColor = vec4(color, 1.0);
 }`;
 
-// Mode pairs by complexity; harmony and energy pick among them.
-const plateModes = [
-  [1, 2], [1, 3], [2, 3], [1, 4], [2, 5], [3, 4], [1, 5], [3, 5], [2, 7], [4, 5],
-];
+// Each song's family of figures, simplest first, with its symmetry; the figure its drops land
+// on (used for nothing else); and the one reserved X for breakdowns.
+const plateSongs = {
+  "5ff86d6cd02ebd7308e03df8": { // NBLY: rings and rosettes
+    s: -1,
+    family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 5], [3, 4, 1, 2], [2, 5, 1, 3]],
+    drop: { mode: [2, 5, 1, 2], second: 0.45, sign: -1 },
+  },
+  "1d589940ca458d793a3fad8a": { // Desire: hourglass bands
+    s: 0.55,
+    family: [[1, 2, 1, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 5, 1, 2], [2, 5, 1, 3]],
+    drop: { mode: [3, 4, 1, 3], second: 0.5, sign: 0.55 },
+  },
+  f127a026dc751f1528bfb95d: { // The Fate of Ophelia: pills and cushions
+    s: -0.5,
+    family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 4, 1, 2], [1, 5, 2, 3]],
+    drop: { mode: [2, 4, 1, 1], second: 0.5, sign: -0.5 },
+  },
+  "8eee874c702a10807f79706c": { // Outside: a ruled grid
+    s: 0,
+    family: [[1, 2, 2, 3], [2, 3, 1, 4], [1, 4, 2, 5], [3, 4, 1, 2], [2, 5, 1, 3]],
+    drop: { mode: [1, 5, 3, 3], second: 0.3, sign: 0 },
+  },
+  "4048d4a6dce44c151690b2b1": { // American Boy: columns and barbells
+    s: 0.3,
+    family: [[1, 3, 2, 3], [2, 3, 1, 4], [2, 5, 1, 2], [3, 4, 1, 3], [1, 5, 2, 3]],
+    drop: { mode: [1, 4, 2, 3], second: 0.55, sign: 0.3 },
+  },
+};
+const plateDefaultSong = { s: -0.5, family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 4, 1, 2], [2, 5, 1, 3]], drop: { mode: [2, 4, 1, 1], second: 0.5, sign: -0.5 } };
 const plateCircle = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
-// The voice's figures: simple and bold, and none of them a ring (rings are the key word's).
-const plateVoiceModes = [[1, 2], [2, 3], [1, 4], [2, 5], [3, 4]];
-// The key word's own figure, used for nothing else: rings about the centre.
-const plateKeyFigure = { mode: [1, 3, 3, 1], second: 1, sign: -1, start: 0 };
+// The breakdown's bare X, and the key word's concentric rings: each used for nothing else.
+const plateBreakFigure = { mode: [1, 2, 1, 1], second: 0, sign: 1, start: 0 };
+const plateKeyFigure = { mode: [-1, 4, 0, 0], second: 0, sign: 0, start: 0 };
 const plateColors = {
   ivory: { ground: "#efe9dc", plate: "#e7e0d0", sand: "#171513", voice: "#e2401c", ink: "#171513" },
   vermilion: { ground: "#e2401c", plate: "#d93c19", sand: "#171513", voice: "#f4efe4", ink: "#171513" },
@@ -214,47 +253,44 @@ registerVisualizer({
     let song = null;
     let scale = 1;
     let themeKey = "";
+    let setup = plateDefaultSong;
     const ripples = new Float32Array(16);
     let figures = []; // the black sand: [{start, mode, second, sign}]
     let figureStarts = new Float64Array(0);
-    let voices = []; // the voice sand: [{start, end, figure}], one per sung line
+    let voices = []; // the voice sand: [{start, end, figure}], one per sung phrase
     let voiceStarts = new Float64Array(0);
     let grounds = []; // per scene: "ivory" | "vermilion" | "ink"
-    let outroStart = Infinity;
+    let drainStart = Infinity;
+    let songEnd = Infinity;
+    let backbeats = new SongEvents([]);
 
-    // A figure for the harmony at a moment: complexity from the section's energy (capped),
-    // the family from the root around the circle of fifths, the sign from minor; a variant
-    // steps to the neighbouring complexity so a held chord visibly changes.
+    // A figure from the song's family for a moment: its place in the family from the
+    // section's energy (and one step for the chord's root), the second pair's sign from minor,
+    // and a variant that steps it on so a repeated progression or a held chord moves on.
     function harmonyFigure(model, time, variant, sparse) {
       const chordIndex = model.chordIndex(time + 0.05);
       const chord = chordIndex >= 0 ? model.chords[chordIndex] : model.chords[0] || { root: 0, minor: 0 };
       const intensity = model.scene(time + 0.01).intensity;
-      const circle = plateCircle.indexOf(chord.root);
-      const base = Math.max(0, Math.min(7, Math.round(1 + intensity * 5) - (sparse ? 2 : 0) + (circle % 2) + (variant % 2)));
-      const [n, m] = plateModes[base];
-      const [n2, m2] = plateModes[(circle + variant * 3) % 4];
-      return { mode: [n, m, n2, m2], second: 0.3, sign: chord.minor ? -1 : 1, start: time };
+      const family = setup.family;
+      const step = Math.round(intensity * (family.length - 1)) - (sparse ? 1 : 0) + (plateCircle.indexOf(chord.root) % 2) + variant;
+      const index = ((step % family.length) + family.length) % family.length;
+      const mode = family[Math.max(0, Math.min(family.length - 1, index))];
+      return { mode: mode.slice(), second: chord.minor ? -0.3 : 0.3, sign: setup.s, start: time };
     }
 
-    function voiceFigure(model, start, end, line) {
-      // the line's most sung pitch class picks a simple figure, and each line moves it on one
-      // (a voice that stays on one note still changes figure line by line)
+    // A voice figure: the simplest three of the family at the voice's scale, picked by the
+    // phrase's most sung pitch class and stepped on phrase by phrase.
+    function voiceFigure(model, start, end, order) {
       const weight = new Float32Array(12);
-      let octave = 0,
-        total = 0;
       const notes = model.vocalNotes;
       for (let index = Math.max(0, notes.last(start)); index < notes.length && notes.start[index] < end; index++) {
         if (notes.end[index] < start || notes.strength[index] < 0.2) continue;
-        const span = Math.min(end, notes.end[index]) - Math.max(start, notes.start[index]);
-        weight[Math.round(notes.pitch[index]) % 12] += span;
-        octave += notes.pitch[index] * span;
-        total += span;
+        weight[Math.round(notes.pitch[index]) % 12] += Math.min(end, notes.end[index]) - Math.max(start, notes.start[index]);
       }
       let best = 0;
       for (let pitch = 1; pitch < 12; pitch++) if (weight[pitch] > weight[best]) best = pitch;
-      const register = total > 0 ? Math.floor((octave / total - 48) / 12) : 0;
-      const [n, m] = plateVoiceModes[(plateCircle.indexOf(best) + Math.max(0, register) + line) % plateVoiceModes.length];
-      return { mode: [n, m, m, n + 1], second: 0.2, sign: line % 2 ? -1 : 1, start };
+      const mode = setup.family[(plateCircle.indexOf(best) + order) % 3];
+      return { mode: [mode[0], mode[1], mode[1], mode[0] + 1], second: 0.2, sign: setup.s, start };
     }
 
     function setSong(model) {
@@ -263,34 +299,76 @@ registerVisualizer({
       figures = [];
       voices = [];
       grounds = [];
-      outroStart = Infinity;
+      drainStart = songEnd = Infinity;
       figureStarts = new Float64Array(0);
       voiceStarts = new Float64Array(0);
+      backbeats = new SongEvents([]);
       if (!model) return;
+      setup = plateSongs[model.identifier] || plateDefaultSong;
+      const strong = [];
+      for (let index = 0; index < model.snares.length; index++) if (model.snares.strength[index] > 0.45) strong.push([model.snares.time[index], model.snares.strength[index]]);
+      backbeats = new SongEvents(strong);
+      const mix = model.series.mix;
+      songEnd = model.duration;
+      if (mix) {
+        let index = mix.length - 1;
+        while (index > 0 && mix[index] < 0.08) index--;
+        songEnd = Math.min(model.duration, index / 100 + 0.3);
+      }
 
-      // The ground per scene: ivory before the turn; from it, vermilion, then ink and
-      // vermilion by turns, section by section.
+      // The ground per scene: ivory before the turn (the main drop's section in ink when that
+      // drop comes before the turn); from the turn vermilion for at least sixteen bars, then
+      // ink and vermilion by turns, a section under eight bars keeping the last colour; the
+      // outro keeps the colour of the last full section.
+      const turn = model.lateStart;
+      const mainTime = model.mainDrop >= 0 ? model.drops[model.mainDrop].time : Infinity;
       let late = 0;
-      model.scenes.forEach((scene) => {
-        if (scene.start < model.lateStart - 0.05) grounds.push("ivory");
-        else grounds.push(late++ % 2 === 0 ? "vermilion" : "ink");
+      model.scenes.forEach((scene, index) => {
+        const bars = (scene.end - scene.start) / model.barPeriod;
+        let ground;
+        if (scene.start < turn - 0.05) ground = mainTime < turn - 0.05 && scene.start >= mainTime - 0.05 && scene.start < mainTime + 0.05 ? "ink" : "ivory";
+        else if (scene.start < turn + 16 * model.barPeriod - 0.05) ground = "vermilion";
+        else if (scene.kind === "outro" || bars < 8) ground = grounds[index - 1] || "vermilion";
+        else ground = late++ % 2 === 0 ? "ink" : "vermilion";
+        grounds.push(ground);
       });
-      for (let index = model.scenes.length - 1; index >= 0 && model.scenes[index].kind === "outro"; index--) outroStart = model.scenes[index].start;
+      // The drain: from the start of the song's last run of quiet scenes (or its outro).
+      for (let index = model.scenes.length - 1; index >= 0; index--) {
+        const scene = model.scenes[index];
+        if (scene.kind === "outro" || scene.energy < 0.6 * Math.max(...model.scenes.map((entry) => entry.energy))) drainStart = scene.start;
+        else break;
+      }
+      drainStart = Math.max(drainStart, songEnd - 20);
 
-      // The voice: one figure per sung line, a new one at most once a bar (a line that
-      // follows too soon carries the last one on).
-      let lastChange = -Infinity;
-      for (const line of model.lyrics.lines) {
-        const start = line.words[0].start,
-          end = line.words[line.words.length - 1].end;
-        if (end - start < 0.3) continue;
-        const previous = voices[voices.length - 1];
-        if (previous && start - previous.end < 0.5 && start - lastChange < model.barPeriod) {
-          previous.end = Math.max(previous.end, end);
-          continue;
-        }
-        voices.push({ start, end, figure: voiceFigure(model, start, end, voices.length) });
-        lastChange = start;
+      // The voice: phrases from the sung notes (a new phrase after a 0.4 s rest), split where a
+      // sung line begins and every two bars of a long phrase, never more than once a bar.
+      const notes = model.vocalNotes;
+      const phrases = [];
+      for (let index = 0; index < notes.length; index++) {
+        if (notes.strength[index] < 0.2) continue;
+        const last = phrases[phrases.length - 1];
+        if (last && notes.start[index] - last.end < 0.4) last.end = Math.max(last.end, notes.end[index]);
+        else phrases.push({ start: notes.start[index], end: notes.end[index] });
+      }
+      const lineStarts = model.lyrics.lines.map((line) => line.words[0].start);
+      for (const phrase of phrases) {
+        if (phrase.end - phrase.start < 0.35) continue;
+        const cuts = [phrase.start];
+        for (const start of lineStarts) if (start > phrase.start + model.barPeriod && start < phrase.end - 0.5) cuts.push(start);
+        cuts.sort((a, b) => a - b);
+        const pieces = [];
+        for (const cut of cuts) if (!pieces.length || cut - pieces[pieces.length - 1] >= model.barPeriod) pieces.push(cut);
+        // a long piece still moves on every two bars
+        const filled = [];
+        pieces.forEach((start, index) => {
+          const end = index + 1 < pieces.length ? pieces[index + 1] : phrase.end;
+          filled.push(start);
+          for (let at = start + 2 * model.barPeriod; at < end - model.barPeriod; at += 2 * model.barPeriod) filled.push(at);
+        });
+        filled.forEach((start, index) => {
+          const end = index + 1 < filled.length ? filled[index + 1] : phrase.end;
+          voices.push({ start, end, joined: index > 0, figure: voiceFigure(model, start, end, voices.length) });
+        });
       }
       voiceStarts = Float64Array.from(voices.map((voice) => voice.start));
       const singingAt = (time) => {
@@ -298,18 +376,21 @@ registerVisualizer({
         return index >= 0 && time < voices[index].end + 0.25;
       };
 
-      // The harmony: a re-form at most once a bar, on the downbeat, never while the voice
-      // sings, never in a build or a gap; in a breakdown the simplest figure; every drop lands
-      // on a new figure; in a chord passage every chord re-forms it.
-      const same = (a, b) => a && b && a.mode.join() === b.mode.join() && a.sign === b.sign;
+      // The harmony: a re-form at most once a bar, on the downbeat, never in a build or a gap;
+      // while the voice sings only every eight bars; in a breakdown the bare X; every drop lands
+      // on the song's drop figure and holds it four bars; in a chord passage every chord.
+      const same = (a, b) => a && b && a.mode.join() === b.mode.join() && a.sign === b.sign && Math.sign(a.second) === Math.sign(b.second);
       const push = (figure) => {
         const last = figures[figures.length - 1];
-        if (same(last, figure)) return;
+        if (same(last, figure)) return false;
         if (last && figure.start - last.start < 0.05) figures.pop();
         figures.push(figure);
+        return true;
       };
-      let variant = 0,
-        heldSince = 0;
+      let heldSince = 0,
+        dropHold = -Infinity;
+      const seen = new Map(); // chord → how often it has come round in this scene
+      let seenScene = -1;
       const moments = [];
       for (let bar = 0; bar < model.downbeats.length; bar++) moments.push({ time: model.barTime(bar), kind: "bar" });
       for (const drop of model.drops) moments.push({ time: drop.time, kind: "drop" });
@@ -317,38 +398,50 @@ registerVisualizer({
         if (peak.kind === "chords")
           for (const chord of model.chords) if (chord.start >= peak.start - 0.05 && chord.start < peak.end) moments.push({ time: chord.start, kind: "chord" });
       moments.sort((a, b) => a.time - b.time);
-      figures.push({ ...harmonyFigure(model, Math.max(0, model.chords[0]?.start ?? 0), 0, false), start: -Infinity });
+      figures.push({ ...setup.drop, mode: setup.drop.mode.slice(), start: -Infinity });
       for (const moment of moments) {
         const time = moment.time;
-        if (time <= 0) continue;
-        const scene = model.scene(time + 0.01);
+        if (time <= 0.5) continue;
+        const sceneIndex = model.sceneIndex(time + 0.01);
+        const scene = model.scenes[sceneIndex];
+        if (sceneIndex !== seenScene) {
+          seen.clear();
+          seenScene = sceneIndex;
+        }
         const drop = model.dropContext(time + 0.001);
-        const sparse = grounds[model.sceneIndex(time + 0.01)] === "vermilion";
-        const last = figures[figures.length - 1];
+        const sparse = grounds[sceneIndex] === "vermilion";
         if (moment.kind === "drop") {
-          variant++;
-          push(harmonyFigure(model, time, variant, sparse));
+          push({ ...setup.drop, mode: setup.drop.mode.slice(), start: time });
           heldSince = time;
+          dropHold = time + 4 * model.barPeriod;
           continue;
         }
         if (moment.kind === "chord") {
-          push(harmonyFigure(model, time, variant, false));
-          heldSince = time;
+          if (push(harmonyFigure(model, time, 0, false))) heldSince = time;
           continue;
         }
-        if (drop.phase === 1 || drop.phase === 2 || scene.kind === "gap") continue;
+        // a build re-forms once, on its first downbeat (so it gathers the song's figure, not a
+        // breakdown's X), then holds while it contracts
+        const buildStart = drop.phase === 1 && time - drop.build.start < model.barPeriod - 0.05;
+        if (time < dropHold - 0.05 || (drop.phase === 1 && !buildStart) || drop.phase === 2 || scene.kind === "gap") continue;
+        if (buildStart) {
+          if (push(harmonyFigure(model, time, 0, false))) heldSince = time;
+          continue;
+        }
         if (scene.kind === "break") {
-          push({ mode: [1, 2, 1, 3], second: 0, sign: 1, start: time });
-          heldSince = time;
+          if (push({ ...plateBreakFigure, start: time })) heldSince = time;
           continue;
         }
-        if (singingAt(time)) continue;
-        let next = harmonyFigure(model, time, variant, sparse);
-        if (same(next, last) && time - heldSince >= 4 * model.barPeriod - 0.05) {
-          variant++;
-          next = harmonyFigure(model, time, variant, sparse);
-        }
+        const held = time - heldSince;
+        if (singingAt(time) && held < 8 * model.barPeriod - 0.05) continue;
+        const chordIndex = model.chordIndex(time + 0.05);
+        const chordKey = chordIndex >= 0 ? `${model.chords[chordIndex].root}${model.chords[chordIndex].minor}` : "none";
+        const count = seen.get(chordKey) || 0;
+        const last = figures[figures.length - 1];
+        let next = harmonyFigure(model, time, count, sparse);
+        if (same(next, last) && held >= 4 * model.barPeriod - 0.05) next = harmonyFigure(model, time, count + 1, sparse);
         if (!same(next, last)) {
+          seen.set(chordKey, count + 1);
           push(next);
           heldSince = time;
         }
@@ -385,9 +478,15 @@ registerVisualizer({
       const width = frame.width,
         height = frame.height;
       size = { width, height };
-      // The plate: a square in the middle of the sheet, under the title, above the captions.
-      const top = Math.max(height * 0.17, (frame.titleBottom || 0) + height * 0.025);
-      const side = Math.min(height * 0.9 - top, width * 0.9);
+      // The plate: a square in the middle of the sheet as tall as it can be, beside the title
+      // when the title is short enough to leave it room, under it otherwise.
+      const bottom = height * 0.9;
+      let top = height * 0.05;
+      let side = Math.min(bottom - top, width * 0.9);
+      if ((frame.titleRight || 0) + 24 > (width - side) / 2 && (frame.titleBottom || 0) > top) {
+        top = Math.max(height * 0.17, (frame.titleBottom || 0) + height * 0.025);
+        side = Math.min(bottom - top, width * 0.9);
+      }
       plate.x0 = (width - side) / 2;
       plate.y0 = top;
       plate.side = side;
@@ -405,11 +504,14 @@ registerVisualizer({
         waveformTheme = null;
       }
 
-      // Kick: the striker's jump, the plate's darkening, and waves from the centre.
-      let kickHit = 0;
-      if (song) {
+      // Kick: the plate darkens, the striker jumps and waves run to the rim. Snare: the frame.
+      let kickHit = 0,
+        snareHit = 0;
+      if (song && time > 0.1) {
         const kickIndex = song.kicks.last(time);
-        kickHit = kickIndex >= 0 ? song.kicks.strength[kickIndex] * hitDecay(song.kicks.since(time), 0.07) : 0;
+        kickHit = kickIndex >= 0 ? song.kicks.strength[kickIndex] * hitDecay(song.kicks.since(time), 0.06) : 0;
+        const snare = backbeats.last(time);
+        snareHit = snare >= 0 ? hitDecay(time - backbeats.time[snare], 0.07) : 0;
       }
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.disable(gl.BLEND);
@@ -422,7 +524,7 @@ registerVisualizer({
       gl.uniform3f(ground.uniforms.uInk, inkColor[0], inkColor[1], inkColor[2]);
       gl.uniform2f(ground.uniforms.uResolution, canvas.width, canvas.height);
       gl.uniform4f(ground.uniforms.uFrame, plate.x0 / width, 1 - (plate.y0 + side) / height, (plate.x0 + side) / width, 1 - plate.y0 / height);
-      gl.uniform1f(ground.uniforms.uFlash, groundName === "ink" || groundName === "inverted" ? -0.35 * kickHit : 0.07 * kickHit);
+      gl.uniform2f(ground.uniforms.uFlash, groundName === "ink" || groundName === "inverted" ? -1.2 * kickHit : 0.22 * kickHit, snareHit);
       gl.bindVertexArray(emptyVertexArray);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -441,7 +543,7 @@ registerVisualizer({
       const settle = figureIndex > 0 ? easeInOutCubic((time - current.start) / 0.25) : 1;
 
       // Build: the figure contracts a step on every downbeat. Gap: a knot that shrinks each
-      // beat. A drop with no hole: the last beat is the knot. The drop throws it out.
+      // beat. A drop with no hole: its last beat is the knot. The drop throws it out.
       let gather = 0,
         knot = 0.3;
       if (drop.phase === 1) {
@@ -456,12 +558,14 @@ registerVisualizer({
         gather = 1;
         knot = 0.03 + 0.035 * Math.max(0, beatsLeft);
       }
+      let lastBeat = false;
       const nextDrop = drop.phase === 3 ? song.drops[drop.index + 1] : drop.drop;
       if (nextDrop && nextDrop.gapStart >= nextDrop.time - 0.05) {
         const lead = nextDrop.time - time;
         if (lead > 0 && lead <= song.beatPeriod) {
           gather = Math.max(gather, easeOutCubic(1 - lead / song.beatPeriod) * 0.12 + 0.88);
           knot = 0.065;
+          lastBeat = true;
         }
       }
       const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
@@ -469,7 +573,7 @@ registerVisualizer({
         gather = 1;
         knot = 0.065;
       }
-      // The drop throws the knot out into the figure over 0.18 s, from the knot's own size.
+      // The drop throws the knot out into the drop figure over 0.18 s, from the knot's size.
       const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
       if (sinceDrop < 0.18) {
         const burst = easeOutCubic(sinceDrop / 0.18);
@@ -477,38 +581,48 @@ registerVisualizer({
         knot = mixValue(0.065, 0.3, burst);
       }
 
-      // Kick waves: the last four strikes run out from the centre to the plate's edge.
+      // Kick waves: the last four strikes run out from the centre to the plate's rim.
       let rippleIndex = song.kicks.last(time);
       for (let slot = 0; slot < 4; slot++) {
         const age = rippleIndex >= 0 ? time - song.kicks.time[rippleIndex] : Infinity;
-        const alive = age < 1.2 && gather < 0.5;
+        const alive = age < 1.4 && gather < 0.5 && time > 0.1;
         ripples[slot * 4] = alive ? age : 0;
-        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] * 1.4 : 0;
-        ripples[slot * 4 + 2] = 2.9;
+        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] * 2.4 : 0;
+        ripples[slot * 4 + 2] = 2.6;
         ripples[slot * 4 + 3] = 0;
         rippleIndex--;
       }
-      if (sinceDrop < 1.2) {
+      if (sinceDrop < 1.4) {
         ripples[0] = sinceDrop;
-        ripples[1] = 2.4;
+        ripples[1] = 3.2;
       }
-      // Bass: the lines are heavy while a bass note sounds, light otherwise; the grains grow
-      // with them so a heavy line stays solid.
-      const note = song.bassNotes.active(time);
-      const heavy = note >= 0 && song.bassNotes.strength[note] > 0.3 ? easeOutCubic(clamp01((time - song.bassNotes.start[note]) / 0.06)) : 0;
-      const weight = 0.018 + 0.022 * heavy;
-      const pointSize = Math.max(1.5, 2.2 * (canvas.height / 1080)) * (1 + 0.45 * heavy);
-      // Outro: the sand drains away.
-      const drain = time > outroStart ? clamp01((time - outroStart) / Math.max(1, song.duration - outroStart)) * 0.95 : 0;
+      // Bass: the lines are heavy while a bass note sounds and let go over 0.2 s after it
+      // (short gaps and the kick's sidechain dips are bridged), so the bass line reads, not a
+      // flicker.
+      let heavy = 0;
+      {
+        const notes = song.bassNotes;
+        let index = notes.last(time);
+        while (index >= 0 && notes.strength[index] <= 0.3) index--;
+        if (index >= 0) {
+          const attack = easeOutCubic(clamp01((time - notes.start[index]) / 0.06));
+          const hold = notes.end[index] + 0.15;
+          heavy = time <= hold ? attack : attack * (1 - easeInOutCubic(clamp01((time - hold) / 0.2)));
+        }
+      }
+      const weight = 0.025 + 0.02 * heavy;
+      const pointSize = Math.max(1.5, 2.3 * (canvas.height / 1080)) * (1 + 0.4 * heavy);
+      // Outro: the sand drains away to the bare knot.
+      const drain = time > drainStart ? clamp01((time - drainStart) / Math.max(1, songEnd - drainStart)) : 0;
 
-      // Voice: its sand in the figure of the sung line; on the key word the plate is its own.
+      // Voice: its sand in the figure of the sung phrase; the key word's rings take the plate.
       const voiceIndex = lastIndexAtOrBefore(voiceStarts, time + 0.1);
       let voicePresence = 0;
       if (voiceIndex >= 0) {
         const voice = voices[voiceIndex];
-        voicePresence = Math.min(clamp01((time - voice.start + 0.1) / 0.2), clamp01((voice.end + 0.25 - time) / 0.25));
+        voicePresence = Math.min(voice.joined ? 1 : clamp01((time - voice.start + 0.1) / 0.2), clamp01((voice.end + 0.25 - time) / 0.25));
       }
-      // the first frame shows the voice to come, and it gives way as the song starts
+      // the first frame shows the song's drop figure and the voice to come
       const firstVoice = voices.length ? voices[0] : null;
       if (firstVoice && time < 0.5 && firstVoice.start > time) voicePresence = Math.max(voicePresence, 0.85 * (1 - time / 0.5));
       let keyMoment = 0,
@@ -522,8 +636,10 @@ registerVisualizer({
           keyMoment = Math.max(0, Math.min(easeOutCubic(clamp01((time - moment.start) / 0.12)), 1 - easeInOutCubic(clamp01((time - hold) / 0.2))));
         }
       }
-      const inHole = drop.phase === 2 || leadIn >= 0;
-      if (inHole) voicePresence = 0; // the hole is the knot alone (unless the key word is sung into it)
+      // a hole (and the last beat before a drop with none) is the knot alone, unless the key
+      // word is sung into it
+      const inHole = drop.phase === 2 || leadIn >= 0 || lastBeat;
+      if (inHole) voicePresence = 0;
 
       const sandColor = hexColor(colors.sand),
         voiceColor = hexColor(colors.voice);
@@ -534,20 +650,19 @@ registerVisualizer({
         const before = lastIndexAtOrBefore(voiceStarts, keyStart - 0.01);
         Object.assign(voiceBefore, before >= 0 ? voices[before].figure : plateKeyFigure);
         const voiceSettle = easeOutCubic(clamp01((time - keyStart) / 0.2));
-        drawSand(voiceArray, plateVoiceGrains, voiceBefore, plateKeyFigure, voiceSettle, inHole ? 0.6 : gather, 0.3, keyMoment, voiceColor, pointSize * 1.5, ripples, 0.03, drain, 0.7);
+        drawSand(voiceArray, plateVoiceGrains, voiceBefore, plateKeyFigure, voiceSettle, inHole ? 0.6 : gather, 0.3, keyMoment, voiceColor, pointSize * 1.5, ripples, 0.03, drain, 1);
       } else if (voicePresence > 0.01 && voices.length) {
         const index = Math.max(0, voiceIndex);
         Object.assign(voiceNow, voices[index].figure);
-        const continuing = index > 0 && voices[index].start - voices[index - 1].end < 0.5;
         Object.assign(voiceBefore, voices[Math.max(0, index - 1)].figure);
-        const voiceSettle = continuing ? easeInOutCubic(clamp01((time - voiceNow.start) / 0.25)) : 1;
-        drawSand(voiceArray, plateVoiceGrains, continuing ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather, knot * 1.4, voicePresence, voiceColor, pointSize * 1.35, ripples, 0.028, drain, 0.6);
+        const voiceSettle = voices[index].joined ? easeInOutCubic(clamp01((time - voiceNow.start) / 0.25)) : 1;
+        drawSand(voiceArray, plateVoiceGrains, voices[index].joined ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather, knot * 1.4, voicePresence, voiceColor, pointSize * 1.35, ripples, 0.03, drain, 0.6);
       }
       drawLabels(time, width, height, drop, colors, kickHit, frame);
     }
 
-    // The striker at the plate's centre, and captions as on an engraved plate: figure
-    // number, mode, harmony, bar and time.
+    // The striker at the plate's centre, the hats along its top edge, and captions as on an
+    // engraved plate: figure number, mode, harmony, bar and time.
     function drawLabels(time, width, height, drop, colors, kickHit, frame) {
       labels.setTransform(scale, 0, 0, scale, 0, 0);
       labels.clearRect(0, 0, width, height);
@@ -559,7 +674,7 @@ registerVisualizer({
       if (!gathered && frame.playing !== false) {
         const cx = plate.x0 + plate.side / 2,
           cy = plate.y0 + plate.side / 2;
-        const radius = plate.side * (0.018 + 0.06 * kickHit);
+        const radius = plate.side * (0.018 + 0.052 * kickHit);
         labels.fillStyle = colors.sand;
         labels.beginPath();
         labels.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -569,23 +684,47 @@ registerVisualizer({
         labels.arc(cx, cy, radius * 0.36, 0, Math.PI * 2);
         labels.fill();
       }
+      // Hats: ticks hanging from the top rule at their place in the bar (the last bar, the
+      // older ones fainter), over a faint rule of sixteenths; swing shows as ticks off the rule.
+      if (frame.playing !== false) {
+        const left = plate.x0 + 8 * unit,
+          span = plate.side - 16 * unit,
+          top = plate.y0 + 3 * unit;
+        const tick = plate.side * 0.045;
+        labels.fillStyle = colors.sand;
+        labels.globalAlpha = 0.25;
+        for (let step = 0; step < 16; step++) labels.fillRect(left + (step / 16) * span - 1.5 * unit, top, 3 * unit, tick * (step % 4 === 0 ? 0.55 : 0.3));
+        let index = song.hats.last(time);
+        while (index >= 0) {
+          const age = time - song.hats.time[index];
+          if (age > song.barPeriod) break;
+          if (song.hats.strength[index] >= 0.25) {
+            const at = fract(song.barPosition(song.hats.time[index]));
+            labels.globalAlpha = 0.25 + 0.75 * Math.exp(-age / (song.beatPeriod * 0.8));
+            labels.fillRect(left + at * span - 4 * unit, top, 8 * unit, tick);
+          }
+          index--;
+        }
+        labels.globalAlpha = 1;
+      }
       labels.fillStyle = colors.ink;
       const chordIndex = song.chordIndex(time);
       const names = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
       const chord = chordIndex >= 0 ? song.chords[chordIndex] : null;
       const figureNumber = Math.max(0, lastIndexAtOrBefore(figureStarts, time)) + 1;
       const right = plate.x0 + plate.side,
-        below = plate.y0 + plate.side + 36 * unit;
-      labels.font = `italic 400 ${Math.round(38 * unit)}px "Instrument Serif", serif`;
+        below = plate.y0 + plate.side + 30 * unit;
+      labels.font = `italic 400 ${Math.round(34 * unit)}px "Instrument Serif", serif`;
       labels.textAlign = "right";
-      labels.fillText(`Fig. ${figureNumber}`, right, below + 4 * unit);
+      labels.fillText(`Fig. ${figureNumber}`, right, below + 14 * unit);
       labels.textAlign = "left";
       labels.font = `400 ${Math.round(14 * unit)}px "IBM Plex Mono", monospace`;
       const harmony = chord ? `${names[chord.root]}${chord.minor ? " MINOR" : " MAJOR"}` : "";
       const bar = Math.max(0, Math.floor(song.barPosition(time)) + 1);
       const beat = Math.floor(fract(song.barPosition(time)) * 4) + 1;
-      labels.fillText(`MODE (${current.mode[0]}, ${current.mode[1]})   ${harmony}`, plate.x0, below - 14 * unit);
-      labels.fillText(`BAR ${String(bar).padStart(3, "0")}.${beat}   ${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, "0")}`, plate.x0, below + 4 * unit);
+      const mode = current.mode[0] < 0 ? "RINGS" : `(${current.mode[0]}, ${current.mode[1]})`;
+      labels.fillText(`MODE ${mode}   ${harmony}`, plate.x0, below);
+      labels.fillText(`BAR ${String(bar).padStart(3, "0")}.${beat}   ${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, "0")}`, plate.x0, below + 18 * unit);
     }
 
     return {
@@ -608,7 +747,7 @@ registerVisualizer({
         scale = ls;
       },
       render,
-      debug: () => ({ figures, voices, grounds }),
+      debug: () => ({ figures, voices, grounds, drainStart }),
     };
   },
 });

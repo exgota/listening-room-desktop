@@ -24,8 +24,9 @@ const visualizerInstances = new Map();
 let visualizerActive = null;
 let visualizerSize = { width: 0, height: 0, ratio: 1 };
 const visualizerClock = { reported: -1, time: 0, now: 0 };
-const visualizerFrameInfo = { time: 0, now: 0, playing: false, width: 0, height: 0, ratio: 1, song: null, titleBottom: 0 };
+const visualizerFrameInfo = { time: 0, now: 0, playing: false, width: 0, height: 0, ratio: 1, song: null, titleBottom: 0, titleRight: 0 };
 let visualizerTitleBottom = 0;
+let visualizerTitleRight = 0;
 let visualizerReadyResolve;
 const visualizerReady = new Promise((resolve) => (visualizerReadyResolve = resolve));
 
@@ -87,6 +88,7 @@ function selectVisualizer(key, remember = true) {
   instance.setActive(true);
   document.documentElement.dataset.visual = instance.definition.key;
   applyVisualizerTheme();
+  measureVisualizer(); // each look sets the title in its own face and size
   drawVisualizer();
   drawWaveform();
 }
@@ -95,6 +97,16 @@ function measureVisualizer() {
   const intro = document.querySelector("#player-view > .intro");
   const stageTop = elements.visualizer.getBoundingClientRect().top;
   visualizerTitleBottom = intro ? Math.max(0, intro.getBoundingClientRect().bottom - stageTop) : 0;
+  // how far right the title and credits text reach (the block itself is full width)
+  visualizerTitleRight = 0;
+  if (intro) {
+    const stageLeft = elements.visualizer.getBoundingClientRect().left;
+    const range = document.createRange();
+    for (const line of intro.querySelectorAll("h1, p")) {
+      range.selectNodeContents(line);
+      visualizerTitleRight = Math.max(visualizerTitleRight, range.getBoundingClientRect().right - stageLeft);
+    }
+  }
   const bounds = elements.visualizer.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
   if (bounds.width === visualizerSize.width && bounds.height === visualizerSize.height && ratio === visualizerSize.ratio) return;
@@ -158,6 +170,7 @@ function drawVisualizer(timestamp = performance.now()) {
   frame.ratio = visualizerSize.ratio;
   frame.song = visualizerSong;
   frame.titleBottom = visualizerTitleBottom;
+  frame.titleRight = visualizerTitleRight;
   visualizerActive.render(frame.time, frame);
 }
 
