@@ -4,22 +4,19 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- Review grades so far: Type C- (pass 1) → C+ (pass 2); Pocket D+ → C-; Plate D+ (pass 1,
-  old build); Rig C (pass 1, old 16-head build).
-- Reworked after those: Type v3 (timeline plan), Pocket v3 (presence-driven stage, columns),
-  Rig v3+ (bass pan, swing chase, openings, breath), song model (four-bar approach, lateStart).
-- Running now (frozen snapshot `scratchpad/page-pass3.html` on port 8084, code snapshots in
-  the review dirs): Rig pass 2, Type pass 3, Pocket pass 3. Plate pass 2 runs on port 8083
-  (`scratchpad/page-plate2.html`); do not edit `site/visual-plate.js` until it ends (the
-  reviewer reads it). Pending Plate change: use `song.lateStart` for the vermilion ground.
-- Acceptance (dev build, before the Type/Pocket v3 commit): 217/218; the one failure was the
-  seek check reading the time a round trip late under load, now read from `seeked`.
+- Grades: Type C- → C+ (pass 3 running on v3); Pocket D+ → C- → C+ (v4 in pass 4);
+  Plate D+ (old build) → C (v3 in pass 3); Rig C (old build) → C+ (v4 in pass 3).
+- Frozen review builds: port 8084 `scratchpad/page-pass3.html` (Type pass 3), port 8085
+  `scratchpad/page-plate3.html` (Plate pass 3), port 8086 `scratchpad/page-pass4.html` (Rig
+  pass 3, Pocket pass 4). Each review dir holds a snapshot of the code it reviews.
 - Dev loop: `cd site && node build.mjs --out dist-dev/page.html`; dev server on port 8081
   (`tools/render/test_server.py --port 8081 --page site/dist-dev/page.html --mp3`);
-  render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments and
-  Type timelines in the scratchpad (`pocketdbg.js`, `typedbg.js`).
-- Next: act on the four verdicts; Plate rework; pass 3 for Rig and Plate (every variant
-  reviewed three times); final acceptance; NOTES.md; default visualizer.
+  render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments,
+  Type timelines and Plate schedules in the scratchpad (`pocketdbg.js`, `typedbg.js`,
+  `platedbg.js`).
+- Next: act on Type pass 3 and Plate pass 3; final acceptance; NOTES.md; default visualizer.
+- Housekeeping: a stray `/pl3` directory (8 render PNGs from a render run with an unset
+  variable) exists outside the repo; removing it needs the user's approval.
 
 ## Review findings acted on (pass 1)
 

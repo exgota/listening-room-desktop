@@ -154,25 +154,25 @@ controls are hidden.
 **Concept.** A timecoded lighting show in a black room: eight moving heads on a truss, a row
 of floor jets, a follow-spot and truss strobes, each fixture played by one part of the song.
 Nothing is a spectrum or a meter; every cue is a lighting designer's cue, placed at the exact
-time the analysis says it happens.
+time the analysis says it happens, and each song has its own opening, drop and signature.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
 | Kick | The floor jets fire (one row of upward shafts at the stage lip) |
-| Bass note | Every head pans together with the note, low left to high right, snapping with an overshoot; a repeated note nods them |
-| Voice | The warm follow-spot from above, on the singer's mark, moving with the pitch |
+| Bass note | Every head pans together with the note, low left to high right across the song's own bass range, snapping with an overshoot; a repeated note nods them |
+| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch |
 | Snare / hats | Truss strobe cells flash on the backbeat; hats sparkle |
-| Swing (American Boy, Outside) | In grooves and drives the heads chase sideways on the beat and on the swung eighth |
-| Section | Look (fan, cross, vee, curtain, blade, rain…) and camera shot per section and per eight bars |
-| Key word | Every head sweeps onto the singer's spot, holds, and sweeps back |
-| Build | Beams converge on one point and the camera pushes in |
-| Gap / breath | Blackout; blinders light pair by pair on the beats; the spot stays lit if someone sings into the hole |
-| Drop | Everything fires at the audience on the exact frame with a flash, holds two beats, then chases |
-| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta) |
-
-Each song opens on its own composition (its thumbnail) and has its own pair of drop looks.
+| Swing (American Boy, Outside) | The heads chase sideways on the beat and on the swung sixteenth, from the first bar |
+| Section | Look (fan, cross, vee, curtain, blade, rain, scissor…) and camera per section and per eight bars; each song's signature look recurs in its drives |
+| Breakdown | A different look per breakdown; a long one wakes the rig pair by pair |
+| Key word | Every head sweeps onto the singer's mark just before the word, holds, and lets go over a beat |
+| Build | Beams converge steadily into a spike high over the stage; the camera pushes in |
+| Gap / breath | Blackout; four big blinders light a pair per beat; the spot stays lit if someone sings into the hole. A drop without a hole breathes only where the music dips |
+| Drop | Everything fires at the audience on the exact frame, the brightest state of the song for two beats, then a chase steps across the rig on the eighths; each song lands with its own camera (Desire's main drop pours every head onto the singer) |
+| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta); a hit of its own when the turn is not a drop |
+| End | The last two bars fade to black |
 
 ### 2 · Type
 
