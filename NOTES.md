@@ -258,40 +258,62 @@ replay on the current code.
 
 **Concept.** A troupe of cut-paper figures, one per instrument, on a small stage, each moving
 only on its own instrument's onsets, so the groove on screen is the band's groove. Under the
-stage lies the pocket itself: one beat, four sixteenth cells, where every onset of the last
-two bars is stamped where it actually landed, so swing and push are visible in a single
-frame.
+stage lies the pocket itself: one beat in sixteenth cells, where every onset of the last two
+bars is stamped where it actually landed, so swing and push are visible in a single frame.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Kick | The kit's drum (a black disc) touches the floor exactly on each kick |
-| Hats | The kit's cymbals: one rings on the off-beat hats, the other on the late (swung) sixteenths, added as the song goes on |
+| Kick | The kit's drum (a black disc) touches the floor exactly on each kick (and squashes on a kick in a hold, in the air) |
+| Hats | The kit's cymbals: one rings on the off-beat hats, the other on the swung sixteenths (the late hats, or the late bass notes where the hats carry no swing, as in American Boy), added as the song goes on |
 | Bass | The dome winds up before each note and lands on it, taller for higher notes: syncopation shows as a landing off the drum's |
 | Snare (strong, beats 2 and 4) | The mustard hands clap; through a build they close a notch per bar |
-| Voice | The singer, a cut-paper profile: taller with pitch, the jaw dropping with the level, a lean that snaps on the beat and on the song's measured swung sixteenth |
-| The pocket (lane) | One beat in four cells; the last two bars of voice, hats, claps, kick and bass stamped at their place in the beat |
-| Arrangement | Performers on stage only while their part plays (they rise through the floor onto their first note); the featured performer changes every eight bars (singer and band take turns in verses and breakdowns) |
-| Section | A pale field per scene; every second eight bars of a scene on a partner field |
+| Voice | The singer, a cut-paper profile: taller with pitch, the mouth opening with the level, a lean that snaps once a beat (on the swung sixteenth in a swung song, with a bigger throw) |
+| The pocket (lane) | One beat in cells; the last two bars of voice, hats and claps, kick and bass stamped at their place in the beat |
+| Arrangement | Performers on stage only while their part plays (they rise through the floor onto their first note); the featured performer changes every eight bars, and one not featured stays well under its size, so a swap always shows |
+| Section | A field per run of scenes (pale before the turn, dark after it); every second eight bars of a run on a partner field, never a block under four bars |
 | Key word | Large cut-paper letters in the band beside the title; then a slip in a growing pile |
 | Chord passages | The field changes colour with each chord |
-| Build | The field steps darker each bar, the troupe gathers inward, the last bar trembles |
+| Intro | The song's own colour until the first phrase ends |
+| Build | The field steps toward night each bar (nearly to night before a drop with no hole), the troupe gathers inward, the last bar trembles; the singer turns cream once the field is dark |
 | Gap | Night; the troupe held in the air |
-| Drop | The troupe lands together on new marks with a slam; the main drop lands in the song's own colour for its whole section (NBLY cobalt, Desire tomato, Ophelia emerald, Outside mustard, American Boy violet) |
+| Drop | The troupe lands together on new marks with a slam. The main drop lands on a cream flash, then the song's own colour for its whole section (NBLY cobalt, Desire tomato, Ophelia emerald, Outside mustard, American Boy violet), the troupe 1.35x |
 | Song's turn | The stage goes dark, a different dark per section; later drops flash cream |
-| First frame and ending | The song's poster: the troupe posed in its colour |
+| First frame and ending | The song's poster, the troupe posed in its colour; it returns on the last downbeat and its hands keep the tempo after the music |
 
-**Measurements.** (Final review in progress.)
+**Measurements.** From the fifth review (on v5, before the v6 changes).
 
-**With more time.** (To follow the final review.)
+- Grades by review: D+, C-, C+, B- (the fourth was cut off after three songs).
+- Every hole and drop changes on the first 10 fps frame after its line (15 peaks in the five
+  songs), and the drum lands on the frame after each kick.
+- Nothing enters the title box (0 hits in 13,190 replayed frames); no figures overlap
+  except in the closing crossfade, which v6 replaced with a cut.
+- Longest single picture (same field, same composition): 16.2 s. Named field changes per
+  song: 14-43, no grey anywhere.
+- Field contrast at the drops, the frame before against the drop frame: 13-15:1 for the
+  cream landings, 2.0-4.6:1 for the main drops' own colours (1.2:1 for American Boy). v6
+  lands every main drop on a cream flash first.
+- Cymbals, share of frames with a visible ring after the turn: NBLY 38 %, Outside 40 %,
+  Desire 26 %, Ophelia 24 %, American Boy 4 % (its hats carry no swing; v6 moves its swing
+  cymbal onto the swung bass notes).
+
+**With more time.**
+
+- Make the swing a stage-sized event on a phone: a beat ruler across the floor where each
+  landing leaves a footprint at its phase in the beat.
+- Let figures trade places with a walk when a swap cannot change sizes, and give breakdowns
+  a staging the verses never use.
+- A fourth performer for the "other" stem (keys and guitars), with its own column.
+- Real cut-paper texture and a few hand-cut pose variants per figure.
 
 ### 4 · Rig
 
 **Concept.** A timecoded lighting show in a black room: eight moving heads on a truss, a row
 of floor jets, a follow-spot and truss strobes, each fixture played by one part of the song.
-Nothing is a spectrum or a meter; every cue is a lighting designer's cue, placed at the exact
-time the analysis says it happens, and each song has its own opening, drop and signature.
+Nothing is a spectrum or a meter: every cue is a lighting designer's cue, placed at the exact
+time the analysis says it happens, and each song has its own opening, drop picture and
+signature.
 
 **Mapping.**
 
@@ -299,19 +321,35 @@ time the analysis says it happens, and each song has its own opening, drop and s
 | --- | --- |
 | Kick | The floor jets fire (one row of upward shafts at the stage lip) |
 | Bass note | Every head pans together with the note, low left to high right across the song's own bass range, snapping with an overshoot; a repeated note nods them |
-| Opening | The song's own composition (its thumbnail), breathing over two bars: the heads rise and swell, then sink |
-| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch (a visit to a neighbouring mark under half a second is ignored) |
+| Opening | The song's own composition (its thumbnail, opened on a kick), breathing over two bars: the heads rise and their beams widen, then sink |
+| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch (a visit to a neighbouring mark under a second is ignored) |
 | Snare / hats | Truss strobe cells flash on the backbeat; hats sparkle |
 | Swing (American Boy, Outside) | The heads chase sideways on the beat and on the swung sixteenth, from the first bar |
-| Section | Look (fan, cross, vee, curtain, blade, rain, scissor…) and camera per section and per eight bars; each song's signature look recurs in its drives |
-| Breakdown | A look per breakdown, in each song's own order; one of eight bars or more wakes the rig pair by pair |
-| Key word | Every head sweeps onto the singer's mark just before the word, holds, and lets go over a beat |
-| Build | Beams converge steadily into a spike high over the stage and brighten as they close; the camera pushes in |
+| Section | Look (fan, cross, blade, rain, scissor…) and camera per section and per eight bars, the camera turning at every section change; each song's signature look recurs in its drives |
+| Breakdown | A look per breakdown, in each song's own order; one of six bars or more wakes the rig pair by pair |
+| Key word | Every head sweeps onto the singer's mark just before the word (lenses dimmed), holds, and lets go over a beat |
+| Build | Beams converge steadily into a spike high over the stage, brightening as they close in thickening haze; the camera pushes in |
 | Gap / breath | Blackout; four big blinders light a pair per beat; the spot stays lit (held at its peak) if someone sings into the hole. A drop without a hole breathes only where the music dips |
-| Drop | Everything fires at the audience on the exact frame, the brightest state of the song for two beats, eased over two more into the drop section, where a pair of heads chases across the rig on the eighths. Each song's drop has a camera no other section of that song uses (NBLY and Outside from above, Desire from the floor, Ophelia from the side, American Boy from below); Desire's main drop pours every head onto the singer, seen from the side. Only drops glare: drives keep their lenses down |
-| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta); a hit of its own when the turn is not a drop |
+| Drop | Everything fires over the audience on the exact frame, the brightest state of the song for three beats, eased over four more into the drop section: at least eight bars in the drop's own camera and looks, in thicker haze (the main drop's thickest and hottest), a pair of heads chasing across the rig on the eighths. No two songs share a drop camera: NBLY from above, Desire from the floor (its main drop from the side, pouring every head onto the singer), Ophelia from overhead, Outside from the back of the room, American Boy from below |
+| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta), gelled heads raised to make up what the gel takes; a hit and a tail of its own when the turn is not a drop |
 | End | The opening composition returns for at least the last eight bars, heads dropping out, with a slow sweep; the last two bars fade to black |
 
-**Measurements.** (Final review in progress.)
+**Measurements.** From the fourth review (on v5) and 1 fps luma renders of the current code.
 
-**With more time.** (To follow the final review.)
+- Grades by review: C, C+, B- (the third was cut off before its grade).
+- Drops: every drop with a 10 fps strip lands on the first frame after its line (nine).
+  Build top against hit: 1.6-3.2x.
+- Title contrast: median 0.86-0.88 per song, no frame under 0.35 outside the hit frames; the
+  flash now spares the title's corner.
+- Drop sections against drives (mean luma above the transport, current code): NBLY 0.173
+  and its main drop 0.174 against 0.122 (1.42x); Desire 0.183 and its main drop 0.163
+  against 0.137 (1.34x and 1.19x). The fourth review had found them level with the drives.
+- Drop pictures across songs: the fourth review found two pairs sharing a camera
+  (similarity 0.57 and 0.66); since v7 each song's drop has its own camera.
+
+**With more time.**
+
+- Measure the frame time on the M4; the fragment pass is the heaviest of the four.
+- Visible fixture bodies and gobo textures, so the rig reads as hardware, not only light.
+- Hand-programmed cues for each song's two or three key moments on top of the rules.
+- Camera moves (a crane, a dolly) timed to phrases, not only cuts and drifts.
