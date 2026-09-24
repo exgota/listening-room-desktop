@@ -18,8 +18,12 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
   render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments,
   Type timelines and Plate schedules in the scratchpad (`pocketdbg.js`, `typedbg.js`,
   `platedbg.js`); `shots.js` projects the Rig's truss and lenses onto each camera shot.
-- Next: act on the final reviews; acceptance run on the final build; NOTES.md measurements,
-  "more time" and the default visualizer.
+- Acceptance (`tools/render/acceptance.mjs`) on the build with Rig v5, Pocket v5, Type v4 and
+  Plate v4: 218/218. (The first run of the day read 213/218: every failure was a seek check
+  on a WebGL visualizer, read in a `seeked` handler that a software GPU dispatches late while
+  the audio plays on; the script now records the time the page sets.)
+- Next: act on the final reviews; acceptance again on the final build; NOTES.md
+  measurements, "more time" and the default visualizer.
 - Housekeeping: a stray `/pl3` directory (8 render PNGs from a render run with an unset
   variable) exists outside the repo; removing it needs the user's approval.
 
