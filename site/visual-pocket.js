@@ -41,7 +41,7 @@ const pocketSongs = {
   "1d589940ca458d793a3fad8a": { field: "blush", order: ["drum", "bass", "singer"], main: "#e4472b" }, // Desire: tomato
   f127a026dc751f1528bfb95d: { field: "mint", order: ["bass", "singer", "drum"], main: "#1bb07a" }, // Ophelia: emerald
   "8eee874c702a10807f79706c": { field: "cream", order: ["drum", "singer", "bass"], main: "#eab12c" }, // Outside: mustard
-  "4048d4a6dce44c151690b2b1": { field: "lilac", order: ["bass", "drum", "singer"], main: "#6b3fd6" }, // American Boy: violet
+  "4048d4a6dce44c151690b2b1": { field: "lilac", order: ["bass", "drum", "singer"], main: "#6b3fd6", swung: true }, // American Boy: violet, swung
 };
 const pocketRise = 0.5; // seconds to rise through the floor or sink through it
 
@@ -133,13 +133,13 @@ registerVisualizer({
       }
       // where the hats carry no swing (American Boy swings in its bass), the swing cymbal
       // rings on the bass notes that land late in the beat, and weaker off-beat hats count
-      if (off.length < model.downbeats.length)
+      if (off.length < model.beats.length * 0.5)
         for (let index = 0; index < model.hats.length; index++) {
           const phase = fract(model.beatPosition(model.hats.time[index]));
           if (model.hats.strength[index] >= 0.12 && model.hats.strength[index] < 0.25 && phase > 0.4 && phase < 0.6) off.push([model.hats.time[index], model.hats.strength[index]]);
         }
       off.sort((a, b) => a[0] - b[0]);
-      if (lateHats.length < model.downbeats.length && swingLate > 0.04) {
+      if (lateHats.length < model.downbeats.length && setup.swung) {
         lateHats.length = 0;
         for (let index = 0; index < model.bassNotes.length; index++) {
           const phase = fract(model.beatPosition(model.bassNotes.start[index]));
@@ -317,7 +317,7 @@ registerVisualizer({
         else if (scene.kind !== "build" && (scene.kind !== "drop" || settled - scene.start > 7.5 * model.barPeriod) && present.length > 1) feature = present[phrase % present.length];
         if (feature && !on.has(feature)) feature = null;
         // the kit grows: the off-beat cymbal after the first drop, the swing cymbal after the turn
-        const kit = 1 + (dropsPassed > 0 ? 1 : 0) + (settled >= model.lateStart ? 1 : 0);
+        const kit = setup.swung ? 3 : 1 + (dropsPassed > 0 ? 1 : 0) + (settled >= model.lateStart ? 1 : 0);
         const segment = {
           start: boundary.time,
           duration: boundary.duration,
@@ -484,10 +484,20 @@ registerVisualizer({
       return { width: 120000 / height, height };
     }
 
+    // Relative luminance of an sRGB colour (0-1 channels), and the contrast of two.
+    function luminanceOf([r, g, b]) {
+      const linear = (value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+    }
+    function contrastOf(a, b) {
+      const [x, y] = [luminanceOf(a), luminanceOf(b)].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    }
+
     // Colours for a field: the figures keep theirs unless the field would swallow them.
     function colorsFor(fieldColor) {
       const [r, g, b] = fieldColor;
-      const dark = r + g + b < 1.2;
+      const dark = luminanceOf(fieldColor) < 0.18;
       const near = (hex) => {
         const [x, y, z] = hexColor(hex);
         return Math.abs(x - r) + Math.abs(y - g) + Math.abs(z - b) < 0.55;
@@ -558,16 +568,29 @@ registerVisualizer({
         const opened = song.barIndex(fieldRuns[sceneIndex][0] + 0.01);
         const closes = song.barIndex(fieldRuns[sceneIndex][1] - 0.01) + 1;
         const block = Math.floor(Math.max(0, song.barIndex(time) - opened) / 8);
-        if (block % 2 === 1 && Math.min(opened + (block + 1) * 8, closes) - (opened + block * 8) >= 4)
-          fieldName = pocketPale.includes(fieldName) ? pocketPale[(pocketPale.indexOf(fieldName) + 3) % 5] : pocketDark[(pocketDark.indexOf(fieldName) + 1) % 3];
+        if (block % 2 === 1 && Math.min(opened + (block + 1) * 8, closes) - (opened + block * 8) >= 4) {
+          if (pocketDark.includes(fieldName)) fieldName = "tint";
+          else {
+            const after = song.sceneIndex(fieldRuns[sceneIndex][1] + 0.01);
+            const next = after > sceneIndex ? sceneFields[after] : "";
+            const index = pocketPale.indexOf(fieldName);
+            fieldName = pocketPale[(index + 3) % 5] === next ? pocketPale[(index + 2) % 5] : pocketPale[(index + 3) % 5];
+          }
+        }
       }
-      let fieldColor = hexColor(pocketFields[fieldName] || pocketFields.cream);
+      let fieldColor = fieldName === "tint" ? mixColor(hexColor(pocketFields.night), hexColor(setup.main), 0.35) : hexColor(pocketFields[fieldName] || pocketFields.cream);
       const baseColors = colorsFor(fieldColor);
       let colors = baseColors;
       if (windUp > 0) {
+        // toward the song's own colour at night (toward plain night where that colour is so
+        // light it would turn brown), nearly all the way before a drop with no hole
         const holeless = drop.drop.gapStart >= drop.drop.time - 0.05;
-        fieldColor = mixColor(fieldColor, hexColor(pocketFields.night), (holeless ? 0.8 : 0.55) * barsDone);
-        if (!baseColors.dark && 0.2126 * fieldColor[0] + 0.7152 * fieldColor[1] + 0.0722 * fieldColor[2] < 0.45) colors = { ...baseColors, singer: pocketInk.cream };
+        const main = hexColor(setup.main);
+        const target = luminanceOf(main) > 0.4 ? hexColor(pocketFields.night) : mixColor(hexColor(pocketFields.night), main, 0.35);
+        fieldColor = mixColor(fieldColor, target, (holeless ? 0.85 : 0.7) * barsDone);
+        colors = colorsFor(fieldColor);
+        // the singer turns cream once its own colour stands under 3:1 on the darkened field
+        if (contrastOf(hexColor(colors.singer), fieldColor) < 3 && contrastOf(hexColor(pocketInk.cream), fieldColor) > contrastOf(hexColor(colors.singer), fieldColor)) colors = { ...colors, singer: pocketInk.cream };
       }
       const inMain = mainSection && time >= mainSection[0] && time < mainSection[1];
       if (sceneIndex === 0 && time < introColourEnd) {
@@ -621,7 +644,7 @@ registerVisualizer({
       const slam = sinceDrop < 0.25 ? 1 - sinceDrop / 0.25 : 0;
       const liftFor = (maximum, depth) => hang * (1 - depth) * Math.min(maximum, room * unit * 0.4);
       // the main drop lands the cast a size larger, settling over its first bar
-      const grow = drop.phase === 3 && drop.index === song.mainDrop ? 1 + 0.35 * (1 - easeInOutCubic(clamp01(sinceDrop / song.barPeriod))) : 1;
+      let grow = drop.phase === 3 && drop.index === song.mainDrop ? 1 + 0.35 * (1 - easeInOutCubic(clamp01(sinceDrop / song.barPeriod))) : 1;
 
       // The key word: small in the free band right of the title, or, sung into the main drop,
       // across the stage behind the troupe.
@@ -678,6 +701,14 @@ registerVisualizer({
         }
         return squeeze(entry);
       };
+      // the main drop's growth stops where a figure would leave the frame
+      if (grow > 1)
+        for (const [name, half] of [["drum", 430], ["bass", 340], ["singer", 150]]) {
+          const entry = place(name);
+          if (!entry) continue;
+          const reach = half * unit * entry.size;
+          grow = Math.min(grow, Math.max(1, (entry.x - width * 0.01) / reach), Math.max(1, (width * 0.99 - entry.x) / reach));
+        }
 
       // The main drop's word stands behind the troupe, across the stage.
       if (wordState && wordState.main) {
@@ -715,7 +746,7 @@ registerVisualizer({
         const snap = (age) => easeOutBack(clamp01(age / 0.08));
         // one snap a beat: on the swung sixteenth in a swung song (with a bigger throw), on the
         // beat otherwise; it eases back through the rest of the beat
-        const swung = swingLate > 0.06;
+        const swung = setup.swung === true;
         const since = fract(phase - (swung ? 0.75 + swingLate : 0));
         const lean = since < 0.1 ? mixValue(-1, 1, snap(since)) : 1 - 2 * easeInOutCubic((since - 0.1) / 0.9);
         const sway = clampRange(lean, -1, 1) * (swung ? 0.2 : 0.1) * singerAwake * (1 - windUp) * (1 - poster);
@@ -737,23 +768,20 @@ registerVisualizer({
         context.lineTo(x + bodyWidth * 0.62, base);
         context.closePath();
         context.fill();
-        // head in profile, facing the middle of the stage
-        context.beginPath();
-        context.arc(headX, headY, headRadius, 0, Math.PI * 2);
-        context.fill();
-        // the face in profile: a nose, and a mouth notch cut in from the front that opens with
-        // the voice; a small eye above
-        paperShape([[headX + facing * headRadius * 0.86, headY - headRadius * 0.3], [headX + facing * headRadius * 1.24, headY + headRadius * 0.06], [headX + facing * headRadius * 0.9, headY + headRadius * 0.12]], colors.singer);
-        const open = headRadius * (0.07 + 0.34 * level * singerAwake);
+        // the head, cut as one profile facing the middle of the stage: the skull round the
+        // back, then brow, nose, lips (parting with the voice) and chin; a small eye
+        const open = 0.04 + 0.3 * level * singerAwake;
+        const face = (x, y) => [headX + facing * x * headRadius, headY + y * headRadius];
+        const profile = [];
+        for (let step = 0; step <= 16; step++) {
+          const angle = (-60 - (step / 16) * 180) * (Math.PI / 180);
+          profile.push(face(Math.cos(angle), Math.sin(angle)));
+        }
+        profile.push(face(0.35, 0.97), face(0.84, 0.74 + open), face(1.0, 0.52 + open), face(0.74, 0.42 + open * 0.5), face(1.02, 0.34), face(0.97, 0.21), face(1.26, 0.05), face(1.0, -0.2), face(1.03, -0.38), face(0.86, -0.62));
+        paperShape(profile, colors.singer);
         context.fillStyle = field;
         context.beginPath();
-        context.moveTo(headX + facing * headRadius * 0.42, headY + headRadius * 0.36);
-        context.lineTo(headX + facing * headRadius * 1.2, headY + headRadius * 0.3 - open * 0.3);
-        context.lineTo(headX + facing * headRadius * 1.2, headY + headRadius * 0.3 + open);
-        context.closePath();
-        context.fill();
-        context.beginPath();
-        context.arc(headX + facing * headRadius * 0.46, headY - headRadius * 0.28, headRadius * 0.12, 0, Math.PI * 2);
+        context.arc(headX + facing * headRadius * 0.55, headY - headRadius * 0.24, headRadius * 0.11, 0, Math.PI * 2);
         context.fill();
       }
 
