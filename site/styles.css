@@ -1104,3 +1104,140 @@ h1 {
     --gutter: clamp(32px, 4vw, 64px);
   }
 }
+
+/* ---- Visualizers ----------------------------------------------------------------
+   Each visualizer draws into its own canvas in the stage and sets a theme through
+   html[data-visual]. While audio plays the play button leaves; the controls, the
+   file row and the brand step aside until the pointer moves or focus enters them. */
+.stage > .visual-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: -1;
+}
+.stage > .visual-canvas[hidden] {
+  display: none;
+}
+:root {
+  --waveform-played: #315bca;
+  --waveform-rest: #8290a3;
+  --waveform-empty: #aeb6c2;
+  --vz-background: var(--background);
+  --vz-ink: var(--ink);
+  --vz-secondary: var(--secondary);
+  --vz-accent: var(--accent);
+  --vz-button: var(--ink);
+  --vz-button-ink: #fff;
+  --vz-scrim: none;
+  --vz-title-font: inherit;
+  --vz-title-weight: 520;
+  --vz-title-spacing: -0.04em;
+  --vz-title-transform: none;
+  --vz-title-scale: 1;
+  --vz-credits-font: inherit;
+  --vz-credits-size: 13px;
+  --vz-credits-spacing: 0;
+  --vz-credits-transform: none;
+}
+body:has(#player-view:not([hidden])) {
+  background: var(--vz-background);
+  color: var(--vz-ink);
+  --ink: var(--vz-ink);
+  --secondary: var(--vz-secondary);
+  --accent: var(--vz-accent);
+  --line: color-mix(in srgb, var(--vz-ink) 18%, transparent);
+}
+#player-view .intro h1 {
+  font-family: var(--vz-title-font);
+  font-weight: var(--vz-title-weight);
+  letter-spacing: var(--vz-title-spacing);
+  text-transform: var(--vz-title-transform);
+}
+#player-view .credits {
+  font-family: var(--vz-credits-font);
+  font-size: var(--vz-credits-size);
+  letter-spacing: var(--vz-credits-spacing);
+  text-transform: var(--vz-credits-transform);
+}
+#player-view .play {
+  background: var(--vz-button);
+  color: var(--vz-button-ink);
+}
+#player-view .icon-button:hover {
+  background: color-mix(in srgb, var(--vz-ink) 12%, transparent);
+}
+#player-view .download {
+  background: var(--vz-button);
+  color: var(--vz-button-ink);
+}
+#player-view .volume input {
+  accent-color: var(--vz-ink);
+}
+.visual-playing #player-view .play-orbit {
+  visibility: hidden;
+}
+@media (min-width: 901px) {
+  #player-view .stage {
+    bottom: 0;
+  }
+  #player-view > .intro h1 {
+    font-size: calc(clamp(44px, 4.6vw, 72px) * var(--vz-title-scale));
+  }
+  #player-view .player::after {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 190px;
+    background: var(--vz-scrim);
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.25s ease-out;
+  }
+  .shell:has(#player-view:not([hidden])) > .header > *,
+  #player-view > .download-row,
+  #player-view .waveform,
+  #player-view .transport,
+  #player-view .player::after {
+    transition: opacity 0.25s ease-out;
+  }
+  .visual-playing.controls-idle .shell:has(#player-view:not([hidden])) > .header > *,
+  .visual-playing.controls-idle #player-view > .download-row,
+  .visual-playing.controls-idle #player-view .waveform,
+  .visual-playing.controls-idle #player-view .transport,
+  .visual-playing.controls-idle #player-view .player::after {
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+  }
+  .visual-playing.controls-idle #player-view .stage {
+    cursor: none;
+  }
+}
+
+/* Rig: black room, white type. */
+html[data-visual="rig"] {
+  --vz-background: #000;
+  --vz-ink: #f2f0ec;
+  --vz-secondary: #8d8a86;
+  --vz-accent: #f2f0ec;
+  --vz-button: #f2f0ec;
+  --vz-button-ink: #000;
+  --waveform-played: #f2f0ec;
+  --waveform-rest: #4a4845;
+  --waveform-empty: #4a4845;
+  --vz-scrim: linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0));
+  --vz-title-font: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
+  --vz-title-weight: 650;
+  --vz-title-spacing: -0.035em;
+  --vz-credits-font: "IBM Plex Mono", ui-monospace, monospace;
+  --vz-credits-size: 12px;
+  --vz-credits-spacing: 0.08em;
+  --vz-credits-transform: uppercase;
+}
+html[data-visual="rig"] #player-view > .intro {
+  mix-blend-mode: difference;
+}

@@ -1,19 +1,38 @@
+let waveformTheme = null;
+let waveformSize = "";
+
+function readWaveformTheme() {
+  const style = getComputedStyle(elements.waveform);
+  return {
+    played: style.getPropertyValue("--waveform-played").trim() || "#315bca",
+    rest: style.getPropertyValue("--waveform-rest").trim() || "#8290a3",
+    empty: style.getPropertyValue("--waveform-empty").trim() || "#aeb6c2",
+  };
+}
+
 function drawWaveform() {
   const canvas = elements.waveform,
-    context = canvas.getContext("2d"),
     bounds = canvas.getBoundingClientRect(),
     ratio = window.devicePixelRatio || 1;
   if (!bounds.width || !bounds.height) return;
-  canvas.width = Math.round(bounds.width * ratio);
-  canvas.height = Math.round(bounds.height * ratio);
-  context.scale(ratio, ratio);
+  // While the controls are away during playback nothing shows, so nothing is drawn.
+  if (document.body.classList.contains("controls-idle") && document.body.classList.contains("visual-playing")) return;
+  const size = `${Math.round(bounds.width * ratio)}x${Math.round(bounds.height * ratio)}`;
+  if (size !== waveformSize) {
+    waveformSize = size;
+    canvas.width = Math.round(bounds.width * ratio);
+    canvas.height = Math.round(bounds.height * ratio);
+  }
+  waveformTheme ||= readWaveformTheme();
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
   const progress = Number(elements.seek.value) / 1000,
     peaks = selected?.peaks || [],
     barCount = Math.max(1, Math.floor(bounds.width / 5)),
     center = bounds.height / 2;
   context.clearRect(0, 0, bounds.width, bounds.height);
   if (!peaks.length) {
-    context.fillStyle = "#aeb6c2";
+    context.fillStyle = waveformTheme.empty;
     context.fillRect(0, center, bounds.width, 1);
     return;
   }
@@ -27,7 +46,7 @@ function drawWaveform() {
     for (let sample = start; sample < finish; sample++)
       height = Math.max(height, peaks[sample] || 0);
     height = Math.max(3, height * (bounds.height - 22));
-    context.fillStyle = index / barCount < progress ? "#315bca" : "#8290a3";
+    context.fillStyle = index / barCount < progress ? waveformTheme.played : waveformTheme.rest;
     context.beginPath();
     context.roundRect(
       (index * bounds.width) / barCount,

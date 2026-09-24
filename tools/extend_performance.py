@@ -3,14 +3,15 @@
 
     python3 tools/extend_performance.py                 # every song in library/
     python3 tools/extend_performance.py 4048d4a6dce4... # one song
-    python3 tools/extend_performance.py --lyrics-only   # rewrite only visual.lyrics
+    python3 tools/extend_performance.py --light         # rewrite only visual.lyrics and visual.peaks
 
 Reads the committed stems (never separates again) and the existing analysis, then adds one
 top-level object, `visual`, leaving every existing field as it was:
 
   grid_offset   seconds added to the tracked grid so beats sit on the drum transients
   beats, downbeats  the corrected grid
-  drops         [{time, gap_start, strength}] with times moved onto the audible arrival
+  drops         [{time, gap_start, strength}] on the corrected downbeat
+  peaks         [{start, end, kind}] hand-named peaks from the brief (chord passages, words)
   kick          [[time, strength]]   the drum stem's low attacks (from `kicks`, corrected)
   snare         [[time, strength]]   backbeat clap/snare attacks (NMF of the drum stem)
   hat           [[time, strength]]   hi-hat attacks (NMF of the drum stem)
@@ -291,7 +292,7 @@ def chords(document, beats, bass_list, duration):
 
 # ---------------------------------------------------------------- structure
 
-def scenes(document, drops, snare, duration):
+def scenes(document, drops, snare, duration, offset=0.0):
     """One label per stretch of bars: what the band is doing there.
 
     Each bar is classed by its stem levels (break: drums out; full: drums and bass in;
@@ -299,8 +300,9 @@ def scenes(document, drops, snare, duration):
     class is split at four-bar boundaries where the texture (stem levels, hats, backbeat,
     singing) changes. Kinds: intro, verse, groove, break, build, gap, drop, drive, outro.
     """
-    bars = document["bars"]
-    sections = document["sections"]
+    bars = [{**bar, "start": bar["start"] + offset, "end": bar["end"] + offset} for bar in document["bars"]]
+    sections = {**document["sections"], "builds": [{**build, "start": build["start"] + offset, "end": build["end"] + offset}
+                                                   for build in document["sections"]["builds"]]}
     mix, vocal, hats = series(document, "mix"), series(document, "vocal"), series(document, "hats")
     snare_times = np.array([event[0] for event in snare if event[1] > 0.5])
     features, kinds = [], []
@@ -392,6 +394,25 @@ def scenes(document, drops, snare, duration):
     return result
 
 
+# ---------------------------------------------------------------- peaks
+
+# The moments that must land hardest, from the brief (its own listening plus this analysis),
+# on the original grid. Drops and gaps are already in `drops`; these add what the analysis
+# cannot name: the chord passages of NBLY and the word that straddles Desire's main drop.
+PEAKS = {
+    "5ff86d6cd02ebd7308e03df8": [  # NBLY
+        {"start": 140.0, "end": 145.0, "kind": "chords"},
+        {"start": 248.0, "end": 259.0, "kind": "chords"},
+    ],
+    "1d589940ca458d793a3fad8a": [  # Desire: "Is it desire?" runs into the drop
+        {"start": 167.44, "end": 168.1, "kind": "word"},
+    ],
+    "f127a026dc751f1528bfb95d": [],  # The Fate of Ophelia: its drops and breakdowns
+    "8eee874c702a10807f79706c": [],  # Outside: the one build and drop
+    "4048d4a6dce44c151690b2b1": [],  # American Boy: a groove, no peak beyond its drop
+}
+
+
 # ---------------------------------------------------------------- lyrics
 
 def lyrics_for(identifier):
@@ -403,18 +424,21 @@ def lyrics_for(identifier):
 
 # ---------------------------------------------------------------- main
 
-def extend(identifier, lyrics_only=False):
+def extend(identifier, light=False):
     folder = LIBRARY / identifier
     path = folder / "performance.json"
     document = json.loads(path.read_text())
-    visual = document.get("visual", {}) if lyrics_only else {}
+    visual = document.get("visual", {}) if light else {}
     lyrics = lyrics_for(identifier)
     if lyrics is not None:
         visual["lyrics"] = lyrics
-    if lyrics_only:
+    if light:
+        offset = visual.get("grid_offset", 0.0)
+        visual["peaks"] = [{**peak, "start": r3(peak["start"] + offset), "end": r3(peak["end"] + offset)}
+                           for peak in PEAKS.get(identifier, [])]
         document["visual"] = visual
         path.write_text(json.dumps(document, separators=(",", ":")))
-        report(f"{identifier}: lyrics {len(lyrics or [])}")
+        report(f"{identifier}: lyrics {len(lyrics or [])}, peaks {len(visual['peaks'])}")
         return
     report(f"{identifier}: decoding stems")
     stems = {stem: decode(folder / "stems" / f"{stem}.m4a") for stem in ("drums", "bass", "other", "vocals")}
@@ -429,22 +453,30 @@ def extend(identifier, lyrics_only=False):
     downbeats = [r3(time + offset) for time in document["downbeats"]]
     low_level = level_ms(scipy.signal.sosfiltfilt(scipy.signal.butter(4, 160, btype="lowpass", fs=SR, output="sos"),
                                                   stems["drums"] + stems["bass"]))
+    # Drops sit on the corrected downbeat: at every listed drop the corrected grid lines up
+    # with the arrival of drums and bass (checked in 1 ms waveform views); a search for the
+    # steepest rise nearby can jump to a fill or a later hit, so it only confirms.
     drops = []
     for drop in document["sections"]["drops"]:
-        listed = drop["time"] + offset
-        time = refine_arrival(low_level, listed)
+        time = drop["time"] + offset
         gap_start = drop["gap_start"] + offset if drop["gap_start"] < drop["time"] - 0.05 else time
         drops.append({"time": r3(time), "gap_start": r3(gap_start), "strength": drop["strength"],
-                      "listed": drop["time"]})
-    report(f"  drops {[(d['listed'], d['time']) for d in drops]}")
+                      "listed": drop["time"], "arrival": r3(refine_arrival(low_level, time, 0.03))})
+    report(f"  drops {[(d['listed'], d['time'], d['arrival']) for d in drops]}")
 
-    # Kicks: each listed kick moved onto its own transient when one is clear, else by the offset.
-    kick_level = level_ms(scipy.signal.sosfiltfilt(scipy.signal.butter(4, 150, btype="lowpass", fs=SR, output="sos"),
-                                                   stems["drums"]))
+    # Kicks and backbeats land on eighth notes; snapping them to the corrected grid removes the
+    # first analysis's 10 ms steps and the lag of its attack measure. Hats and bass keep their
+    # own timing, which carries the swing.
+    eighths = np.sort(np.concatenate([np.asarray(beats), (np.asarray(beats[:-1]) + np.asarray(beats[1:])) / 2]))
+
+    def snap(time, reach):
+        nearest = eighths[np.argmin(np.abs(eighths - time))]
+        return float(nearest) if abs(nearest - time) <= reach else time
+
     kicks = []
     for kick in document["kicks"]:
-        moved, size = retime(kick_level, kick["time"] + offset, 0.03, 0.03)
-        kicks.append({"time": moved if size > 3 else kick["time"] + offset, "strength": kick["strength"]})
+        on_grid = abs(kick["time"] - min(document["beats"], key=lambda beat: abs(beat - kick["time"]))) < 0.001
+        kicks.append({"time": snap(kick["time"] + (offset if on_grid else 0), 0.045), "strength": kick["strength"]})
     parts, labels = drum_parts(stems["drums"], kicks)
     report(f"  drum components {labels}")
     snare = attacks(parts["snare"][:count], 0.09, 0.08, kicks, kick_mask=0.6)
@@ -453,7 +485,7 @@ def extend(identifier, lyrics_only=False):
         scipy.signal.butter(4, [low, high] if high else low, btype="bandpass" if high else "highpass", fs=SR,
                             output="sos"), stems["drums"]))
     snare_level, hat_level = band(900, 5000), band(6000, None)
-    snare = [[r3(retime(snare_level, time, 0.025, 0.025)[0]), strength] for time, strength in snare]
+    snare = [[r3(snap(retime(snare_level, time, 0.025, 0.025)[0], 0.035)), strength] for time, strength in snare]
     hat = [[r3(retime(hat_level, time, 0.02, 0.02)[0]), strength] for time, strength in hat]
     other_attack = series(document, "other_attack")
     stab_peaks, stab_props = scipy.signal.find_peaks(other_attack, distance=8, height=0.3, prominence=0.15)
@@ -471,14 +503,14 @@ def extend(identifier, lyrics_only=False):
     pitch, vocal = series(document, "pitch"), series(document, "vocal")
     voice_list = vocal_notes(pitch, vocal)
     chord_list = chords(document, beats, bass_list, duration)
-    scene_list = scenes(document, drops, snare, duration)
+    scene_list = scenes(document, drops, snare, duration, offset)
     anchor = document["anchor"]
     visual.update({
         "version": 1,
         "grid_offset": r3(offset),
         "beats": beats,
         "downbeats": downbeats,
-        "drops": [{key: value for key, value in drop.items() if key != "listed"} for drop in drops],
+        "drops": [{key: value for key, value in drop.items() if key not in ("listed", "arrival")} for drop in drops],
         "kick": [[r3(k["time"]), round(k["strength"], 3)] for k in kicks],
         "snare": snare,
         "hat": hat,
@@ -487,6 +519,8 @@ def extend(identifier, lyrics_only=False):
         "vocal_notes": voice_list,
         "chords": chord_list,
         "scenes": scene_list,
+        "peaks": [{**peak, "start": r3(peak["start"] + offset), "end": r3(peak["end"] + offset)}
+                  for peak in PEAKS.get(identifier, [])],
         "anchor": {"kind": anchor["kind"], "word": anchor["word"],
                    "moments": [{"start": r3(m["start"] + (offset if anchor["kind"] == "lead_in" else 0)),
                                 "end": r3(m["end"] + (offset if anchor["kind"] == "lead_in" else 0))}
@@ -501,11 +535,11 @@ def extend(identifier, lyrics_only=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("identifiers", nargs="*")
-    parser.add_argument("--lyrics-only", action="store_true")
+    parser.add_argument("--light", action="store_true")
     arguments = parser.parse_args()
     identifiers = arguments.identifiers or sorted(path.name for path in LIBRARY.iterdir() if (path / "performance.json").exists())
     for identifier in identifiers:
-        extend(identifier, arguments.lyrics_only)
+        extend(identifier, arguments.light)
 
 
 if __name__ == "__main__":
