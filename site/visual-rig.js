@@ -241,7 +241,7 @@ void main() {
 registerVisualizer({
   key: "rig",
   name: "Rig",
-  order: 1,
+  order: 4,
   create() {
     const canvas = createVisualCanvas();
     const gl = createWebGL(canvas);

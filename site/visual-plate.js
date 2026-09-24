@@ -241,7 +241,7 @@ const plateColors = {
 registerVisualizer({
   key: "plate",
   name: "Plate",
-  order: 4,
+  order: 1,
   create() {
     const container = document.createElement("div");
     container.hidden = true;

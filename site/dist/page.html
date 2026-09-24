@@ -2397,7 +2397,7 @@ let visualizerTrack = null;
 let visualizerSong = null;
 let visualizerDebugTime = null;
 const visualizerChoiceKey = "listening-room.visualizer.v1";
-const visualizerDefault = "rig";
+const visualizerDefault = "plate";
 const visualizerDefinitions = [];
 const visualizerInstances = new Map();
 let visualizerActive = null;
@@ -3046,7 +3046,7 @@ void main() {
 registerVisualizer({
   key: "rig",
   name: "Rig",
-  order: 1,
+  order: 4,
   create() {
     const canvas = createVisualCanvas();
     const gl = createWebGL(canvas);
@@ -5798,7 +5798,7 @@ const plateColors = {
 registerVisualizer({
   key: "plate",
   name: "Plate",
-  order: 4,
+  order: 1,
   create() {
     const container = document.createElement("div");
     container.hidden = true;

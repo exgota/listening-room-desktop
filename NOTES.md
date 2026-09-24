@@ -6,10 +6,10 @@ visible to switch with: no dropdown, no control. The default is set in
 
 | Key | Visualizer | In one line |
 | --- | --- | --- |
-| 1 | Rig | A timecoded stage lighting show in a black room |
+| 1 | Plate (the default) | Chladni figures: the harmony shapes the sand, the kick strikes the plate |
 | 2 | Type | The sung words set as posters that assemble in the singer's rhythm |
 | 3 | Pocket | A cut-paper troupe, one performer per instrument, on the band's own groove |
-| 4 | Plate | Chladni figures: the harmony shapes the sand, the kick strikes the plate |
+| 4 | Rig | A timecoded stage lighting show in a black room |
 
 While audio plays, the play button is hidden. The controls, the file row and the brand fade
 out at the moment playback starts, and come back when the pointer moves or keyboard focus

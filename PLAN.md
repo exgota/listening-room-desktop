@@ -51,10 +51,10 @@ it changes only when a design decision changes.
 
 | | Dimensionality | Driver | Rate of change | Palette |
 |---|---|---|---|---|
-| 1 Rig | 3D (raymarched haze) | energy + structure | slow gathers, instant releases | black, white light, one gel per song |
+| 1 Plate (default) | 2D physical (particles) | pitch: bass note, chord, sung pitch | slow (per chord), with kick ripples | ivory plate, black sand, one vermilion |
 | 2 Type | 2D typographic | sung words | per word / per phrase cuts | one saturated field colour per song + one ink |
 | 3 Pocket | 2D flat, cut paper | rhythm: per-stem onsets, swing | fast, continuous, elastic (per 16th) | polychrome cut paper, background changes per section |
-| 4 Plate | 2D physical (particles) | pitch: bass note, chord, sung pitch | slow (per chord), with kick ripples | ivory plate, black sand, one vermilion |
+| 4 Rig | 3D (volumetric beams in haze) | energy + structure | slow gathers, instant releases | black, white light, one gel per song |
 
 Every pair differs in at least three of the four columns. Pocket is the one built for groove
 and swing (American Boy); Type is the one built on words; Rig is the drop machine; Plate is

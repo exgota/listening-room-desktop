@@ -135,6 +135,12 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 - Drops without a build in the data (Ophelia 1:34.7, American Boy 0:48.8, NBLY 4:36.3) get a
   four-bar approach, so each visualizer gathers before them.
 
+- Default visualizer: Plate, now on key 1 (1 Plate, 2 Type, 3 Pocket, 4 Rig). It had the
+  best grade of the final round (B on v4, before the v5 fixes), it is the calmest over a whole
+  song (it moves at the pace of the harmony, the kick and bass as pulses), every song's first
+  frame is its own emblem, it reads at 350 px, and it is among the cheapest to draw. Key 1 is
+  the default so the first key is the look a new listener sees.
+
 ## Environment notes (for a fresh context)
 
 - Server: `python3 server.py --port 8080` from repo root (build first: `cd site && node build.mjs`).

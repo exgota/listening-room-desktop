@@ -32,7 +32,7 @@ const SONGS = {
   "8eee874c702a10807f79706c": { title: "Outside", artist: "Calvin Harris" },
   "4048d4a6dce44c151690b2b1": { title: "American Boy", artist: "Estelle ft. Kanye West" },
 };
-const VARIANTS = ["rig", "type", "pocket", "plate"];
+const VARIANTS = ["plate", "type", "pocket", "rig"];
 
 const results = [];
 const errors = [];
@@ -88,7 +88,7 @@ await page.waitForFunction(() => window.visualizerDebug);
 await page.evaluate(() => window.visualizerDebug.ready());
 await page.addStyleTag({ content: "*,*::before,*::after{transition:none!important}" });
 check("page loads without errors", errors.length === 0, errors.join(" | "));
-check("default visualizer is Rig", (await state()).visual === "rig");
+check("default visualizer is Plate", (await state()).visual === "plate");
 for (const [index, key] of VARIANTS.entries()) {
   await page.keyboard.press(String(index + 1));
   await sleep(150);
