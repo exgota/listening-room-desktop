@@ -4,8 +4,38 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- Done: analysis extension (visual block), slot + song model + render harness, Rig first
-  pass (v2), Type first pass. Next: Pocket, Plate, then formal review passes (subagents).
+- All four variants built; each reworked once after review pass 1 (v2/v3 in the source).
+- Review pass 1: Type C- (done), Pocket (notes done; rewritten), Plate and Rig (agents still
+  rendering the OLD build on port 8080 — do not rebuild site/dist/page.html until they end).
+- Review pass 2 running for Type and Pocket against a frozen snapshot served on port 8082
+  (scratchpad/page-pass2.html). Rig v3 and Plate v2 are newer than that snapshot.
+- Dev loop: `cd site && node build.mjs --out dist-dev/page.html`; dev server on port 8081
+  (`tools/render/test_server.py --port 8081 --page site/dist-dev/page.html --mp3`);
+  render with `node render.mjs --port 8081 ...`.
+- Next: finish pass 1 (Rig, Plate); pass 2 for Rig and Plate; rework; pass 3 for all four;
+  acceptance run; NOTES.md; commit a consistent dist/page.html.
+
+## Review findings acted on (pass 1)
+
+- Type: looping hook wall → phrase-level typographic modes (wall, breathing width, beat
+  numerals, chord names); lone bars/single letters → ghost-outline posters that fill in,
+  low-confidence lines skipped; drops too small → two-row fitting, main drop holds a bar;
+  key word flashes → in-line reversed box unless held; bass strobe → smoothed low envelope;
+  kick counter → tab, solid only on the kick; build → ink flood; ending state; swears → bars.
+- Pocket: camouflage → fixed figure colours + pale fields; static layout → formations
+  (trio/solo/chorus line) walked between; night stage after the main drop; drum lands on
+  drops; nothing enters the title band; visible wind-up; swing from bass-note phases.
+- Plate: figure changing ~200/min → per-chord figures; voice pops → phrase presence with
+  0.3 s minimum figure dwell; sand over the title → clipped plate under the measured title;
+  tiling off-centre → pattern space centred on the striker; kick invisible → stronger wave
+  and a striker boss; hat shimmer (codec killer) removed; bass → line weight; lace after
+  drops → capped complexity; gapless drops → knot over the last beat, burst over 0.18 s;
+  key word → black sand dims, vermilion figure takes over.
+- Rig: hairline beams → 8 fat heads; bass pan invisible → elevation + see-saw per note;
+  dead breakdowns → voice-led cathedral toward the audience; count-in specks → blinders;
+  cut storm on chord stabs → looks change at most once per beat, camera fixed per 8 bars;
+  static drops → chase after the 2-beat hit; jets behind the camera → all shots in front;
+  title difference blend → white with shadow.
 
 ## Decisions (newest last)
 

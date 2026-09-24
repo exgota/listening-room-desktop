@@ -5,11 +5,11 @@
 // every fixture on its exact frame. The beams are single scattering in haze, integrated in
 // closed form per pixel (no bloom, no post-process).
 
-const rigHeadCount = 16;
+const rigHeadCount = 8;
 const rigJetCount = 8;
 const rigBeamCount = rigHeadCount + rigJetCount + 1;
 // Fixture order: symmetric pairs spreading outward, so a partly lit rig stays balanced.
-const rigHeadOrder = [7, 8, 3, 12, 5, 10, 1, 14, 6, 9, 2, 13, 4, 11, 0, 15];
+const rigHeadOrder = [3, 4, 1, 6, 2, 5, 0, 7];
 const rigGels = {
   "5ff86d6cd02ebd7308e03df8": "#3f74ff", // NBLY: cold blue
   "1d589940ca458d793a3fad8a": "#ff2d2d", // Desire: red
@@ -111,14 +111,16 @@ vec3 beamScatter(vec3 origin, vec3 direction, int index, float far, bool texture
 }
 
 // A lens seen from the front: a hard disc, brightest when the fixture points at the eye.
+// Small angles only, so the angle is taken from the cosine without acos.
 vec3 lensGlow(vec3 origin, vec3 direction, int index) {
   vec4 axisData = uBeamAxis[index];
   vec3 toLens = uBeamApex[index].xyz - origin;
   float distanceToLens = length(toLens);
-  float facing = max(0.0, dot(-normalize(toLens), axisData.xyz));
-  float radius = 0.16;
-  float angle = acos(clamp(dot(direction, toLens / distanceToLens), -1.0, 1.0));
-  float size = radius / distanceToLens;
+  vec3 toLensUnit = toLens / distanceToLens;
+  float facing = max(0.0, -dot(toLensUnit, axisData.xyz));
+  float size = 0.34 / distanceToLens;
+  float angle = sqrt(max(0.0, 2.0 - 2.0 * dot(direction, toLensUnit)));
+  if (angle > size * 12.0) return vec3(0.0);
   float disc = 1.0 - smoothstep(size * 0.8, size, angle);
   float halo = exp(-angle / (size * 2.5)) * 0.25;
   float power = axisData.w * (0.08 + 2.0 * pow(facing, 12.0));
@@ -168,9 +170,9 @@ void main() {
     float tz = direction.z < -1e-4 ? (trussZ - origin.z) / direction.z : INF;
     if (tz < far) {
       vec3 p = origin + direction * tz;
-      if (abs(p.y - trussY) < 0.16 && abs(p.x) < 10.0) {
-        float cell = floor(p.x / 0.5);
-        float inCell = step(abs(fract(p.x / 0.5) - 0.5), 0.3);
+      if (abs(p.y - trussY) < 0.3 && abs(p.x) < 11.0) {
+        float cell = floor(p.x / 1.1);
+        float inCell = step(abs(fract(p.x / 1.1) - 0.5), 0.32);
         float sparkle = step(1.0 - uStrobe.y, hash12(vec2(cell, uStrobe.z)));
         float light = uStrobe.x + sparkle * 0.9 + uStrobe.w * 0.06;
         color += vec3(1.0, 0.97, 0.92) * inCell * light * 1.4;
@@ -310,7 +312,7 @@ registerVisualizer({
 
 function createRigShow() {
   const white = [1.0, 0.96, 0.9];
-  const warm = [1.0, 0.88, 0.74];
+  const warm = [1.0, 0.86, 0.7];
   const beams = Array.from({ length: rigBeamCount }, () => ({
     x: 0, y: 0, z: 0, dx: 0, dy: -1, dz: 0, angle: 0.08, intensity: 0, r: 1, g: 1, b: 1, length: 40,
   }));
@@ -330,26 +332,36 @@ function createRigShow() {
     wash: [1, 1, 1, 0],
     lens: 1,
   };
-  const spacing = 1.5;
-  const headX = (index) => (index - 7.5) * spacing;
+  const spacing = 2.5;
+  const headX = (index) => (index - 3.5) * spacing;
   const headY = 7.6,
     headZ = -7.0;
   let song = null;
   let gel = white;
   let mainDrop = -1;
-  const look = [0, 0, 0];
-  const look2 = [0, 0, 0];
+  const DEG = Math.PI / 180;
 
-  // Camera shots: [position, target, vertical fov in radians]
+  // Camera shots: [position, target, vertical fov]. All stand in front of the floor jets.
   const shots = {
-    hero: [[0, 0.7, 4.6], [0, 7.2, -7], 1.18], // low and close, looking up into the rig
-    wide: [[0, 2.0, 10.5], [0, 4.6, -7], 1.0],
-    left: [[-6.8, 1.6, 6.5], [1.5, 5.0, -7], 1.05],
-    right: [[6.8, 1.6, 6.5], [-1.5, 5.0, -7], 1.05],
-    high: [[0, 7.5, 7.5], [0, 1.2, -5], 1.0],
-    truss: [[0, 2.6, 0.2], [0, 8.2, -7], 1.32],
-    floor: [[0, 0.35, 8.5], [0, 2.4, -7], 0.95], // eye on the stage floor, jets huge
+    hero: [[0, 0.8, 5.5], [0, 7.2, -7], 1.15],
+    wide: [[0, 2.0, 11], [0, 4.6, -7], 1.0],
+    left: [[-6.5, 1.7, 7.5], [1.5, 5.0, -7], 1.05],
+    right: [[6.5, 1.7, 7.5], [-1.5, 5.0, -7], 1.05],
+    floor: [[0, 0.45, 8.5], [0, 2.8, -7], 0.98],
+    close: [[0, 2.6, 4.2], [0, 7.6, -7], 1.25],
+    high: [[0, 7.2, 8.5], [0, 2.0, -5], 1.0],
   };
+  // Looks for the heads: fan spread (radians, negative crosses), elevation bias, and
+  // whether the beams lean toward the audience (+1) or away (-1).
+  const looks = {
+    fan: { spread: 1.7, lift: 0, toward: 1 },
+    vee: { spread: 1.05, lift: 0.12, toward: -1 },
+    cross: { spread: -1.3, lift: 0, toward: 1 },
+    curtain: { spread: 0.12, lift: 0.25, toward: -1 },
+    blade: { spread: 2.3, lift: -0.25, toward: 1 },
+    cathedral: { spread: 0.7, lift: 0.45, toward: 1 },
+  };
+  const driveLooks = ["fan", "cross", "vee", "curtain", "fan", "blade"];
 
   function setSong(model) {
     song = model;
@@ -358,34 +370,6 @@ function createRigShow() {
     if (!model) return;
     gel = hexColor(rigGels[model.identifier] || "#ffffff");
     mainDrop = model.mainDrop;
-  }
-
-  function aim(beam, x, y, z) {
-    const dx = x - beam.x, dy = y - beam.y, dz = z - beam.z;
-    const length = Math.hypot(dx, dy, dz) || 1;
-    beam.dx = dx / length;
-    beam.dy = dy / length;
-    beam.dz = dz / length;
-  }
-
-  // Target point for head i under a named look.
-  function lookTarget(name, index, into) {
-    const x = headX(index);
-    const side = x < 0 ? -1 : 1;
-    const outer = Math.abs(x) / (7.5 * spacing);
-    switch (name) {
-      case "fanUp": into[0] = x * 2.4; into[1] = 34; into[2] = -12; break;
-      case "cathedral": into[0] = x * 0.45; into[1] = 30; into[2] = -9; break;
-      case "fanOut": into[0] = x * 2.0; into[1] = 2.0; into[2] = 16; break;
-      case "cross": into[0] = -x * 1.5; into[1] = 0; into[2] = 2.5; break;
-      case "curtain": into[0] = x * 1.0; into[1] = 0; into[2] = -5.5; break;
-      case "pools": into[0] = x * 0.5; into[1] = 0; into[2] = -1.0; break;
-      case "vee": into[0] = side * (6 + 16 * outer); into[1] = 26; into[2] = -5; break;
-      case "tunnel": into[0] = x * 0.25; into[1] = 1.6; into[2] = 20; break;
-      case "wave": into[0] = x * 1.2; into[1] = 18 + 12 * Math.sin(index * 0.8); into[2] = 4; break;
-      default: into[0] = 0; into[1] = 4; into[2] = -2;
-    }
-    return into;
   }
 
   function blank() {
@@ -399,225 +383,269 @@ function createRigShow() {
 
   function useShot(name, drift = 0) {
     const shot = shots[name];
-    state.camera = [shot[0][0] + drift * 0.9, shot[0][1] + drift * 0.2, shot[0][2] - drift * 1.4];
+    state.camera = [shot[0][0] + drift * 0.9, shot[0][1] + drift * 0.2, shot[0][2] - drift * 1.2];
     state.target = [shot[1][0], shot[1][1], shot[1][2]];
     state.fov = shot[2];
   }
 
-  // Standby: before the analysis arrives, a still, symmetric cathedral of light.
-  function standby() {
-    blank();
+  // Aim head i by look, elevation (radians above horizontal) and a pan offset.
+  function aimHead(beam, index, look, elevation, pan = 0) {
+    const spread = look.spread;
+    const azimuth = spread * ((index - 3.5) / 3.5) * 0.5 + pan;
+    const e = clampRange(elevation + look.lift, 0.12, 1.5);
+    beam.dx = Math.sin(azimuth) * Math.cos(e);
+    beam.dy = Math.sin(e);
+    beam.dz = Math.cos(azimuth) * Math.cos(e) * look.toward;
+  }
+
+  function mixAim(beam, dx, dy, dz, amount) {
+    beam.dx = mixValue(beam.dx, dx, amount);
+    beam.dy = mixValue(beam.dy, dy, amount);
+    beam.dz = mixValue(beam.dz, dz, amount);
+    const length = Math.hypot(beam.dx, beam.dy, beam.dz) || 1;
+    beam.dx /= length;
+    beam.dy /= length;
+    beam.dz /= length;
+  }
+
+  function placeHeads() {
     for (let index = 0; index < rigHeadCount; index++) {
       const beam = beams[index];
       beam.x = headX(index); beam.y = headY; beam.z = headZ;
-      lookTarget("cathedral", index, look);
-      aim(beam, look[0], look[1], look[2]);
-      beam.angle = 0.06;
-      beam.intensity = rigHeadOrder.indexOf(index) < 8 ? 12 : 0;
+      beam.length = 55;
       beam.r = white[0]; beam.g = white[1]; beam.b = white[2];
-      beam.length = 45;
+    }
+  }
+
+  // Standby: before the analysis arrives, a still cathedral of light.
+  function standby() {
+    blank();
+    placeHeads();
+    for (let index = 0; index < rigHeadCount; index++) {
+      aimHead(beams[index], index, looks.cathedral, 0.9);
+      beams[index].angle = 0.08;
+      beams[index].intensity = 14;
     }
     useShot("hero");
-    state.haze = 1; state.hazeTexture = 0.7; state.gloss = 0.5; state.lens = 1; state.truss = 1;
+    state.haze = 1.2; state.hazeTexture = 0.7; state.gloss = 0.5; state.lens = 1; state.truss = 1;
     return state;
   }
 
   function at(time) {
     if (!song) return standby();
     blank();
+    placeHeads();
     const scene = song.scene(time);
     const sceneProgress = clamp01((time - scene.start) / Math.max(0.1, scene.end - scene.start));
     const drop = song.dropContext(time);
     const beat = song.beatPosition(time);
     const bar = song.barPosition(time);
     const barIndex = Math.floor(bar);
-    let dropsPassed = 0;
-    for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
-    const afterMain = mainDrop >= 0 && time >= song.drops[mainDrop].time;
-    const songProgress = time / song.duration;
-    const peak = song.peakAt(time);
-
-    // How much of the rig exists: it grows through the song.
-    let lit = scene.kind === "intro" ? 8 : 10;
-    if (dropsPassed >= 1) lit = 14;
-    if (dropsPassed >= 2 || songProgress > 0.62) lit = 16;
-    if (!song.drops.length) lit = Math.min(16, 10 + 2 * Math.floor(scene.index / 2));
-
-    // Look for the heads, per scene kind; drive scenes move on every four bars.
-    const drivers = ["fanOut", "vee", "cross", "wave", "fanUp", "tunnel"];
-    let lookName = "fanUp",
-      lookIntensity = 10,
-      beamAngle = 0.05,
-      shot = "wide";
     const phrase = Math.floor(barIndex / 4);
-    switch (scene.kind) {
-      case "intro": lookName = "cathedral"; lookIntensity = 12; beamAngle = 0.06; shot = "hero"; break;
-      case "verse": lookName = ["curtain", "vee"][scene.kindIndex % 2]; lookIntensity = 7; beamAngle = 0.06; shot = ["wide", "left", "right"][scene.kindIndex % 3]; break;
-      case "break": lookName = "cathedral"; lookIntensity = 4; beamAngle = 0.04; shot = "high"; lit = 4; break;
-      case "groove": lookName = drivers[(phrase + scene.index) % 4 + 1]; lookIntensity = 10; shot = ["left", "right", "hero"][scene.index % 3]; break;
-      case "build": lookName = "fanUp"; lookIntensity = 9; shot = "truss"; break;
-      case "drop": lookName = "fanOut"; lookIntensity = 14; beamAngle = 0.035; shot = "floor"; break;
-      case "drive": lookName = drivers[(phrase + scene.kindIndex) % drivers.length]; lookIntensity = 12; beamAngle = 0.04; shot = ["wide", "left", "right", "floor"][(scene.kindIndex + Math.floor(phrase / 2)) % 4]; break;
-      case "outro": lookName = "fanUp"; lookIntensity = 9 * (1 - sceneProgress * 0.85); shot = "wide"; lit = Math.max(2, Math.round(lit * (1 - sceneProgress))); break;
-      case "gap": lookName = "fanUp"; lookIntensity = 0; shot = "truss"; break;
-    }
+    const afterMain = mainDrop >= 0 && time >= song.drops[mainDrop].time;
+    const peak = song.peakAt(time);
+    const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
+    const inGap = drop.phase === 2 || leadIn >= 0;
+    const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
+    const hitLength = song.beatPeriod * 2;
+    const inHit = sinceDrop < hitLength;
+    const vocal = song.value("vocal", time);
+    const singing = clamp01((vocal - 0.22) / 0.45);
 
-    // Chord passages: every stab of the other stem throws the heads into the next look.
-    let stabHit = 0;
-    if (peak && peak.kind === "chords") {
-      const stab = song.stabs.last(time);
-      let count = 0;
-      for (let index = stab; index >= 0 && song.stabs.time[index] >= peak.start; index--) if (song.stabs.strength[index] > 0.45) count++;
-      lookName = drivers[count % drivers.length];
-      stabHit = stab >= 0 ? hitDecay(time - song.stabs.time[stab], 0.18) * song.stabs.strength[stab] : 0;
-      lookIntensity = 14;
-      beamAngle = 0.04;
-      shot = ["floor", "left", "right", "hero"][count % 4];
-    }
-
-    // Bass line → the whole fan swings (mirrored) with a snap onto each new note.
-    const noteIndex = song.bassNotes.last(time);
-    let pan = 0,
+    // ---- the bass: the fan's elevation follows the note (low note, low beams), and each
+    // new note tips it like a see-saw, so repeated notes move it too.
+    const notes = song.bassNotes;
+    const noteIndex = notes.last(time);
+    let elevation = 0.75,
+      seesaw = 0,
       bassPush = 0;
     if (noteIndex >= 0) {
-      const pitchOf = (index) => (((song.bassNotes.pitch[index] - 24) % 24) + 24) % 24 / 24 - 0.5;
-      const current = pitchOf(noteIndex);
-      const previous = noteIndex > 0 ? pitchOf(noteIndex - 1) : current;
-      const age = time - song.bassNotes.start[noteIndex];
-      pan = mixValue(previous, current, easeOutCubic(age / 0.08));
-      const sounding = time < song.bassNotes.end[noteIndex] + 0.05;
-      bassPush = sounding ? song.bassNotes.strength[noteIndex] * hitDecay(age, 0.3) : 0;
+      const heightOf = (index) => 0.35 + 0.95 * fract((notes.pitch[index] - 24) / 24);
+      const age = time - notes.start[noteIndex];
+      const settle = easeOutCubic(age / 0.08);
+      const previous = noteIndex > 0 ? heightOf(noteIndex - 1) : heightOf(noteIndex);
+      elevation = mixValue(previous, heightOf(noteIndex), settle);
+      const side = noteIndex % 2 === 0 ? 1 : -1;
+      seesaw = mixValue(-side, side, settle) * 0.2;
+      const sounding = time < notes.end[noteIndex] + 0.05;
+      bassPush = sounding ? notes.strength[noteIndex] * hitDecay(age, 0.3) : 0;
     }
     const bassLevel = song.value("bass", time);
 
-    // Build → converge on a focus point; a shimmer that subdivides as the build rises.
+    // ---- look and shot per scene
+    let lookName = "fan",
+      intensity = 16,
+      width = 0.075,
+      shot = "wide",
+      lit = 8;
+    const eightBars = Math.floor(barIndex / 8);
+    switch (scene.kind) {
+      case "intro":
+        lookName = "fan"; intensity = 18; width = 0.085; shot = "hero"; lit = 8; break;
+      case "verse":
+        lookName = ["curtain", "vee"][scene.kindIndex % 2]; intensity = 12; width = 0.08; shot = ["wide", "left", "right"][(scene.kindIndex + eightBars) % 3]; break;
+      case "break":
+        lookName = "cathedral"; intensity = 8 + 14 * singing; width = 0.075; shot = ["wide", "left", "right"][eightBars % 3]; lit = 8; break;
+      case "groove":
+        lookName = driveLooks[(phrase + scene.index) % 4]; intensity = 16; shot = ["left", "right", "hero"][(scene.index + eightBars) % 3]; break;
+      case "build":
+        lookName = "fan"; intensity = 14; shot = "wide"; break;
+      case "drop":
+        lookName = driveLooks[Math.floor(beat) % 2 === 0 ? 0 : 2]; intensity = 20; width = 0.055; shot = "floor"; break;
+      case "drive":
+        lookName = driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.06;
+        shot = ["wide", "left", "right", "floor", "hero"][(scene.kindIndex + eightBars) % 5]; break;
+      case "outro":
+        lookName = "cathedral"; intensity = 14 * (1 - sceneProgress * 0.8); shot = "wide"; lit = Math.max(2, Math.round(8 * (1 - sceneProgress))); break;
+      case "gap":
+        lookName = "fan"; intensity = 0; shot = "hero"; break;
+    }
+    // Chord passages: a new look on each chord stab, at most one per beat; the camera holds.
+    let stabHit = 0;
+    if (peak && peak.kind === "chords") {
+      let count = 0,
+        lastBeat = -1;
+      for (let index = 0; index < song.stabs.length && song.stabs.time[index] <= time; index++) {
+        const stabTime = song.stabs.time[index];
+        if (stabTime < peak.start || song.stabs.strength[index] < 0.45) continue;
+        const stabBeat = Math.floor(song.beatPosition(stabTime));
+        if (stabBeat !== lastBeat) {
+          count++;
+          lastBeat = stabBeat;
+        }
+      }
+      lookName = driveLooks[count % driveLooks.length];
+      const stab = song.stabs.last(time);
+      stabHit = stab >= 0 ? hitDecay(time - song.stabs.time[stab], 0.2) * song.stabs.strength[stab] : 0;
+      intensity = 20;
+      width = 0.06;
+    }
+    const look = looks[lookName];
+
+    // ---- build: the beams gather onto one point above the stage and the camera pushes in;
+    // a shimmer subdivides as the build rises.
     let converge = 0,
       shimmer = 0,
       shimmerRate = 1;
     if (drop.phase === 1) {
-      converge = easeInCubic(drop.progress) * 0.94;
+      converge = easeInCubic(drop.progress) * 0.95;
       shimmerRate = drop.progress < 0.5 ? 1 : drop.progress < 0.75 ? 2 : drop.progress < 0.9 ? 4 : 8;
-      shimmer = 0.4 + 0.6 * drop.progress;
-      lookIntensity = mixValue(8, 16, drop.progress);
-      beamAngle = mixValue(0.05, 0.028, drop.progress);
+      shimmer = 0.3 + 0.7 * drop.progress;
+      intensity = mixValue(12, 22, drop.progress);
+      width = mixValue(0.075, 0.035, drop.progress);
     }
-    const inGap = drop.phase === 2;
-    const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
-    const hitLength = song.beatPeriod * 2;
 
-    // Anchor: the key word pulls every head onto the singer; the lead-in is the blackout.
+    // ---- the key word: every head sweeps onto the singer, holds, and sweeps back.
     const anchorIndex = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
-    const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
-    const blackout = inGap || leadIn >= 0;
-
-    // Voice → follow spot, x from the sung pitch.
+    let onSinger = 0;
+    if (anchorIndex >= 0) {
+      const moment = song.anchor.moments[anchorIndex];
+      onSinger = Math.min(easeOutCubic((time - moment.start) / 0.15), 1 - easeInCubic(clamp01((time - (moment.end - 0.1)) / 0.15)));
+    }
     const pitch = song.value("pitch", time);
-    const vocal = song.value("vocal", time);
-    const singerX = pitch > 0 ? clampRange(((pitch - 64) / 12) * 4.5, -5.5, 5.5) : 0;
+    const singerX = pitch > 0 ? clampRange(((pitch - 64) / 12) * 4, -5, 5) : 0;
 
     const tintColor = afterMain ? gel : white;
-    const phraseHit = scene.kind === "drive" && barIndex % 8 === 0 ? hitDecay(bar - barIndex, 0.22) : 0;
+    const phraseHit = scene.kind === "drive" && barIndex % 8 === 0 ? hitDecay(bar - barIndex, 0.2) : 0;
+    const voiceSway = scene.kind === "break" ? Math.sin(time * 0.35) * 0.25 + (pitch > 0 ? (pitch - 64) / 60 : 0) : 0;
     for (let index = 0; index < rigHeadCount; index++) {
       const beam = beams[index];
-      beam.x = headX(index); beam.y = headY; beam.z = headZ;
       const rank = rigHeadOrder.indexOf(index);
-      const on = rank < lit;
-      lookTarget(lookName, index, look);
-      const side = beam.x < 0 ? -1 : 1;
-      look[0] += side * pan * 16;
-      if (shimmer > 0) look[1] += Math.sin((beat * shimmerRate + index * 0.5) * Math.PI) * shimmer * 5;
+      const side = index < 4 ? -1 : 1;
+      let e = elevation + seesaw * side + (shimmer > 0 ? Math.sin((beat * shimmerRate + index * 0.5) * Math.PI) * shimmer * 0.2 : 0);
+      aimHead(beam, index, look, e, voiceSway);
       if (converge > 0) {
-        look[0] = mixValue(look[0], 0, converge);
-        look[1] = mixValue(look[1], 4.8, converge);
-        look[2] = mixValue(look[2], -1.0, converge);
+        const fx = 0 - beam.x, fy = 4.8 - beam.y, fz = -0.5 - beam.z;
+        const length = Math.hypot(fx, fy, fz);
+        mixAim(beam, fx / length, fy / length, fz / length, converge);
       }
-      if (anchorIndex >= 0) {
-        look[0] = mixValue(look[0], singerX, 0.9);
-        look[1] = mixValue(look[1], 0, 0.9);
-        look[2] = mixValue(look[2], -1.5, 0.9);
+      if (onSinger > 0) {
+        const fx = singerX - beam.x, fy = 0 - beam.y, fz = -1.5 - beam.z;
+        const length = Math.hypot(fx, fy, fz);
+        mixAim(beam, fx / length, fy / length, fz / length, onSinger * 0.92);
       }
       if (phraseHit > 0.02) {
-        lookTarget("fanOut", index, look2);
-        look[0] = mixValue(look[0], look2[0], phraseHit);
-        look[1] = mixValue(look[1], look2[1], phraseHit);
-        look[2] = mixValue(look[2], look2[2], phraseHit);
+        aimHead(beams[rigBeamCount - 1], index, looks.blade, 0.2);
+        mixAim(beam, beams[rigBeamCount - 1].dx, beams[rigBeamCount - 1].dy, beams[rigBeamCount - 1].dz, phraseHit);
       }
-      aim(beam, look[0], look[1], look[2]);
-      beam.angle = beamAngle * (1 + 0.3 * bassPush);
-      let intensity = on ? lookIntensity * (0.7 + 0.6 * bassLevel) * (1 + 0.5 * bassPush + 0.8 * stabHit) : 0;
-      if (anchorIndex >= 0) intensity = rank < 16 ? 14 : 0;
-      if (blackout) intensity = 0;
-      beam.intensity = intensity;
+      beam.angle = width * (1 + 0.35 * bassPush);
+      let level = rank < lit ? intensity * (0.7 + 0.5 * bassLevel) * (1 + 0.45 * bassPush + 0.8 * stabHit) : 0;
+      if (onSinger > 0) level = Math.max(level, 18 * onSinger);
+      if (inGap) level = 0;
+      beam.intensity = level;
       const tint = index % 2 === 0 ? tintColor : white;
       beam.r = tint[0]; beam.g = tint[1]; beam.b = tint[2];
-      beam.length = 50;
     }
 
-    // Kick → floor jets: a row of short upward shafts at the stage lip.
+    // ---- kick: the floor jets, a row of upward shafts at the stage lip.
     const kickIndex = song.kicks.last(time);
     const kickAge = kickIndex >= 0 ? time - song.kicks.time[kickIndex] : Infinity;
     const kickPower = kickIndex >= 0 ? song.kicks.strength[kickIndex] * hitDecay(kickAge, 0.12) : 0;
     for (let jet = 0; jet < rigJetCount; jet++) {
       const beam = beams[rigHeadCount + jet];
-      beam.x = (jet - 3.5) * 2.4; beam.y = 0.05; beam.z = 1.0;
-      beam.dx = (jet - 3.5) * 0.045; beam.dy = 1; beam.dz = 0.16;
+      beam.x = (jet - 3.5) * 2.5; beam.y = 0.05; beam.z = 1.0;
+      beam.dx = (jet - 3.5) * 0.04; beam.dy = 1; beam.dz = 0.14;
       const norm = Math.hypot(beam.dx, beam.dy, beam.dz);
       beam.dx /= norm; beam.dy /= norm; beam.dz /= norm;
-      beam.angle = 0.12;
-      beam.length = 3.0 + 3.0 * kickPower;
-      beam.intensity = blackout ? 0 : kickPower * 14;
+      beam.angle = 0.13;
+      beam.length = 3.2 + 3.2 * kickPower;
+      beam.intensity = inGap ? 0 : kickPower * 16;
       beam.r = white[0]; beam.g = white[1]; beam.b = white[2];
     }
 
-    // Voice → follow spot from high above, onto the singer's mark.
+    // ---- voice: the follow-spot from high above, onto the singer's mark.
     const spot = beams[rigBeamCount - 1];
     spot.x = singerX * 0.3; spot.y = 16; spot.z = 1.5;
-    aim(spot, singerX, 0, -1.5);
-    spot.angle = scene.kind === "break" || scene.kind === "verse" ? 0.1 : 0.075;
+    {
+      const fx = singerX - spot.x, fy = 0 - spot.y, fz = -1.5 - spot.z;
+      const length = Math.hypot(fx, fy, fz);
+      spot.dx = fx / length; spot.dy = fy / length; spot.dz = fz / length;
+    }
+    spot.angle = scene.kind === "break" || scene.kind === "verse" ? 0.1 : 0.08;
     spot.length = 40;
-    const singing = clamp01((vocal - 0.22) / 0.45);
-    spot.intensity = blackout ? 0 : singing * (scene.kind === "break" || scene.kind === "verse" ? 40 : 22) * (anchorIndex >= 0 ? 1.6 : 1);
+    spot.intensity = inGap ? 0 : singing * (scene.kind === "break" || scene.kind === "verse" ? 42 : 24) * (onSinger > 0 ? 1.4 : 1);
     spot.r = warm[0]; spot.g = warm[1]; spot.b = warm[2];
 
-    // Snare → truss cells flash; hats → sparkle.
-    state.snareFlash = blackout ? 0 : song.snares.impulse(time, 0.06, 0.45) * 1.3;
-    state.hatSparkle = blackout ? 0 : clamp01(song.hats.impulse(time, 0.04, 0.2)) * 0.4;
+    // ---- snare → truss cells flash; hats → sparkle.
+    state.snareFlash = inGap ? 0 : song.snares.impulse(time, 0.06, 0.45) * 1.4;
+    state.hatSparkle = inGap ? 0 : clamp01(song.hats.impulse(time, 0.04, 0.2)) * 0.45;
     state.strobeSeed = song.hats.last(time);
-    state.truss = blackout ? 0 : 1;
+    state.truss = inGap ? 0 : 1;
 
-    // Harmony → a faint wash on the back wall: white before the main drop, the gel after.
+    // ---- harmony: a faint wash on the back wall, white before the main drop, the gel after.
     const other = song.value("other", time);
     state.wash[0] = tintColor[0]; state.wash[1] = tintColor[1]; state.wash[2] = tintColor[2];
-    state.wash[3] = blackout ? 0 : other * (0.25 + 1.5 * stabHit);
+    state.wash[3] = inGap ? 0 : other * (0.35 + 1.5 * stabHit);
 
-    // Gap: blackout that counts in; each beat of the gap lights one more pair of lenses.
+    // ---- the gap: blackout with blinders counting in, one pair per beat, aimed at the eye.
     state.lens = 1;
-    if (blackout) {
-      const gapStart = inGap ? drop.drop.gapStart : song.anchor.moments[leadIn].start;
-      const gapEnd = inGap ? drop.drop.time : song.anchor.moments[leadIn].end;
+    if (inGap) {
+      const gapStart = drop.phase === 2 ? drop.drop.gapStart : song.anchor.moments[leadIn].start;
+      const gapEnd = drop.phase === 2 ? drop.drop.time : song.anchor.moments[leadIn].end;
       const beatsTotal = Math.max(1, Math.round((gapEnd - gapStart) / song.beatPeriod));
       const beatsIn = Math.min(beatsTotal - 1, Math.floor((time - gapStart) / song.beatPeriod));
-      const pairs = Math.max(1, Math.round(((beatsIn + 1) / beatsTotal) * 8));
+      const pairs = Math.max(1, Math.round(((beatsIn + 1) / beatsTotal) * 4));
       for (let index = 0; index < rigHeadCount; index++) {
         const beam = beams[index];
-        lookTarget("tunnel", index, look2);
-        aim(beam, look2[0], look2[1], look2[2]);
-        beam.angle = 0.03;
-        beam.intensity = rigHeadOrder.indexOf(index) < pairs * 2 ? 0.02 : 0;
+        const fx = state.camera ? 0 : 0;
+        aimHead(beam, index, looks.blade, 0.12);
+        beam.angle = 0.02;
+        beam.intensity = rigHeadOrder.indexOf(index) < pairs * 2 ? 0.05 : 0;
       }
-      state.lens = 60;
+      state.lens = 80;
     }
 
-    // Drop: the exact frame fires everything straight at the audience with a flash, holds
-    // for two beats (the hit), then lets the show move.
-    if (sinceDrop < hitLength) {
+    // ---- the drop: the exact frame fires everything at the audience with a flash, holds
+    // two beats (the hit), then the chase takes over.
+    if (inHit) {
       const release = easeInCubic(clamp01((sinceDrop - song.beatPeriod) / song.beatPeriod));
       for (let index = 0; index < rigHeadCount; index++) {
-        lookTarget("fanOut", index, look2);
-        lookTarget(lookName, index, look);
-        aim(beams[index], mixValue(look2[0], look[0], release), mixValue(look2[1], look[1], release), mixValue(look2[2], look[2], release));
-        beams[index].angle = 0.045;
-        beams[index].intensity = 16;
+        const beam = beams[index];
+        const dx = beam.dx, dy = beam.dy, dz = beam.dz;
+        aimHead(beam, index, looks.blade, 0.2);
+        mixAim(beam, dx, dy, dz, release);
+        beam.angle = 0.06;
+        beam.intensity = 24;
       }
       state.flash[0] = 1; state.flash[1] = 0.98; state.flash[2] = 0.95;
       state.flash[3] = 1.4 * hitDecay(sinceDrop, 0.035);
@@ -625,20 +653,20 @@ function createRigShow() {
       shot = "floor";
     }
 
-    // Camera: a shot per scene with a slow move inside it, a push in through a build.
+    // ---- camera: the scene's shot with a slow move inside it; a push through a build.
     useShot(shot, sceneProgress - 0.5);
     if (drop.phase === 1) {
       const push = easeInCubic(drop.progress);
-      state.camera[2] -= push * 4.5;
-      state.camera[1] += push * 0.5;
-      state.fov += push * 0.15;
+      const close = shots.close;
+      state.camera = [mixValue(state.camera[0], close[0][0], push), mixValue(state.camera[1], close[0][1], push), mixValue(state.camera[2], close[0][2], push)];
+      state.target = [mixValue(state.target[0], close[1][0], push), mixValue(state.target[1], close[1][1], push), mixValue(state.target[2], close[1][2], push)];
+      state.fov = mixValue(state.fov, close[2], push);
     }
-    if (blackout) useShot("hero");
-    if (sinceDrop < hitLength) useShot("floor");
+    if (inGap) useShot("hero");
 
-    state.haze = scene.kind === "break" ? 0.8 : 1.0;
+    state.haze = scene.kind === "break" ? 1.05 : 1.25;
     state.hazeTexture = 0.75;
-    state.gloss = 0.5;
+    state.gloss = 0.55;
     return state;
   }
 

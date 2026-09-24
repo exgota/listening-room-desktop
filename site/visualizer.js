@@ -75,17 +75,17 @@ function applyVisualizerTheme() {
 
 function selectVisualizer(key, remember = true) {
   const instance = visualizerInstance(key);
-  if (!instance || instance === visualizerActive) return;
+  if (!instance) return;
+  if (remember) {
+    try {
+      localStorage.setItem(visualizerChoiceKey, instance.definition.key);
+    } catch (error) {}
+  }
+  if (instance === visualizerActive) return;
   visualizerActive?.setActive(false);
   visualizerActive = instance;
   instance.setActive(true);
-  const definition = instance.definition;
-  document.documentElement.dataset.visual = definition.key;
-  if (remember) {
-    try {
-      localStorage.setItem(visualizerChoiceKey, definition.key);
-    } catch (error) {}
-  }
+  document.documentElement.dataset.visual = instance.definition.key;
   applyVisualizerTheme();
   drawVisualizer();
   drawWaveform();
@@ -210,7 +210,8 @@ function showControls() {
   if (document.body.classList.contains("visual-playing")) {
     controlsIdleTimer = setTimeout(() => {
       if (!document.body.classList.contains("visual-playing")) return;
-      if (document.querySelector("#player-view .waveform:focus-within, #player-view .transport:focus-within, #player-view .download-row:focus-within, .header:focus-within"))
+      // Keyboard focus in the controls keeps them; a mouse click that left focus there does not.
+      if (document.querySelector("#player-view .waveform :focus-visible, #player-view .transport :focus-visible, #player-view .download-row :focus-visible, .header :focus-visible"))
         return;
       document.body.classList.add("controls-idle");
     }, 2600);
@@ -225,7 +226,7 @@ document.addEventListener("pointermove", (event) => {
   showControls();
 });
 document.addEventListener("focusin", (event) => {
-  if (event.target.closest?.("#player-view, .header")) showControls();
+  if (event.target.closest?.("#player-view, .header") && event.target.matches?.(":focus-visible")) showControls();
 });
 
 // Clicking the picture pauses or resumes, since the play button is away while audio plays.
@@ -248,7 +249,8 @@ document.addEventListener("keydown", (event) => {
     selectVisualizer(visualizerDefinitions[position].key);
     return;
   }
-  if (event.key === " " && !event.target.closest?.("button, a, input, dialog") && currentView === "player" && selected) {
+  // Space plays and pauses, except where it already means something (buttons, links, typing).
+  if (event.key === " " && !event.target.closest?.("button, a, dialog, input:not([type=range])") && currentView === "player" && selected) {
     event.preventDefault();
     if (playbackRequested || !audio.paused) pausePlayback();
     else resumePlayback();

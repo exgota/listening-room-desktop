@@ -14,16 +14,15 @@ const plateVoiceGrains = 65536;
 const plateVertexShader = `#version 300 es
 precision highp float;
 layout(location = 0) in vec4 aSeed;
-uniform vec4 uModeA;     // pattern the sand is leaving: n1 m1 n2 m2
-uniform vec4 uModeB;     // pattern it is moving to
-uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w sign
-uniform vec2 uAspect;    // pattern units across x, y
+uniform vec4 uModeA;     // figure the sand is leaving: n1 m1 n2 m2
+uniform vec4 uModeB;     // figure it is moving to
+uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w sign (B)
+uniform float uSignA;    // sign of figure A
+uniform vec3 uScale;     // pattern units per plate half-width (x), half-height (y); z unused
 uniform vec4 uRect;      // plate in clip space: x0 y0 x1 y1
-uniform vec4 uGather;    // x pull to the centre 0..1, y knot radius, z present 0..1, w hat shimmer
+uniform vec4 uGather;    // x pull to the centre 0..1, y knot radius, z present 0..1, w line weight
 uniform vec4 uRipple[4]; // x age s, y strength, z speed, w unused
-uniform float uTime;
 uniform float uPointSize;
-uniform float uSeedOffset;
 out float vAlpha;
 out float vShade;
 
@@ -64,51 +63,49 @@ vec2 settle(vec2 p, vec4 mode, float second, float sign, out float residual) {
   return p;
 }
 
-float hash(float n) { return fract(sin(n * 12.9898 + uSeedOffset) * 43758.5453); }
-
 void main() {
-  // seed in pattern space: [0, aspect.x] x [0, aspect.y]
-  vec2 home = aSeed.xy * uAspect;
+  // Pattern space is centred on the plate's centre (where the kick strikes and the knot
+  // gathers), so every figure is symmetric about it.
+  vec2 home = (aSeed.xy * 2.0 - 1.0) * uScale.xy;
   float r1, r2;
-  vec2 a = settle(home, uModeA, uMix.x, uMix.w, r1);
+  vec2 a = settle(home, uModeA, uMix.x, uSignA, r1);
   vec2 b = settle(home, uModeB, uMix.y, uMix.w, r2);
   float s = uMix.z;
   vec2 p = mix(a, b, s);
   float residual = mix(r1, r2, s);
-  // a band of sand, not a hairline: each grain sits a little off the line
+  // Line weight: each grain sits off the line by its own amount, scaled by the bass.
   vec2 grad = gradient(p, uModeB, uMix.y, uMix.w);
   vec2 normal = length(grad) > 1e-4 ? normalize(grad) : vec2(0.0, 1.0);
-  p += normal * (aSeed.z - 0.5) * 0.018;
-  // hats: a shimmer along the line
-  p += vec2(sin(aSeed.w * 40.0 + uTime * 31.0), cos(aSeed.w * 33.0 + uTime * 27.0)) * uGather.w * 0.004;
+  p += normal * (aSeed.z - 0.5) * uGather.w;
 
-  // to plate-normalized coordinates -1..1 around the centre
-  vec2 q = p / uAspect * 2.0 - 1.0;
-  vec2 aspectScale = vec2(uAspect.x / uAspect.y, 1.0);
-  // kick: waves run out from the centre and throw the sand they pass
+  vec2 q = p / uScale.xy; // -1..1 across the plate
+  vec2 aspect = vec2(uScale.x / uScale.y, 1.0);
+  // Kick: a wave runs out from the centre and throws the sand it passes outward.
   for (int i = 0; i < 4; i++) {
     vec4 ripple = uRipple[i];
     if (ripple.y <= 0.0) continue;
     float radius = ripple.x * ripple.z;
-    vec2 qs = q * aspectScale;
+    vec2 qs = q * aspect;
     float distance = length(qs);
-    float band = exp(-pow((distance - radius) / 0.07, 2.0));
-    float fade = exp(-ripple.x / 0.45);
-    q += (distance > 1e-4 ? qs / distance : vec2(0.0)) / aspectScale * band * ripple.y * fade * 0.05;
+    float band = exp(-pow((distance - radius) / 0.1, 2.0));
+    float fade = exp(-ripple.x / 0.5);
+    q += (distance > 1e-4 ? qs / distance : vec2(0.0)) / aspect * band * ripple.y * fade * 0.075;
   }
-  // gather: the whole figure contracts toward the centre through a build (it stays a
-  // figure, only smaller and denser); fully gathered it is a knot of the given radius
-  vec2 knot = vec2(cos(aSeed.w * 6.2831853), sin(aSeed.w * 6.2831853)) * sqrt(aSeed.z) * uGather.y / aspectScale;
-  float contract = 1.0 - 0.8 * uGather.x;
-  q *= contract;
+  // Gather: the figure contracts toward the centre through a build; fully gathered it is a
+  // knot of the given radius.
+  vec2 knot = vec2(cos(aSeed.w * 6.2831853), sin(aSeed.w * 6.2831853)) * sqrt(aSeed.z) * uGather.y / aspect;
+  q *= 1.0 - 0.8 * uGather.x;
   q = mix(q, knot, smoothstep(0.9, 1.0, uGather.x));
+  // Nothing leaves the plate.
+  float outside = step(1.0, max(abs(q.x), abs(q.y)));
+  q = clamp(q, -1.0, 1.0);
 
   vec2 clip = mix(uRect.xy, uRect.zw, q * 0.5 + 0.5);
   gl_Position = vec4(clip, 0.0, 1.0);
   gl_PointSize = uPointSize * (0.75 + 0.5 * aSeed.w);
   // grains that did not reach a line are faint (real sand leaves the antinodes empty)
   float onLine = 1.0 - smoothstep(0.004, 0.02, residual);
-  vAlpha = mix(onLine, 1.0, uGather.x) * uGather.z;
+  vAlpha = mix(onLine, 1.0, uGather.x) * uGather.z * (1.0 - outside);
   vShade = aSeed.z;
 }`;
 
@@ -205,83 +202,115 @@ registerVisualizer({
     let themeGround = "";
     const ripples = new Float32Array(16);
 
+    let voiceFigures = []; // [{time, pitch}] where the voice figure changes
+    let voicePhrases = []; // [{start, end}] where the voice sand is present
+
     function setSong(model) {
       song = model;
       themeGround = "";
+      voiceFigures = [];
+      voicePhrases = [];
+      if (!model) return;
+      // Sung notes merge into phrases (gaps under 0.4 s); inside a phrase the figure changes
+      // only for a new pitch class held after at least 0.3 s, so syllables do not flicker it.
+      const notes = model.vocalNotes;
+      let phrase = null,
+        lastFigure = -Infinity,
+        lastClass = -1;
+      for (let index = 0; index < notes.length; index++) {
+        if (notes.strength[index] < 0.2) continue;
+        const start = notes.start[index],
+          end = notes.end[index];
+        if (!phrase || start - phrase.end > 0.4) {
+          phrase = { start, end };
+          voicePhrases.push(phrase);
+          lastFigure = -Infinity;
+          lastClass = -1;
+        }
+        phrase.end = Math.max(phrase.end, end);
+        const pitchClass = Math.round(notes.pitch[index]) % 12;
+        if (pitchClass !== lastClass && start - lastFigure >= 0.3) {
+          voiceFigures.push({ time: start, pitch: notes.pitch[index] });
+          lastFigure = start;
+          lastClass = pitchClass;
+        }
+      }
     }
 
-    // The figure for the harmony at a time: chord root around the circle of fifths picks the
-    // family, minor flips the sign, the scene's intensity adds complexity, and the sounding
-    // bass note adds a second mode.
-    function harmonyMode(time, into) {
-      const chordIndex = song ? song.chordIndex(time) : -1;
-      const scene = song ? song.scene(time) : null;
+    // The figure for the harmony: one per chord. The root around the circle of fifths picks
+    // the family, the section's intensity at the chord's start adds complexity, minor flips
+    // the sign, and a second mode tied to the root enriches it. Nothing else changes it.
+    function harmonyMode(chordIndex, into) {
       let root = 0,
-        minor = 0;
-      if (chordIndex >= 0) {
-        root = song.chords[chordIndex].root;
-        minor = song.chords[chordIndex].minor;
+        minor = 0,
+        intensity = 0.5,
+        start = 0;
+      if (song && chordIndex >= 0) {
+        const chord = song.chords[chordIndex];
+        root = chord.root;
+        minor = chord.minor;
+        start = chord.start;
+        intensity = song.scene(chord.start + 0.01).intensity;
       }
-      const intensity = scene ? scene.intensity : 0.5;
-      const base = Math.min(plateModes.length - 1, Math.round(plateCircle.indexOf(root) * 0.7 + intensity * 8));
+      const circle = plateCircle.indexOf(root);
+      // capped so the figure stays bold at phone size
+      const base = Math.min(11, Math.round(circle * 0.45 + intensity * 6));
       const [n, m] = plateModes[base];
-      const note = song ? song.bassNotes.active(time) : -1;
-      const pitchClass = note >= 0 ? Math.round(song.bassNotes.pitch[note]) % 12 : root;
-      const [n2, m2] = plateModes[(plateCircle.indexOf(pitchClass) + 3) % 10];
+      const [n2, m2] = plateModes[(circle * 5 + 3) % 8];
       into.mode[0] = n; into.mode[1] = m; into.mode[2] = n2; into.mode[3] = m2;
-      into.second = note >= 0 ? 0.3 : 0;
+      into.second = 0.35;
       into.sign = minor ? -1 : 1;
-      into.start = Math.max(chordIndex >= 0 ? song.chords[chordIndex].start : 0, note >= 0 ? song.bassNotes.start[note] : 0);
+      into.start = start;
       return into;
     }
 
-    function voiceMode(time, into) {
-      const note = song ? song.vocalNotes.active(time) : -1;
-      const anchor = song && song.anchor.kind === "word" ? song.anchorAt(time) : -1;
-      if (anchor >= 0) {
-        into.mode[0] = 3; into.mode[1] = 3; into.mode[2] = 1; into.mode[3] = 7;
-        into.second = 0.6;
-        into.sign = -1;
-        into.start = song.anchor.moments[anchor].start;
-        into.present = 1;
-        return into;
+    function figureIndexAt(time) {
+      let low = 0,
+        high = voiceFigures.length - 1,
+        found = -1;
+      while (low <= high) {
+        const middle = (low + high) >> 1;
+        if (voiceFigures[middle].time <= time) {
+          found = middle;
+          low = middle + 1;
+        } else high = middle - 1;
       }
-      if (note < 0) {
-        into.present = 0;
-        into.start = 0;
-        return into;
-      }
-      const pitch = Math.round(song.vocalNotes.pitch[note]);
-      const [n, m] = plateModes[(plateCircle.indexOf(pitch % 12) + Math.max(0, Math.floor((pitch - 48) / 12)) * 3) % plateModes.length];
+      return found;
+    }
+
+    function voiceFigure(index, into) {
+      const pitch = Math.round(voiceFigures[index].pitch);
+      // the voice keeps to the simplest figures, drawn large, so it reads apart from the lattice
+      const [n, m] = plateModes[(plateCircle.indexOf(pitch % 12) + Math.max(0, Math.floor((pitch - 48) / 12)) * 2) % 8];
       into.mode[0] = n; into.mode[1] = m; into.mode[2] = m; into.mode[3] = n + 1;
-      into.second = 0.25;
+      into.second = 0.2;
       into.sign = 1;
-      into.start = song.vocalNotes.start[note];
-      into.present = clamp01((song.vocalNotes.strength[note] - 0.15) / 0.3);
+      into.start = voiceFigures[index].time;
       return into;
     }
 
-    const current = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 1 };
-    const previous = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 1 };
-    const voiceNow = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 0 };
-    const voiceBefore = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 0 };
+    const anchorFigure = { mode: [1, 3, 2, 2], second: 0.35, sign: -1, start: 0 };
+    const current = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
+    const previous = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
+    const voiceNow = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
+    const voiceBefore = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
 
     let density = 1.1;
-    function drawSand(vertexArray, count, modeA, modeB, settle, gather, knot, present, color, time, pointSize, rippleData, shimmer, seedOffset) {
+    // The plate: 95.5% of the width, from under the title to just above the captions.
+    const plate = { top: 0.17, bottom: 0.935 };
+    function drawSand(vertexArray, count, modeA, modeB, settle, gather, knot, present, color, pointSize, rippleData, weight, scaleFactor = 1) {
       const u = sand.uniforms;
       gl.useProgram(sand.program);
       gl.uniform4f(u.uModeA, modeA.mode[0], modeA.mode[1], modeA.mode[2], modeA.mode[3]);
       gl.uniform4f(u.uModeB, modeB.mode[0], modeB.mode[1], modeB.mode[2], modeB.mode[3]);
       gl.uniform4f(u.uMix, modeA.second, modeB.second, settle, modeB.sign);
-      // the plate: 95.5% of the width, 80% of the height, below the title band
-      const aspect = (0.955 * size.width) / Math.max(1, 0.8 * size.height);
-      gl.uniform2f(u.uAspect, density * aspect, density);
-      gl.uniform4f(u.uRect, -0.955, -0.94, 0.955, 0.66);
-      gl.uniform4f(u.uGather, gather, knot, present, shimmer);
+      gl.uniform1f(u.uSignA, modeA.sign);
+      const aspect = (0.955 * size.width) / Math.max(1, (plate.bottom - plate.top) * size.height);
+      gl.uniform3f(u.uScale, density * scaleFactor * aspect, density * scaleFactor, 0);
+      gl.uniform4f(u.uRect, -0.955, 1 - 2 * plate.bottom, 0.955, 1 - 2 * plate.top);
+      gl.uniform4f(u.uGather, gather, knot, present, weight);
       gl.uniform4fv(u.uRipple, rippleData);
-      gl.uniform1f(u.uTime, time);
       gl.uniform1f(u.uPointSize, pointSize);
-      gl.uniform1f(u.uSeedOffset, seedOffset);
       gl.uniform3f(u.uColor, color[0], color[1], color[2]);
       gl.bindVertexArray(vertexArray);
       gl.drawArrays(gl.POINTS, 0, count);
@@ -291,6 +320,7 @@ registerVisualizer({
       const width = frame.width,
         height = frame.height;
       size = { width, height };
+      plate.top = Math.max(0.17, ((frame.titleBottom || 0) + height * 0.02) / height);
       const drop = song ? song.dropContext(time) : null;
       const afterMain = song && song.mainDrop >= 0 && time >= song.drops[song.mainDrop].time;
       const groundColor = afterMain ? vermilion : ivory;
@@ -308,7 +338,7 @@ registerVisualizer({
       gl.uniform3f(ground.uniforms.uGround, groundColor[0], groundColor[1], groundColor[2]);
       gl.uniform3f(ground.uniforms.uInk, ink[0], ink[1], ink[2]);
       gl.uniform2f(ground.uniforms.uResolution, canvas.width, canvas.height);
-      gl.uniform4f(ground.uniforms.uFrame, 0.016, 0.022, 0.984, 0.836);
+      gl.uniform4f(ground.uniforms.uFrame, 0.0165, 1 - plate.bottom - 0.008, 0.9835, 1 - plate.top + 0.008);
       gl.bindVertexArray(emptyVertexArray);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -322,13 +352,15 @@ registerVisualizer({
       // Each drop makes the plate finer: more cells in the same frame.
       let dropsPassed = 0;
       for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
-      density = 1.1 + 0.28 * Math.min(2, dropsPassed);
-      // Harmony: the figure now, and the one before it for the migration.
-      harmonyMode(time, current);
-      harmonyMode(Math.max(0, current.start - 0.01), previous);
-      const settle = easeInOutCubic((time - current.start) / 0.32);
+      density = 1.0 + 0.14 * Math.min(2, dropsPassed);
+      // Harmony: the chord's figure, migrating from the previous chord's over 0.35 s.
+      const chordIndex = song.chordIndex(time);
+      harmonyMode(chordIndex, current);
+      harmonyMode(chordIndex - 1, previous);
+      const settle = chordIndex >= 0 ? easeInOutCubic((time - current.start) / 0.25) : 1;
 
       // Gather through a build; in the gap a knot that shrinks each beat; the drop throws it.
+      // A drop with no gap still gets one: the last beat before it is the knot.
       let gather = 0,
         knot = 0.2;
       if (drop.phase === 1) gather = easeInCubic(drop.progress) * 0.88;
@@ -337,36 +369,68 @@ registerVisualizer({
         gather = 1;
         knot = 0.03 + 0.035 * Math.max(0, beatsLeft);
       }
+      const nextDrop = drop.phase === 3 ? song.drops[drop.index + 1] : drop.drop;
+      if (nextDrop && nextDrop.gapStart >= nextDrop.time - 0.05) {
+        const lead = nextDrop.time - time;
+        if (lead > 0 && lead <= song.beatPeriod) {
+          gather = Math.max(gather, easeOutCubic(1 - lead / song.beatPeriod) * 0.9 + 0.1);
+          knot = 0.06;
+        }
+      }
+      const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
+      if (leadIn >= 0 && drop.phase !== 2) {
+        gather = 1;
+        knot = 0.06;
+      }
+      // The drop throws the knot out into the figure over the next 0.18 s.
       const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
-      if (sinceDrop < 0.12) gather = 0;
+      if (sinceDrop < 0.18) gather = 1 - easeOutCubic(sinceDrop / 0.18);
 
-      // Kick: the last four strikes, as waves.
+      // Kick: the last four strikes run out from the centre as waves.
       let rippleIndex = song.kicks.last(time);
       for (let slot = 0; slot < 4; slot++) {
         const age = rippleIndex >= 0 ? time - song.kicks.time[rippleIndex] : Infinity;
-        const alive = age < 1.2;
+        const alive = age < 1.4 && gather < 0.5;
         ripples[slot * 4] = alive ? age : 0;
-        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] * (drop.phase === 2 ? 0 : 1) : 0;
-        ripples[slot * 4 + 2] = 1.8;
+        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] : 0;
+        ripples[slot * 4 + 2] = 1.7;
         ripples[slot * 4 + 3] = 0;
         rippleIndex--;
       }
-      if (sinceDrop < 1.2) {
+      if (sinceDrop < 1.4) {
         ripples[0] = sinceDrop;
-        ripples[1] = 2.5;
+        ripples[1] = 2.2;
       }
-      const shimmer = clamp01(song.hats.impulse(time, 0.05, 0.2));
-      const pointSize = Math.max(1.5, 2.3 * (canvas.height / 1080));
-      const grains = afterMain ? plateGrains : Math.round(plateGrains * (0.62 + 0.38 * Math.min(1, time / Math.max(1, song.drops[song.mainDrop]?.time || song.duration))));
-      drawSand(sandArray, grains, previous, current, settle, gather, knot, 1, ink, time, pointSize, ripples, shimmer, 0);
+      // Bass: the plate rings harder, so the sand band widens with the bass.
+      const bassLevel = clamp01(song.mean("bass", time - 0.04, time + 0.01));
+      const weight = 0.02 + 0.05 * bassLevel * bassLevel;
+      const pointSize = Math.max(1.5, 2.4 * (canvas.height / 1080));
+      const grains = afterMain ? plateGrains : Math.round(plateGrains * (0.7 + 0.3 * Math.min(1, time / Math.max(1, song.drops[song.mainDrop]?.time || song.duration))));
+      // Voice: vermilion sand in the figure of the sung note, present through each phrase. On
+      // the key word the black sand steps back and the voice's own figure takes the plate.
+      const anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
+      const keyMoment = anchor >= 0 ? easeOutCubic((time - song.anchor.moments[anchor].start) / 0.12) : 0;
+      drawSand(sandArray, grains, previous, current, settle, gather, knot, 1 - 0.7 * keyMoment, ink, pointSize, ripples, weight);
 
-      // Voice: vermilion sand in the figure of the sung note; away when nobody sings.
-      voiceMode(time, voiceNow);
-      if (voiceNow.present > 0 || voiceNow.start > 0) {
-        voiceMode(Math.max(0, voiceNow.start - 0.01), voiceBefore);
-        const voiceSettle = easeOutCubic((time - voiceNow.start) / 0.12);
-        const present = voiceNow.present * (voiceBefore.present > 0 ? 1 : voiceSettle);
-        drawSand(voiceArray, plateVoiceGrains, voiceBefore.present > 0 ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather * 0.6, knot * 1.6, present, voiceColor, time, pointSize * 1.1, ripples, 0, 3.7);
+      let presence = 0;
+      for (const phrase of voicePhrases) {
+        if (phrase.start - 0.15 > time) break;
+        if (time < phrase.end + 0.25) presence = Math.max(presence, Math.min(clamp01((time - phrase.start + 0.15) / 0.15), clamp01((phrase.end + 0.25 - time) / 0.25)));
+      }
+      if (anchor >= 0) {
+        anchorFigure.start = song.anchor.moments[anchor].start;
+        const figure = figureIndexAt(anchorFigure.start - 0.01);
+        if (figure >= 0) voiceFigure(figure, voiceBefore);
+        const voiceSettle = easeOutCubic((time - anchorFigure.start) / 0.2);
+        drawSand(voiceArray, plateVoiceGrains, figure >= 0 ? voiceBefore : anchorFigure, anchorFigure, voiceSettle, gather * 0.6, knot * 1.6, 1, voiceColor, pointSize * 1.5, ripples, 0.04, 0.45);
+      } else if (presence > 0) {
+        const figure = figureIndexAt(time);
+        if (figure >= 0) {
+          voiceFigure(figure, voiceNow);
+          if (figure > 0) voiceFigure(figure - 1, voiceBefore);
+          const voiceSettle = figure > 0 ? easeInOutCubic((time - voiceNow.start) / 0.2) : 1;
+          drawSand(voiceArray, plateVoiceGrains, figure > 0 ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather * 0.6, knot * 1.6, presence, voiceColor, pointSize * 1.3, ripples, 0.03, 0.55);
+        }
       }
       drawLabels(time, width, height, drop);
     }
@@ -384,21 +448,39 @@ registerVisualizer({
       const chord = chordIndex >= 0 ? song.chords[chordIndex] : null;
       const figureNumber = chordIndex >= 0 ? chordIndex + 1 : 0;
       labels.textAlign = "right";
-      labels.fillText(`Fig. ${figureNumber}`, width * 0.9825 - 6 * unit, height * 0.975);
+      labels.fillText(`Fig. ${figureNumber}`, width * 0.9835, height * 0.982);
       labels.textAlign = "left";
+      // Kick: the striker at the plate's centre, a black boss that jumps on every kick.
+      const kickAge = song.kicks.since(time);
+      const kickIndex = song.kicks.last(time);
+      const hit = kickIndex >= 0 ? song.kicks.strength[kickIndex] * hitDecay(kickAge, 0.09) : 0;
+      const gathered = drop && (drop.phase === 2 || (drop.phase === 1 && drop.progress > 0.9));
+      if (!gathered) {
+        const cx = width / 2,
+          cy = height * (plate.top + plate.bottom) / 2;
+        labels.fillStyle = "#171513";
+        labels.beginPath();
+        labels.arc(cx, cy, (14 + 34 * hit) * unit, 0, Math.PI * 2);
+        labels.fill();
+        labels.fillStyle = themeGround;
+        labels.beginPath();
+        labels.arc(cx, cy, (5 + 10 * hit) * unit, 0, Math.PI * 2);
+        labels.fill();
+      }
       labels.font = `400 ${Math.round(13 * unit)}px "IBM Plex Mono", monospace`;
       const bar = Math.max(0, Math.floor(song.barPosition(time)) + 1);
       const beat = Math.floor(fract(song.barPosition(time)) * 4) + 1;
       const mode = `(${current.mode[0]}, ${current.mode[1]})${current.second > 0 ? ` + (${current.mode[2]}, ${current.mode[3]})` : ""}`;
       const harmony = chord ? `${names[chord.root]}${chord.minor ? " minor" : " major"}` : "";
       const line = `MODE ${mode}   ${harmony.toUpperCase()}   BAR ${String(bar).padStart(3, "0")}.${beat}   ${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, "0")}`;
-      labels.fillText(line, width * 0.0175 + 6 * unit, height * 0.975 - 8 * unit);
+      labels.fillText(line, width * 0.0165, height * 0.982 - 6 * unit);
     }
 
     return {
       canvas: container,
       setSong,
       themeFor() {
+        themeGround = "";
         return { "--plate-ground": "#efe9dc" };
       },
       setActive(on) {

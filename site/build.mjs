@@ -46,5 +46,8 @@ const page = readFileSync("page.html", "utf8")
     "<!-- TAB_ICON -->",
     `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(readFileSync("assets/tab-icon.svg", "utf8").trim())}" />`,
   );
-mkdirSync("dist", { recursive: true });
-writeFileSync("dist/page.html", page);
+// `node build.mjs --out dist-dev/page.html` writes elsewhere (for a second, test server).
+const outIndex = process.argv.indexOf("--out");
+const output = outIndex > 0 ? process.argv[outIndex + 1] : "dist/page.html";
+mkdirSync(output.replace(/\/[^/]*$/, ""), { recursive: true });
+writeFileSync(output, page);

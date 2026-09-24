@@ -1239,7 +1239,7 @@ html[data-visual="rig"] {
   --vz-credits-transform: uppercase;
 }
 html[data-visual="rig"] #player-view > .intro {
-  mix-blend-mode: difference;
+  text-shadow: 0 0 18px rgb(0 0 0 / 0.75), 0 0 3px rgb(0 0 0 / 0.6);
 }
 
 /* Type: one saturated field per song, set by the visualizer; the page follows its ink. */
@@ -1299,4 +1299,18 @@ html[data-visual="plate"] {
 }
 html[data-visual="plate"] #player-view > .intro h1 {
   font-style: italic;
+}
+html[data-visual="type"] {
+  --vz-scrim: linear-gradient(to top, var(--type-field, #2530f2) 55%, transparent);
+}
+html[data-visual="type"] #player-view .play,
+html[data-visual="pocket"] #player-view .play,
+html[data-visual="plate"] #player-view .play {
+  box-shadow: 0 0 0 10px var(--vz-background);
+}
+html[data-visual="pocket"] {
+  --vz-scrim: linear-gradient(to top, var(--pocket-field, #f2e8d3) 45%, transparent);
+}
+html[data-visual="plate"] {
+  --vz-scrim: linear-gradient(to top, var(--plate-ground, #efe9dc) 50%, transparent);
 }
