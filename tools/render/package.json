@@ -1,0 +1,9 @@
+{
+  "name": "listening-room-render",
+  "private": true,
+  "type": "module",
+  "description": "Headless review tooling: renders exact song times to images. Not part of the page.",
+  "dependencies": {
+    "puppeteer": "^25.12.0"
+  }
+}
