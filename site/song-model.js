@@ -123,8 +123,13 @@ class SongModel {
       const drop = this.drops.find((entry) => Math.abs(entry.gapStart - (build.end + offset)) < 0.3 || Math.abs(entry.time - (build.end + offset)) < 0.3);
       return { start: build.start + offset, end: drop ? drop.gapStart : build.end + offset };
     });
-    for (const drop of this.drops)
+    // A drop the analysis found no build for still gets an approach: the four bars before its
+    // gap (or before it, when it has none) gather, so nothing lands unannounced. Ophelia's
+    // main drop, American Boy's drop and NBLY's second drop are approaches.
+    for (const drop of this.drops) {
       drop.build = this.builds.find((entry) => entry.end >= drop.gapStart - 0.3 && entry.end <= drop.time + 0.1) || null;
+      if (!drop.build) drop.build = { start: drop.gapStart - 4 * this.barPeriod, end: drop.gapStart, approach: true };
+    }
     this.breakdowns = (sections.breakdowns || []).map((part) => ({ start: part.start + offset, end: part.end + offset }));
     const anchor = visual.anchor || performance.anchor || { kind: "none", moments: [] };
     this.anchor = { kind: anchor.kind, word: anchor.word, moments: anchor.moments.map((moment) => ({ start: moment.start, end: moment.end })) };
@@ -143,6 +148,15 @@ class SongModel {
     });
     this.peaks = (visual.peaks || []).map((peak) => ({ start: peak.start, end: peak.end, kind: peak.kind }));
     this.scenes = this.buildScenes(visual.scenes || []);
+    // The song's turn: where its late look begins. The main drop, unless that comes early
+    // (American Boy's only drop is at 19 %); then the first full section after 60 % of the
+    // song, so the late look is the last third, not four fifths.
+    const mainTime = this.mainDrop >= 0 ? this.drops[this.mainDrop].time : Infinity;
+    this.lateStart = mainTime;
+    if (mainTime < this.duration * 0.45) {
+      const late = this.scenes.find((scene) => scene.start >= this.duration * 0.6 && (scene.kind === "drive" || scene.kind === "drop" || scene.kind === "groove"));
+      if (late) this.lateStart = late.start;
+    }
     this.sceneStarts = Float64Array.from(this.scenes.map((scene) => scene.start));
     this.lyrics = this.buildLyrics(visual.lyrics || []);
     this.dropState = { phase: 0, index: -1, progress: 0, since: Infinity, until: Infinity, drop: null, build: null };

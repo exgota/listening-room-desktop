@@ -13,7 +13,7 @@ mkdir -p "$OUT/frames" "$OUT/sheets" "$OUT/strips" "$OUT/stills"
 duration() { python3 -c "import json,sys; sys.path.insert(0,'.'); from perf import SONGS, LIB; print(json.load(open(LIB/SONGS['$1']/'performance.json'))['duration'])"; }
 peaks() {
   case $1 in
-    nbly) echo "138.126 142.5 250.5 256.5 276.25" ;;
+    nbly) echo "138.126 142.5 250.5 256.5 276.252" ;;
     desire) echo "45.772 167.6 228.632" ;;
     ophelia) echo "36.501 94.681" ;;
     outside) echo "141.177" ;;

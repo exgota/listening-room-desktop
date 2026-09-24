@@ -169,11 +169,16 @@ for (const [identifier, song] of Object.entries(SONGS)) {
       const box = document.querySelector("#seek").getBoundingClientRect();
       return { x: box.x, y: box.y, width: box.width, height: box.height };
     });
-    // The click and the check of where it landed happen in the page, back to back, so a slow
-    // software renderer cannot make the song run on between them.
+    // Where the seek landed is read by the audio element's own "seeked" event, so a slow
+    // software renderer cannot make the song run on before it is read.
     const target = now.duration / 2;
+    await page.evaluate(() => {
+      window.acceptanceLanded = null;
+      audio.addEventListener("seeked", () => (window.acceptanceLanded = audio.currentTime), { once: true });
+    });
     await page.mouse.click(bounds.x + bounds.width * 0.5, bounds.y + bounds.height / 2);
-    const landed = await page.evaluate(() => audio.currentTime);
+    await page.waitForFunction(() => window.acceptanceLanded !== null, { timeout: 20000 }).catch(() => {});
+    const landed = await page.evaluate(() => window.acceptanceLanded ?? audio.currentTime);
     const playedOn = await page
       .waitForFunction((from) => !audio.paused && audio.currentTime > from + 0.3, { timeout: 20000 }, landed)
       .then(() => true, () => false);
