@@ -199,27 +199,29 @@ treatment; the drop's word is the largest type the song ever shows.
 ### 3 · Pocket
 
 **Concept.** A troupe of cut-paper figures, one per instrument, on a small stage, each moving
-only on its own instrument's onsets, so the groove on screen is the band's groove. The stage
-shows who is playing: a performer rises through the floor to arrive on its first note, and
-each has a column of its own.
+only on its own instrument's onsets, so the groove on screen is the band's groove. Under the
+stage lies the pocket itself: one beat, four sixteenth cells, where every onset of the last
+two bars is stamped where it actually landed, so swing and push are visible in a single
+frame.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Kick | The drum (a black disc) touches the floor exactly on each kick |
+| Kick | The kit's drum (a black disc) touches the floor exactly on each kick |
+| Hats | The kit's cymbals: one rings on the off-beat hats, the other on the late (swung) sixteenths, added as the song goes on |
 | Bass | The dome winds up before each note and lands on it, taller for higher notes: syncopation shows as a landing off the drum's |
-| Snare (strong, beats 2 and 4) | The mustard hands clap |
-| Hats | Ticks along the top right against a sixteenth grid |
-| Voice | The singer: taller with pitch, mouth open with level, a lean that snaps on the beat and on the swung eighth (the song's measured swing) |
-| Groove lane | Along the floor, one bar: every onset stamped where it actually landed, the previous bar ghosted ahead of the playhead |
-| Arrangement | Performers on stage only while their part plays; one featured per eight bars |
-| Key word | Big cut-paper letters from the singer, then a slip in a growing pile |
+| Snare (strong, beats 2 and 4) | The mustard hands clap; through a build they close a notch per bar |
+| Voice | The singer, a cut-paper profile: taller with pitch, the jaw dropping with the level, a lean that snaps on the beat and on the song's measured swung sixteenth |
+| The pocket (lane) | One beat in four cells; the last two bars of voice, hats, claps, kick and bass stamped at their place in the beat |
+| Arrangement | Performers on stage only while their part plays (they rise through the floor onto their first note); one featured per eight bars |
+| Key word | Large cut-paper letters in the band beside the title; then a slip in a growing pile |
 | Chord passages | The field changes colour with each chord |
-| Build | The field dims, the troupe gathers inward and trembles on the sixteenths |
+| Build | The field steps darker each bar, the troupe gathers inward, the last bar trembles |
 | Gap | Night; the troupe held in the air |
-| Drop | The troupe lands together on new marks with a slam; the main drop lands on tomato |
+| Drop | The troupe lands together on new marks with a slam; the main drop lands in the song's own colour for its whole section (NBLY cobalt, Desire tomato, Ophelia bottle green, Outside mustard, American Boy violet) |
 | Song's turn | The stage goes dark, a different dark per section; later drops flash cream |
+| First frame and ending | The song's poster: the troupe posed in its colour |
 
 ### 4 · Plate
 
