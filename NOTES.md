@@ -178,23 +178,25 @@ time the analysis says it happens, and each song has its own opening, drop and s
 
 **Concept.** The sung words set as posters in a heavy grotesque: each line appears as a pale
 tint and fills in word by word on the frame each word is sung. Around the words there is
-only typography, and the song is planned once as a timeline so each passage keeps one
-treatment; the drop's word is the largest type the song ever shows.
+only typography, the song is planned once as a timeline so each passage keeps one
+treatment, and the drop's word is the largest type the song ever shows.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Voice (sung words) | Each confirmed word fills in solid as it is sung, with a rule under the word being sung |
+| Voice (sung words) | Each confirmed word fills in solid as it is sung, with a rule under the word being sung; lines with most words confirmed are set |
 | Key word | Reversed out of an ink box inside its line; its running count (01–12) in the corner tab |
 | Kick | The corner tab shows the beat of the bar, solid on each kick |
-| Bass | A block of ink rising from the bottom to the note's height, inverting the rows it covers (it stops between rows) |
+| Bass | A block of ink rising from the bottom to the note's height, inverting the rows it covers (whole rows at a time) |
 | Harmony | In NBLY's chord passages the chord names, spelled in the song's key |
-| Instrumental passages | One mode per piece of at most eight bars: intro bar count, hook wall stepping on kick and snare, the hook breathing once a bar in breakdowns, a late stack that grows bar by bar |
-| Build | The ink floods up the frame and the bars to the drop count down |
+| Instrumental passages | One mode per piece of at most eight bars: an intro bar count, the hook wall stepping on kick and snare, the hook breathing once a bar, a late stack |
+| Breakdown | Lines set smaller, centred, with no ink band or tab |
+| Build | The ink floods up the frame through the lines, the bars to the drop count down where no line is sung |
 | Gap | Full flood and the beats counted down on the grid |
-| Drop | The song's word across the frame, colours swapped; the main drop fills the whole frame in two rows and holds a bar |
+| Drop | The song's word across the frame, on the field the flood hid; the main drop's word fills the whole frame in two rows (split at a syllable) and holds a bar |
 | Song's turn | Field and ink swap for good |
+| Ending | The song's word as a tint |
 
 ### 3 · Pocket
 
@@ -226,24 +228,26 @@ frame.
 ### 4 · Plate
 
 **Concept.** A Chladni plate: one square plate on an engraved sheet, with sand lying on the
-nodal lines of the figure the harmony sets, and a second, vermilion sand for the voice. It
-moves at the pace of the harmony, not the beat: a figure re-forms at most once a bar and
-holds while the voice sings, so it is the calmest of the four until a drop.
+nodal lines of the figure the harmony sets, and a second, vermilion sand for the voice. Each
+song has its own family of figures, and the plate moves at the pace of the harmony, not the
+beat: a figure re-forms at most once a bar, so it is the calmest of the four until a drop.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Harmony | The figure: the chord's root (around the circle of fifths) picks the family, minor flips its sign, the section's energy sets its complexity; re-formed at most once a bar, on the downbeat |
-| Held chord | A neighbouring figure every four bars |
-| Voice | Vermilion sand in one figure per sung line; the black sand steps back while it sings |
-| Key word | Its own figure, rings about the centre, used for nothing else, held at least 0.6 s |
-| Bass | Line weight: heavy while a bass note sounds, light otherwise (two levels, solid) |
-| Kick | The striker at the centre jumps, a wave runs out to the plate's edge, the plate darkens for an instant |
-| Breakdown | The simplest figure; the voice carries the plate |
+| Harmony | The figure, from the song's own family (NBLY rings and rosettes, Desire hourglass bands, Ophelia pills, Outside a ruled grid, American Boy columns): its place in the family from the section's energy and the chord's root, re-formed at most once a bar on the downbeat; a repeated progression steps on |
+| Voice | Vermilion sand, one figure per sung phrase (from the sung notes, split at lines); the black sand steps back while it sings |
+| Key word | Concentric rings, used for nothing else, held at least 0.6 s |
+| Bass | Line weight: heavy while a bass note sounds, released over 0.2 s |
+| Kick | The whole plate darkens for an instant, the striker at the centre jumps, a wave runs out to the rim |
+| Snare | The band round the plate's frame fills for an instant |
+| Hats | Ticks along the top edge at their place in the bar |
+| Breakdown | The bare X (the only X in the piece) under the voice |
 | Chord passages (NBLY) | The plate inverts (ivory sand on a black plate) and every chord re-forms it |
 | Build | The figure contracts a step on each downbeat |
 | Gap | The knot alone, shrinking beat by beat |
-| Drop | The knot thrown out into a new figure on the exact frame |
-| Song's turn | The sheet turns vermilion; later sections alternate vermilion and ink |
-| Outro | The sand drains away |
+| Drop | The knot thrown out into the song's own drop figure on the exact frame, held four bars |
+| Song's turn | The sheet turns vermilion for at least sixteen bars; later sections alternate vermilion and ink |
+| First frame | The song's drop figure with the first voice figure in vermilion |
+| Outro | The sand drains to the bare knot |
