@@ -1255,7 +1255,7 @@ html[data-visual="rig"] {
   --vz-title-weight: 650;
   --vz-title-spacing: -0.035em;
   --vz-credits-font: "IBM Plex Mono", ui-monospace, monospace;
-  --vz-credits-size: 18px;
+  --vz-credits-size: 22px;
   --vz-credits-spacing: 0.08em;
   --vz-credits-transform: uppercase;
 }
@@ -2825,9 +2825,9 @@ const rigHeadOrder = [3, 4, 1, 6, 2, 5, 0, 7];
 // looks in the song's own order.
 const rigSongs = {
   "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "cross"], mainLooks: ["fan", "scissor"] }, signature: "blade", breaks: ["cathedral", "rain", "fan", "rain"] }, // NBLY
-  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shots: ["floor", "low"], mainShot: "side", looks: ["cross", "fan"], funnel: true }, signature: "cross", breaks: ["rain"] }, // Desire
-  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "side", mainShot: "overhead", looks: ["rain", "fan"], mainLooks: ["scissor", "fan"] }, signature: "rain", breaks: ["fan", "cathedral"] }, // Ophelia
-  "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "high", looks: ["scissor", "rain"] }, signature: "fan", breaks: ["cathedral", "rain"] }, // Outside
+  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shot: "floor", mainShot: "side", looks: ["cross", "fan"], looksByDrop: [["cross", "fan"], ["rain", "scissor"], null, ["blade", "cross"]], funnel: true }, signature: "cross", breaks: ["rain"] }, // Desire
+  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "overhead", looks: ["rain", "fan"], mainLooks: ["scissor", "fan"] }, signature: "rain", breaks: ["fan", "cathedral"] }, // Ophelia
+  "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "far", looks: ["scissor", "rain"] }, signature: "fan", breaks: ["cathedral", "rain"] }, // Outside
   "4048d4a6dce44c151690b2b1": { shot: "right", look: "cross", drop: { shot: "low", looks: ["cross", "scissor"] }, signature: "fan", breaks: ["rain", "cathedral"] }, // American Boy
 };
 const rigDefaultSong = { shot: "hero", look: "fan", drop: { shot: "floor", looks: ["fan", "rain"] }, signature: "fan", breaks: ["cathedral", "rain"] };
@@ -2946,7 +2946,7 @@ vec3 lensGlow(vec3 origin, vec3 direction, int index) {
   float disc = 1.0 - smoothstep(size * 0.8, size, angle);
   // the halo reaches zero at the cutoff, so it never ends on a hard circle
   float halo = exp(-angle / (size * 2.5)) * 0.25 * (1.0 - smoothstep(size * 4.0, size * 12.0, angle));
-  float power = axisData.w * (0.08 + 2.0 * pow(facing, 12.0));
+  float power = axisData.w * (0.08 + 1.3 * pow(facing, 12.0));
   return uBeamColor[index].rgb * (disc + halo) * power * uLens;
 }
 
@@ -3032,7 +3032,9 @@ void main() {
     color += vec3(0.012, 0.012, 0.014) * (1.0 - smoothstep(0.0, 30.0, floorT));
   }
 
-  color += uFlash.rgb * uFlash.w;
+  // the flash spares the title's corner, so the title and credits survive the drop frame
+  float titleCorner = (1.0 - smoothstep(0.30, 0.42, vUv.x)) * smoothstep(0.62, 0.74, vUv.y);
+  color += uFlash.rgb * uFlash.w * (1.0 - 0.85 * titleCorner);
   // Filmic shoulder keeps white beams white without clipping hard.
   color = vec3(1.0) - exp(-color * 1.35);
   color = pow(color, vec3(0.92));
@@ -3165,7 +3167,8 @@ function createRigShow() {
   const headY = 7.6,
     headZ = -7.0;
   let song = null;
-  let gel = white;
+  let gel = white,
+    gelBoost = 1;
   let config = rigDefaultSong;
   let bassLow = 28,
     bassHigh = 52,
@@ -3189,6 +3192,7 @@ function createRigShow() {
     side: [[13, 2.2, 4], [-2, 4.8, -6], 1.1],
     low: [[0, 0.3, 6], [0, 6.5, -7], 1.2],
     overhead: [[0, 17, 1], [0, 0, -12], 1.0],
+    far: [[0, 1.2, 22], [0, 5.5, -7], 0.72],
   };
   // Looks for the heads: fan spread (radians, negative crosses), elevation bias, and
   // whether the beams lean toward the audience (+1) or away (-1).
@@ -3216,6 +3220,7 @@ function createRigShow() {
     turnHit = -1;
     if (!model) return;
     gel = hexColor(rigGels[model.identifier] || "#ffffff");
+    gelBoost = Math.min(1.6, 0.8 / Math.max(0.05, 0.2126 * gel[0] + 0.7152 * gel[1] + 0.0722 * gel[2]));
     config = rigSongs[model.identifier] || rigDefaultSong;
     // the bass line's own range, for the pan
     const pitches = Array.from(model.bassNotes.pitch).sort((a, b) => a - b);
@@ -3281,8 +3286,8 @@ function createRigShow() {
       } else if (++heldFor > 60) held = 0;
       marks[index] = held;
     }
-    // A mark held for under half a second between two stretches of one mark is dropped, so
-    // the spot does not visit a neighbour and come straight back.
+    // A mark held for under a second between two stretches of one mark is dropped, so the
+    // spot does not visit a neighbour and come straight back.
     for (let index = 1; index < count; ) {
       if (marks[index] === marks[index - 1]) {
         index++;
@@ -3290,7 +3295,7 @@ function createRigShow() {
       }
       let end = index;
       while (end < count && marks[end] === marks[index]) end++;
-      if (end < count && end - index < 10 && marks[end] === marks[index - 1]) marks.fill(marks[index - 1], index, end);
+      if (end < count && end - index < 20 && marks[end] === marks[index - 1]) marks.fill(marks[index - 1], index, end);
       index = end;
     }
   }
@@ -3401,7 +3406,7 @@ function createRigShow() {
     const inGap = drop.phase === 2 || leadIn >= 0 || breath;
     const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
     const sinceTurn = turnHit >= 0 && time >= turnHit ? time - turnHit : Infinity;
-    const hitLength = song.beatPeriod * 2;
+    const hitLength = song.beatPeriod * 3;
     const dropHit = sinceDrop < hitLength;
     const inHit = dropHit || sinceTurn < song.beatPeriod;
     const hitAge = Math.min(sinceDrop, sinceTurn);
@@ -3459,7 +3464,8 @@ function createRigShow() {
     // and a song with several drops may take its cameras in turn
     const mainSection = drop.phase === 3 && drop.index === song.mainDrop;
     const dropShot = mainSection && config.drop.mainShot ? config.drop.mainShot : config.drop.shots ? config.drop.shots[Math.max(0, drop.index) % config.drop.shots.length] : config.drop.shot;
-    const dropLooks = mainSection && config.drop.mainLooks ? config.drop.mainLooks : config.drop.looks;
+    const byDrop = config.drop.looksByDrop && drop.phase === 3 ? config.drop.looksByDrop[drop.index % config.drop.looksByDrop.length] : null;
+    const dropLooks = mainSection && config.drop.mainLooks ? config.drop.mainLooks : byDrop || config.drop.looks;
     switch (scene.kind) {
       case "intro":
         lookName = config.look; intensity = 18; width = 0.085; shot = config.shot; break;
@@ -3469,18 +3475,18 @@ function createRigShow() {
         lookName = config.breaks[scene.kindIndex % config.breaks.length]; intensity = 9 + 13 * singing; width = 0.075; shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3];
         // a breakdown of eight bars or more wakes the rig pair by pair
         const sceneBars = (scene.end - scene.start) / song.barPeriod;
-        if (sceneBars >= 8) lit = Math.min(rigSize, 2 + 2 * Math.floor(Math.max(0, barIndex - song.barIndex(scene.start + 0.01)) / Math.max(1, Math.floor(sceneBars / 6))));
+        if (sceneBars >= 6) lit = Math.min(rigSize, 2 + 2 * Math.floor(Math.max(0, barIndex - song.barIndex(scene.start + 0.01)) / Math.max(1, Math.floor(sceneBars / 6))));
         break;
       }
       case "groove":
         lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.index) % 4]; intensity = 16; shot = ["right", "hero", "wide"][(scene.index + eightBars) % 3]; lens = 0.8; break;
       case "build":
-        lookName = "fan"; intensity = 14; shot = "wide"; break;
+        lookName = ["fan", "cross", "rain"][Math.max(0, drop.index) % 3]; intensity = 14; shot = "wide"; break;
       case "drop":
-        lookName = dropLooks[Math.floor(beat) % 2]; intensity = 30; width = 0.06; shot = dropShot; chase = 1; lens = 1.6; break;
+        lookName = dropLooks[barIndex % 2]; intensity = 30; width = 0.06; shot = dropShot; chase = 1; lens = 1.0; break;
       case "drive":
         lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.065;
-        shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3]; chase = 0.5; lens = 0.7; break;
+        shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3]; chase = 0.5; lens = 0.5; break;
       case "outro":
         lookName = config.look; intensity = 14; shot = config.shot; break;
       case "gap":
@@ -3489,19 +3495,19 @@ function createRigShow() {
     // A drop's section runs at least eight bars, whatever the scene list calls them.
     const inDropSection = drop.phase === 3 && scene.kind !== "outro" && (scene.kind === "drop" || drop.since < 8 * song.barPeriod);
     if (inDropSection && scene.kind !== "drop") {
-      lookName = dropLooks[Math.floor(beat) % 2];
+      lookName = dropLooks[barIndex % 2];
       intensity = 30;
       width = 0.06;
       shot = dropShot;
       chase = 1;
-      lens = 1.6;
+      lens = 1.0;
       lit = rigSize;
     }
     // The song's first section always opens on its own composition (Outside opens on a groove).
     if (scene.index === 0) {
       lookName = config.look;
       shot = config.shot;
-      intensity *= 1 + 0.3 * breathing;
+      width *= 1 + 0.3 * breathing;
     }
     // The bookend: the opening composition again, its heads dropping out as it fades, and a
     // slow sweep so the last bars still move.
@@ -3584,12 +3590,14 @@ function createRigShow() {
       if (onSinger > 0) aimAt(beam, keyX, 0, -1.5, onSinger * 0.92);
       beam.angle = width;
       let level = rank < lit ? intensity * (1 + 0.8 * stabHit) : 0;
-      if (chase > 0) level *= Math.floor(index / 2) === chasePair ? 1 + 0.9 * chase : 1 - 0.35 * chase;
+      // the chase: the lead pair brighter; in a drop's section the others stay near its level
+      if (chase > 0) level *= Math.floor(index / 2) === chasePair ? 1 + 0.6 * chase : 1 - (inDropSection ? 0.1 : 0.35) * chase;
       if (onSinger > 0) level = Math.max(level, 20 * onSinger);
       if (inGap) level = 0;
       beam.intensity = level * fadeOut;
       const tint = index % 2 === 0 ? tintColor : white;
       beam.r = tint[0]; beam.g = tint[1]; beam.b = tint[2];
+      if (tint !== white) beam.intensity *= gelBoost;
     }
 
     // ---- kick: the floor jets, a row of upward shafts at the stage lip.
@@ -3603,7 +3611,7 @@ function createRigShow() {
       const norm = Math.hypot(beam.dx, beam.dy, beam.dz);
       beam.dx /= norm; beam.dy /= norm; beam.dz /= norm;
       beam.angle = 0.13;
-      const power = inHit ? Math.max(kickPower, 1 - hitAge / hitLength) : kickPower;
+      const power = inHit ? Math.max(kickPower, 1 - hitAge / hitLength) : time < 0.5 ? Math.max(kickPower, 0.8) : kickPower;
       beam.length = 3.2 + 3.2 * power;
       beam.intensity = inGap ? 0 : power * 16 * fadeOut;
       beam.r = white[0]; beam.g = white[1]; beam.b = white[2];
@@ -3662,10 +3670,10 @@ function createRigShow() {
       state.lensSize = 2.6;
     }
 
-    // ---- the drop: the exact frame fires everything at the audience, the brightest state
-    // of the song for two beats, with a flash that dies over 150 ms; then the chase. Desire's
-    // main drop pours every head onto the singer instead. The turn, when it is not a drop,
-    // gets a beat of the same.
+    // ---- the drop: the exact frame fires everything over the audience, the brightest state
+    // of the song for three beats, with a flash that dies over 100 ms; then four beats of tail
+    // into the chase. Desire's main drop pours every head onto the singer instead. The turn,
+    // when it is not a drop, gets a beat of the same and two of tail.
     if (inHit) {
       const length = dropHit ? hitLength : song.beatPeriod;
       const release = easeInCubic(clamp01((hitAge - length / 2) / (length / 2)));
@@ -3682,17 +3690,18 @@ function createRigShow() {
       }
       state.flash[0] = 1; state.flash[1] = 0.98; state.flash[2] = 0.95;
       state.flash[3] = 0.5 * hitDecay(hitAge, 0.1);
-      state.lens = 2.4;
+      state.lens = 1.0;
       state.truss = 1;
       if (dropHit) shot = dropShot;
-    } else if (sinceDrop < hitLength * 2 && !inGap) {
-      // the tail: two more beats easing from the hit's level down to the section's
-      const settle = easeInOutCubic(clamp01((sinceDrop - hitLength) / hitLength));
+    } else if ((sinceDrop < hitLength + 4 * song.beatPeriod || sinceTurn < 3 * song.beatPeriod) && !inGap) {
+      // the tail: four beats (two after the turn) easing from the hit's level to the section's
+      const tail = sinceDrop < sinceTurn ? { age: sinceDrop - hitLength, length: 4 * song.beatPeriod } : { age: sinceTurn - song.beatPeriod, length: 2 * song.beatPeriod };
+      const settle = easeInOutCubic(clamp01(tail.age / tail.length));
       for (let index = 0; index < rigHeadCount; index++) {
         const beam = beams[index];
-        beam.intensity = mixValue(Math.max(beam.intensity, 30 * fadeOut), beam.intensity, settle);
+        beam.intensity = mixValue(Math.max(beam.intensity, 32 * fadeOut), beam.intensity, settle);
       }
-      state.lens = mixValue(3, state.lens, settle);
+      state.lens = mixValue(1.0, state.lens, settle);
     }
 
     // ---- camera: the scene's shot with a slow move inside it; a push through a build.

@@ -1234,7 +1234,7 @@ html[data-visual="rig"] {
   --vz-title-weight: 650;
   --vz-title-spacing: -0.035em;
   --vz-credits-font: "IBM Plex Mono", ui-monospace, monospace;
-  --vz-credits-size: 18px;
+  --vz-credits-size: 22px;
   --vz-credits-spacing: 0.08em;
   --vz-credits-transform: uppercase;
 }
