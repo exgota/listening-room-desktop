@@ -210,7 +210,7 @@ const plateSongs = {
   },
   "4048d4a6dce44c151690b2b1": { // American Boy: columns and barbells
     s: 0.3,
-    family: [[1, 3, 2, 3], [2, 3, 1, 4], [2, 5, 1, 2], [3, 4, 1, 3], [1, 5, 2, 3]],
+    family: [[2, 4, 1, 3], [2, 3, 1, 4], [2, 5, 1, 2], [3, 4, 1, 3], [1, 5, 2, 3]],
     drop: { mode: [1, 4, 2, 3], second: 0.55, sign: 0.3 },
     siblings: [[1, 4, 2, 3, 0.95], [1, 5, 2, 3, 0.55], [2, 4, 2, 3, 0.55]],
     grand: [2, 5, 2, 3, 0.55],
@@ -398,9 +398,14 @@ registerVisualizer({
       for (let index = 0; index < notes.length; index++) {
         if (notes.strength[index] < 0.2) continue;
         const last = phrases[phrases.length - 1];
-        if (last && notes.start[index] - last.end < 0.4) last.end = Math.max(last.end, notes.end[index]);
-        else phrases.push({ start: notes.start[index], end: notes.end[index] });
+        if (last && notes.start[index] - last.end < 0.4) {
+          last.end = Math.max(last.end, notes.end[index]);
+          last.strength = Math.max(last.strength, notes.strength[index]);
+        } else phrases.push({ start: notes.start[index], end: notes.end[index], strength: notes.strength[index] });
       }
+      // before the first sung word, faint pitch (an instrument read as a voice) is not singing
+      const firstWord = model.lyrics.lines.length ? model.lyrics.lines[0].words[0].start : Infinity;
+      for (let index = phrases.length - 1; index >= 0; index--) if (phrases[index].end < firstWord - 0.5 && phrases[index].strength < 0.5) phrases.splice(index, 1);
       const lineStarts = model.lyrics.lines.map((line) => line.words[0].start);
       for (const phrase of phrases) {
         if (phrase.end - phrase.start < 0.35) continue;
@@ -501,7 +506,7 @@ registerVisualizer({
           if (push(figureOf(setup.siblings[siblingStep++ % setup.siblings.length], time))) heldSince = time;
           continue;
         }
-        if (held < 2 * model.barPeriod - 0.05) continue;
+        if (held < (scene.kind === "outro" || time >= drainStart ? 4 : 2) * model.barPeriod - 0.05) continue;
         if (singingAt(time) && held < 8 * model.barPeriod - 0.05) continue;
         const chordIndex = model.chordIndex(time + 0.05);
         const chordKey = chordIndex >= 0 ? `${model.chords[chordIndex].root}${model.chords[chordIndex].minor}` : "none";
@@ -681,6 +686,8 @@ registerVisualizer({
           heavy = time <= hold ? attack : attack * (1 - easeInOutCubic(clamp01((time - hold) / 0.2)));
         }
       }
+      // a drop lands in heavy lines for its first two beats, bass or not
+      if (drop.phase === 3 && drop.since < 2 * song.beatPeriod) heavy = Math.max(heavy, 1 - easeInCubic(drop.since / (2 * song.beatPeriod)));
       const weight = 0.025 + 0.02 * heavy;
       const pointSize = Math.max(1.5, 2.3 * (canvas.height / 1080)) * (1 + 0.4 * heavy);
       // Outro: the sand drains away to the bare knot.
