@@ -16,14 +16,16 @@ const rigBeamCount = rigHeadCount + rigJetCount + 1;
 const rigHeadOrder = [3, 4, 1, 6, 2, 5, 0, 7];
 // Each song opens on its own composition (its thumbnail), lands its drops in its own way
 // and keeps a signature look that recurs through its drives.
+// A drop's camera is never used by any other section of its song; breakdowns take their
+// looks in the song's own order.
 const rigSongs = {
-  "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "blade"] }, signature: "curtain" }, // NBLY
-  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shot: "floor", looks: ["cross", "fan"], funnel: true }, signature: "cross" }, // Desire
-  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "hero", looks: ["rain", "fan"] }, signature: "rain" }, // Ophelia
-  "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "wide", looks: ["scissor", "vee"] }, signature: "scissor" }, // Outside
-  "4048d4a6dce44c151690b2b1": { shot: "left", look: "cross", drop: { shot: "left", looks: ["cross", "curtain"] }, signature: "curtain" }, // American Boy
+  "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "vee"] }, signature: "curtain", breaks: ["cathedral", "curtain", "rain", "vee"] }, // NBLY
+  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shot: "floor", mainShot: "side", looks: ["cross", "fan"], funnel: true }, signature: "cross", breaks: ["vee"] }, // Desire
+  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "side", looks: ["rain", "fan"] }, signature: "rain", breaks: ["curtain", "cathedral"] }, // Ophelia
+  "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "high", looks: ["scissor", "vee"] }, signature: "scissor", breaks: ["cathedral", "rain"] }, // Outside
+  "4048d4a6dce44c151690b2b1": { shot: "right", look: "cross", drop: { shot: "low", looks: ["cross", "curtain"] }, signature: "curtain", breaks: ["rain", "vee"] }, // American Boy
 };
-const rigDefaultSong = { shot: "hero", look: "fan", drop: { shot: "wide", looks: ["fan", "vee"] }, signature: "fan" };
+const rigDefaultSong = { shot: "hero", look: "fan", drop: { shot: "floor", looks: ["fan", "vee"] }, signature: "fan", breaks: ["cathedral", "curtain", "rain", "vee"] };
 const rigGels = {
   "5ff86d6cd02ebd7308e03df8": "#3f74ff", // NBLY: cold blue
   "1d589940ca458d793a3fad8a": "#ff2d2d", // Desire: red
@@ -137,7 +139,8 @@ vec3 lensGlow(vec3 origin, vec3 direction, int index) {
   float angle = sqrt(max(0.0, 2.0 - 2.0 * dot(direction, toLensUnit)));
   if (angle > size * 12.0) return vec3(0.0);
   float disc = 1.0 - smoothstep(size * 0.8, size, angle);
-  float halo = exp(-angle / (size * 2.5)) * 0.25;
+  // the halo reaches zero at the cutoff, so it never ends on a hard circle
+  float halo = exp(-angle / (size * 2.5)) * 0.25 * (1.0 - smoothstep(size * 4.0, size * 12.0, angle));
   float power = axisData.w * (0.08 + 2.0 * pow(facing, 12.0));
   return uBeamColor[index].rgb * (disc + halo) * power * uLens;
 }
@@ -217,7 +220,10 @@ void main() {
     for (int index = 0; index < ${rigBeamCount}; index++) mirror += beamScatter(p + reflected * 0.01, reflected, index, min(40.0, wall2), false);
     float fresnel = 0.25 + 0.75 * pow(1.0 - max(0.0, -direction.y), 5.0);
     float streaks = 0.75 + 0.25 * texture(uNoise, vec3(p.x * 0.03, 0.5, p.z * 0.8)).r;
-    color = color * 0.35 + pool * streaks + mirror * uHaze.w * fresnel * streaks;
+    // haze in front of a near floor is dimmed so the pools read; toward the back wall it is
+    // kept whole, so a beam does not step down where it crosses the floor line
+    float keep = mix(0.45, 1.0, smoothstep(-3.0, -14.0, p.z));
+    color = color * keep + pool * streaks + mirror * uHaze.w * fresnel * streaks;
     color += vec3(0.012, 0.012, 0.014) * (1.0 - smoothstep(0.0, 30.0, floorT));
   }
 
@@ -360,20 +366,23 @@ function createRigShow() {
     bassHigh = 52,
     swingLate = 0,
     outroStart = Infinity,
+    bookendStart = Infinity,
     songEnd = Infinity,
     turnHit = -1;
   let breathOK = [];
   let marks = new Float32Array(0); // the follow-spot's stage mark, 20 a second
 
-  // Camera shots: [position, target, vertical fov]. All stand in front of the floor jets,
-  // and none puts the truss in the title's corner.
+  // Camera shots: [position, target, vertical fov]. None puts the truss or a lens in the
+  // title's corner at any point of its drift (checked by projection at 1920x930).
   const shots = {
     hero: [[0, 0.8, 5.5], [0, 7.2, -7], 1.15],
-    wide: [[0, 2.0, 11], [0, 4.6, -7], 1.0],
-    left: [[-6.5, 1.7, 7.5], [1.5, 5.0, -7], 1.05],
-    floor: [[0, 0.45, 8.5], [0, 3.8, -7], 0.98],
+    wide: [[0, 2.0, 11], [0, 5.6, -7], 1.0],
+    right: [[6.5, 1.7, 7.5], [-1.5, 5.0, -7], 1.05],
+    floor: [[0, 0.45, 8.5], [0, 5.6, -7], 0.98],
     close: [[0, 2.6, 4.2], [0, 8.6, -7], 1.25],
-    high: [[0, 7.2, 8.5], [0, 2.0, -5], 1.0],
+    high: [[0, 9.0, 8], [0, 6.0, -7], 1.05],
+    side: [[13, 2.2, 4], [-2, 4.8, -6], 1.1],
+    low: [[0, 0.3, 6], [0, 6.5, -7], 1.2],
   };
   // Looks for the heads: fan spread (radians, negative crosses), elevation bias, and
   // whether the beams lean toward the audience (+1) or away (-1).
@@ -427,6 +436,11 @@ function createRigShow() {
       while (index > 0 && mix[index] < 0.08) index--;
       songEnd = Math.min(model.duration, index / 100 + 0.3);
     }
+    // The opening composition comes back as a bookend for at least the last eight bars (after
+    // the last drop section).
+    let lastDropEnd = 0;
+    for (const scene of model.scenes) if (scene.kind === "drop") lastDropEnd = scene.end;
+    bookendStart = Math.max(lastDropEnd, Math.min(outroStart, songEnd - 8 * model.barPeriod));
     // A drop with no hole takes a breath (its last beat dark) only where the music really
     // dips there; where an instrument enters on that beat, the rig stays up.
     breathOK = model.drops.map((drop) => {
@@ -460,6 +474,26 @@ function createRigShow() {
       } else if (++heldFor > 60) held = 0;
       marks[index] = held;
     }
+    // A mark held for under half a second between two stretches of one mark is dropped, so
+    // the spot does not visit a neighbour and come straight back.
+    for (let index = 1; index < count; ) {
+      if (marks[index] === marks[index - 1]) {
+        index++;
+        continue;
+      }
+      let end = index;
+      while (end < count && marks[end] === marks[index]) end++;
+      if (end < count && end - index < 10 && marks[end] === marks[index - 1]) marks.fill(marks[index - 1], index, end);
+      index = end;
+    }
+  }
+
+  // How much the voice sings, held at its peak over the last `hold` seconds (so the spot does
+  // not strobe with a chopped vocal).
+  function singingAt(time, hold) {
+    let level = 0;
+    for (let step = 0; step * 0.05 <= hold; step++) level = Math.max(level, clamp01((song.value("vocal", time - step * 0.05) - 0.22) / 0.45));
+    return level;
   }
 
   // The spot's place: the stage mark, glided over 0.15 s.
@@ -565,13 +599,16 @@ function createRigShow() {
     const inHit = dropHit || sinceTurn < song.beatPeriod;
     const hitAge = Math.min(sinceDrop, sinceTurn);
     const mainHit = dropHit && drop.index === song.mainDrop;
-    const singing = clamp01((song.value("vocal", time) - 0.22) / 0.45);
+    const singing = singingAt(time, 0.2);
     // The rig grows: six heads until the first drop, all eight after it.
     let dropsPassed = 0;
     for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
     const rigSize = dropsPassed === 0 && song.drops.length ? 6 : 8;
     // the last two bars fade to black
     const fadeOut = clamp01((songEnd - time) / (2 * song.barPeriod));
+    const inBookend = time >= bookendStart && drop.phase !== 1 && drop.phase !== 2;
+    // after the song's turn the rig runs hotter for sixteen bars
+    const turnLift = time >= song.lateStart && time < song.lateStart + 16 * song.barPeriod ? 1.25 : 1;
 
     // ---- the bass: every head pans with the note across the song's bass range (low left,
     // high right), snapping onto each note with an overshoot; a repeated note nods them.
@@ -598,8 +635,9 @@ function createRigShow() {
       const snap = (age) => easeOutBack(clamp01(age / 0.1));
       swingChase = (phase < lateAt ? mixValue(-1, 1, snap(phase)) : mixValue(1, -1, snap(phase - lateAt))) * 0.18;
     }
-    // the opening composition breathes on the bar
-    const barBreath = scene.kind === "intro" ? Math.sin((bar / 2) * Math.PI * 2) * 0.1 : 0;
+    // the opening composition breathes over two bars: the heads rise and swell, then sink
+    const breathing = scene.kind === "intro" || scene.index === 0 ? Math.sin((bar / 2) * Math.PI * 2) : 0;
+    const barBreath = breathing * 0.24;
 
     // ---- look and shot per scene
     let lookName = "fan",
@@ -607,31 +645,34 @@ function createRigShow() {
       width = 0.075,
       shot = "wide",
       lit = rigSize,
-      chase = 0;
+      chase = 0,
+      lens = 1,
+      sweep = 0;
+    // the drop camera of the drop this section follows (Desire's main drop has its own)
+    const dropShot = drop.phase === 3 && drop.index === song.mainDrop && config.drop.mainShot ? config.drop.mainShot : config.drop.shot;
     switch (scene.kind) {
       case "intro":
         lookName = config.look; intensity = 18; width = 0.085; shot = config.shot; break;
       case "verse":
-        lookName = [config.signature, "curtain", "rain", "vee"][(scene.kindIndex + eightBars) % 4]; intensity = 14; width = 0.08; shot = ["wide", "left", "hero"][(scene.kindIndex + eightBars) % 3]; break;
+        lookName = [config.signature, "curtain", "rain", "vee"][(scene.kindIndex + eightBars) % 4]; intensity = 14; width = 0.08; shot = ["wide", "right", "hero"][(scene.kindIndex + eightBars) % 3]; break;
       case "break": {
-        lookName = ["cathedral", "curtain", "rain", "vee"][scene.kindIndex % 4]; intensity = 9 + 13 * singing; width = 0.075; shot = ["wide", "left", "hero"][(scene.kindIndex + eightBars) % 3];
-        // a long breakdown wakes the rig pair by pair, a pair every four bars
-        if (scene.end - scene.start > 16 * song.barPeriod) lit = Math.min(rigSize, 2 + 2 * Math.floor(Math.max(0, barIndex - song.barIndex(scene.start + 0.01)) / 4));
+        lookName = config.breaks[scene.kindIndex % config.breaks.length]; intensity = 9 + 13 * singing; width = 0.075; shot = ["wide", "right", "hero"][(scene.kindIndex + eightBars) % 3];
+        // a breakdown of eight bars or more wakes the rig pair by pair
+        const sceneBars = (scene.end - scene.start) / song.barPeriod;
+        if (sceneBars >= 8) lit = Math.min(rigSize, 2 + 2 * Math.floor(Math.max(0, barIndex - song.barIndex(scene.start + 0.01)) / Math.max(1, Math.floor(sceneBars / 6))));
         break;
       }
       case "groove":
-        lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.index) % 4]; intensity = 16; shot = ["left", "hero", "wide"][(scene.index + eightBars) % 3]; break;
+        lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.index) % 4]; intensity = 16; shot = ["right", "hero", "wide"][(scene.index + eightBars) % 3]; lens = 0.8; break;
       case "build":
         lookName = "fan"; intensity = 14; shot = "wide"; break;
       case "drop":
-        lookName = config.drop.looks[Math.floor(beat) % 2]; intensity = 26; width = 0.06; shot = config.drop.shot; chase = 1; break;
+        lookName = config.drop.looks[Math.floor(beat) % 2]; intensity = 30; width = 0.06; shot = dropShot; chase = 1; lens = 1.3; break;
       case "drive":
         lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.065;
-        shot = ["wide", "left", "hero"][(scene.kindIndex + eightBars) % 3]; chase = 0.5; break;
-      case "outro": {
-        const fade = clamp01((time - outroStart) / Math.max(1, songEnd - outroStart));
-        lookName = config.look; intensity = 14 * (1 - fade * 0.7); shot = config.shot; lit = Math.max(2, Math.round(rigSize * (1 - fade * 0.75))); break;
-      }
+        shot = ["wide", "right", "hero"][(scene.kindIndex + eightBars) % 3]; chase = 0.5; lens = 0.7; break;
+      case "outro":
+        lookName = config.look; intensity = 14; shot = config.shot; break;
       case "gap":
         lookName = "fan"; intensity = 0; shot = "hero"; break;
     }
@@ -639,7 +680,22 @@ function createRigShow() {
     if (scene.index === 0) {
       lookName = config.look;
       shot = config.shot;
+      intensity *= 1 + 0.3 * breathing;
     }
+    // The bookend: the opening composition again, its heads dropping out as it fades, and a
+    // slow sweep so the last bars still move.
+    if (inBookend) {
+      const fade = clamp01((time - bookendStart) / Math.max(1, songEnd - bookendStart));
+      lookName = config.look;
+      shot = config.shot;
+      intensity = 16 * (1 - fade * 0.6);
+      width = 0.075;
+      chase = 0;
+      lens = 1;
+      lit = Math.max(2, Math.round(rigSize * (1 - fade * 0.75)));
+      sweep = Math.sin((bar / 4) * Math.PI * 2) * 0.3 * (0.4 + fade);
+    }
+    intensity *= turnLift;
     // Chord passages: a new look on each chord stab, at most one per beat; the camera holds.
     let stabHit = 0;
     if (peak && peak.kind === "chords") {
@@ -672,8 +728,9 @@ function createRigShow() {
       converge = progress * 0.95;
       shimmerRate = progress < 0.5 ? 1 : progress < 0.75 ? 2 : progress < 0.9 ? 4 : 8;
       shimmer = 0.3 + 0.7 * progress;
-      intensity = mixValue(13, 17, progress);
-      width = mixValue(0.075, 0.04, progress);
+      // the gathered beams brighten as they close (the build rises; it never ebbs)
+      intensity = mixValue(13, 23, progress * progress);
+      width = mixValue(0.075, 0.045, progress);
     }
 
     // ---- the key word: every head sweeps onto the singer's mark, from just before the word,
@@ -690,11 +747,11 @@ function createRigShow() {
     }
     const singerX = spotAt(time);
     const tintColor = afterMain ? gel : white;
-    const voiceSway = scene.kind === "break" ? Math.sin(time * 0.35) * 0.2 : 0;
-    // The chase: a pair of heads steps across the rig on every eighth, the direction turning
-    // each beat.
+    const voiceSway = (scene.kind === "break" ? Math.sin(time * 0.35) * 0.2 : 0) + sweep;
+    // The chase: a pair of heads steps across the rig on every eighth, left to right over two
+    // beats, then back.
     const eighth = Math.floor(beat * 2);
-    const chasePair = Math.floor(beat) % 2 ? 3 - (eighth % 4) : eighth % 4;
+    const chasePair = Math.floor(beat / 2) % 2 ? 3 - (eighth % 4) : eighth % 4;
     for (let index = 0; index < rigHeadCount; index++) {
       const beam = beams[index];
       const rank = rigHeadOrder.indexOf(index);
@@ -741,8 +798,9 @@ function createRigShow() {
     spot.angle = scene.kind === "break" || scene.kind === "verse" ? 0.1 : 0.08;
     spot.length = 40;
     // In the gap the voice keeps its light if it is singing: one warm column in the dark
-    // (Desire's "Is it desire?" is sung into its hole).
-    spot.intensity = (inGap ? singing * 46 : singing * (scene.kind === "break" || scene.kind === "verse" ? 42 : 24) * (onSinger > 0 ? 1.4 : 1)) * fadeOut;
+    // (Desire's key line is sung into its hole), held at its peak over half a second so a
+    // chopped vocal does not strobe it.
+    spot.intensity = (inGap ? singingAt(time, 0.5) * 46 : singing * (scene.kind === "break" || scene.kind === "verse" ? 42 : 24) * (onSinger > 0 ? 1.4 : 1)) * fadeOut;
     spot.r = warm[0]; spot.g = warm[1]; spot.b = warm[2];
 
     // ---- snare → truss cells flash; hats → sparkle.
@@ -756,8 +814,9 @@ function createRigShow() {
     state.wash[0] = tintColor[0]; state.wash[1] = tintColor[1]; state.wash[2] = tintColor[2];
     state.wash[3] = inGap ? 0 : other * (0.35 + 1.5 * stabHit) * fadeOut;
 
-    // Lenses: dimmed while the beams converge, so a build narrows to a spike, not a flare.
-    state.lens = 1 - 0.85 * converge;
+    // Lenses: dimmed while the beams converge, so a build narrows to a spike, not a flare;
+    // held down in the drives so only a drop glares.
+    state.lens = lens * (1 - 0.6 * converge);
     state.lensSize = 1;
 
     // ---- the gap: blackout with four big blinders counting in, a pair per beat, aimed at the
@@ -798,10 +857,18 @@ function createRigShow() {
         beam.intensity = 36;
       }
       state.flash[0] = 1; state.flash[1] = 0.98; state.flash[2] = 0.95;
-      state.flash[3] = 1.2 * hitDecay(hitAge, 0.15);
+      state.flash[3] = 0.8 * hitDecay(hitAge, 0.12);
       state.lens = 3;
       state.truss = 1;
-      if (dropHit) shot = config.drop.shot;
+      if (dropHit) shot = dropShot;
+    } else if (sinceDrop < hitLength * 2 && !inGap) {
+      // the tail: two more beats easing from the hit's level down to the section's
+      const settle = easeInOutCubic(clamp01((sinceDrop - hitLength) / hitLength));
+      for (let index = 0; index < rigHeadCount; index++) {
+        const beam = beams[index];
+        beam.intensity = mixValue(Math.max(beam.intensity, 30 * fadeOut), beam.intensity, settle);
+      }
+      state.lens = mixValue(3, state.lens, settle);
     }
 
     // ---- camera: the scene's shot with a slow move inside it; a push through a build.
