@@ -274,21 +274,21 @@ bars is stamped where it actually landed, so swing and push are visible in a sin
 | Song's turn | The stage goes dark, a different dark per section; later drops flash cream |
 | First frame and ending | The song's poster, the troupe posed in its colour; it returns on the last downbeat and its hands keep the tempo after the music |
 
-**Measurements.** From the fifth review (on v5, before the v6 changes).
+**Measurements.** From the sixth review (the verification pass, on v6, before v7's fixes)
+and the fifth.
 
-- Grades by review: D+, C-, C+, B- (the fourth was cut off after three songs).
+- Grades by review: D+, C-, C+, B- (the fourth was cut off after three songs), B.
 - Every hole and drop changes on the first 10 fps frame after its line (15 peaks in the five
-  songs), and the drum lands on the frame after each kick.
-- Nothing enters the title box (0 hits in 13,190 replayed frames); no figures overlap
-  except in the closing crossfade, which v6 replaced with a cut.
-- Longest single picture (same field, same composition): 16.2 s. Named field changes per
-  song: 14-43, no grey anywhere.
-- Field contrast at the drops, the frame before against the drop frame: 13-15:1 for the
-  cream landings, 2.0-4.6:1 for the main drops' own colours (1.2:1 for American Boy). v6
-  lands every main drop on a cream flash first.
-- Cymbals, share of frames with a visible ring after the turn: NBLY 38 %, Outside 40 %,
-  Desire 26 %, Ophelia 24 %, American Boy 4 % (its hats carry no swing; v6 moves its swing
-  cymbal onto the swung bass notes).
+  songs); the drum lands on the frame after each kick, and in a hold squashes on it in the
+  air.
+- Main drops land hardest: the frame before against the drop frame is 9.3-15.1:1 (the
+  fifth review found 1.2-4.6:1 for the main drops' own colours).
+- Nothing enters the title box (0 hits in 13,190 replayed frames); no overlaps outside the
+  main drop's growth, which v7 caps at the frame's edge.
+- Longest unchanged composition: 14.3-16.1 s in four songs (Desire's intro 22.3 s); longest
+  field run 17.1 s on pale fields.
+- Cymbals, share of frames with a visible ring: the off-beat cymbal 24-40 % except American
+  Boy; American Boy's swing cymbal 13.6 % (0.2 % before it was moved onto the swung bass).
 
 **With more time.**
 
@@ -326,18 +326,22 @@ signature.
 | Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta), gelled heads raised to make up what the gel takes; a hit and a tail of its own when the turn is not a drop |
 | End | The opening composition returns for at least the last eight bars, heads dropping out, with a slow sweep; the last two bars fade to black |
 
-**Measurements.** From the fourth review (on v5) and 1 fps luma renders of the current code.
+**Measurements.** From the fifth review (the verification pass, on v7, before v8's fixes),
+the fourth, and 1 fps and 10 fps luma renders of the current code.
 
-- Grades by review: C, C+, B- (the third was cut off before its grade).
-- Drops: every drop with a 10 fps strip lands on the first frame after its line (nine).
-  Build top against hit: 1.6-3.2x.
-- Title contrast: median 0.86-0.88 per song, no frame under 0.35 outside the hit frames; the
-  flash now spares the title's corner.
-- Drop sections against drives (mean luma above the transport, current code): NBLY 0.173
-  and its main drop 0.174 against 0.122 (1.42x); Desire 0.183 and its main drop 0.163
-  against 0.137 (1.34x and 1.19x). The fourth review had found them level with the drives.
-- Drop pictures across songs: the fourth review found two pairs sharing a camera
-  (similarity 0.57 and 0.66); since v7 each song's drop has its own camera.
+- Grades by review: C, C+, B- (the third was cut off before its grade), B.
+- Drops and turns: all eleven with a 10 fps window land on the first frame after their
+  line.
+- Drop sections against drives (mean luma above the transport): NBLY 1.39-1.54x, Desire's
+  drops 1.41-1.72x, Ophelia 1.37-1.56x, American Boy 2.16x (the fourth review found NBLY,
+  Ophelia and Outside level with their drives).
+- Hits against build tops, current code: NBLY's main drop 0.343 against 0.135 (2.5x), with
+  nothing after it falling below the gap; Desire's main drop, a side-on pour whose build
+  top is carried by the follow-spot, 1.5x.
+- Drop pictures across songs: similarity 0.17-0.41 between songs against 0.43-0.72 within a
+  drop (two pairs had shared a camera at 0.57 and 0.66).
+- Title contrast on the drop frame 0.72-0.79 (0.16-0.28 before the flash spared its
+  corner); thumbnails 24-34 % lit (12-13 % before).
 
 **With more time.**
 
