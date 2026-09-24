@@ -1279,16 +1279,16 @@ html[data-visual="pocket"] {
   --vz-credits-spacing: 0.02em;
 }
 
-/* Plate: an engraved plate; ivory ground (vermilion after the main drop), black ink. */
+/* Plate: an engraved plate; ivory ground (vermilion, then ink, after the song's turn). */
 html[data-visual="plate"] {
   --vz-background: var(--plate-ground, #efe9dc);
-  --vz-ink: #171513;
-  --vz-secondary: #171513;
-  --vz-accent: #171513;
-  --vz-button: #171513;
+  --vz-ink: var(--plate-ink, #171513);
+  --vz-secondary: var(--plate-ink, #171513);
+  --vz-accent: var(--plate-ink, #171513);
+  --vz-button: var(--plate-ink, #171513);
   --vz-button-ink: var(--plate-ground, #efe9dc);
-  --waveform-played: #171513;
-  --waveform-rest: color-mix(in srgb, #171513 30%, transparent);
+  --waveform-played: var(--plate-ink, #171513);
+  --waveform-rest: color-mix(in srgb, var(--plate-ink, #171513) 30%, transparent);
   --vz-title-font: "Instrument Serif", "Times New Roman", serif;
   --vz-title-weight: 400;
   --vz-title-spacing: -0.01em;
