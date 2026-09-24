@@ -149,55 +149,110 @@ controls are hidden.
 
 ## The four
 
-### 1 · Rig
+### 1 · Plate (the default)
 
-**Concept.** A timecoded lighting show in a black room: eight moving heads on a truss, a row
-of floor jets, a follow-spot and truss strobes, each fixture played by one part of the song.
-Nothing is a spectrum or a meter; every cue is a lighting designer's cue, placed at the exact
-time the analysis says it happens, and each song has its own opening, drop and signature.
+**Concept.** A Chladni plate: one square plate on an engraved sheet, sand lying on the nodal
+lines of the figure the harmony sets, and a second, vermilion sand for the voice. Each song
+has its own family of figures and its own emblem, which only its first drop lands on, and
+the plate moves at the pace of the harmony rather than the beat: the calmest of the four
+until a drop.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Kick | The floor jets fire (one row of upward shafts at the stage lip) |
-| Bass note | Every head pans together with the note, low left to high right across the song's own bass range, snapping with an overshoot; a repeated note nods them |
-| Opening | The song's own composition (its thumbnail), breathing over two bars: the heads rise and swell, then sink |
-| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch (a visit to a neighbouring mark under half a second is ignored) |
-| Snare / hats | Truss strobe cells flash on the backbeat; hats sparkle |
-| Swing (American Boy, Outside) | The heads chase sideways on the beat and on the swung sixteenth, from the first bar |
-| Section | Look (fan, cross, vee, curtain, blade, rain, scissor…) and camera per section and per eight bars; each song's signature look recurs in its drives |
-| Breakdown | A look per breakdown, in each song's own order; one of eight bars or more wakes the rig pair by pair |
-| Key word | Every head sweeps onto the singer's mark just before the word, holds, and lets go over a beat |
-| Build | Beams converge steadily into a spike high over the stage and brighten as they close; the camera pushes in |
-| Gap / breath | Blackout; four big blinders light a pair per beat; the spot stays lit (held at its peak) if someone sings into the hole. A drop without a hole breathes only where the music dips |
-| Drop | Everything fires at the audience on the exact frame, the brightest state of the song for two beats, eased over two more into the drop section, where a pair of heads chases across the rig on the eighths. Each song's drop has a camera no other section of that song uses (NBLY and Outside from above, Desire from the floor, Ophelia from the side, American Boy from below); Desire's main drop pours every head onto the singer, seen from the side. Only drops glare: drives keep their lenses down |
-| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta); a hit of its own when the turn is not a drop |
-| End | The opening composition returns for at least the last eight bars, heads dropping out, with a slow sweep; the last two bars fade to black |
+| Harmony | The figure, from the song's own family (NBLY rings and rosettes, Desire hourglass bands, Ophelia pills, Outside a ruled grid, American Boy columns): its place in the family from the section's energy and the chord's root, re-formed at most every two bars on a downbeat and never straight back to the figure before; a re-form is a dissolve, each grain leaving the old line for the new at its own moment |
+| Voice | Vermilion sand, one of the song's own three voice figures per sung phrase (phrases from the sung notes, split at lines and every two bars); the black sand steps back while it sings |
+| Key word | Concentric rings, used for nothing else, held at least 0.6 s |
+| Bass | Line weight: heavy while a bass note sounds, released over 0.2 s; a legato note takes over the weight of the one before |
+| Kick | The whole plate darkens for an instant, the striker at the centre jumps, a wave runs out to the rim |
+| Snare | The band round the plate's frame fills for an instant |
+| Hats | Ticks along the top edge at their place in the bar |
+| Breakdown | The X (the only X in the piece), bare, then ringed, with arcs and with lobes, a step every four bars, under the voice |
+| Chord passages (NBLY) | The plate inverts (ivory sand on a black plate) and every chord re-forms it |
+| Build | The figure contracts a step on each downbeat, the first one visibly; the voice recedes |
+| Gap | The knot alone, shrinking beat by beat |
+| Drop | The knot thrown out on the exact frame, in heavy lines, the black at full for four bars: the first drop onto the song's emblem, a later main drop onto a denser relative of it, other drops onto its siblings; the drop section then steps through the siblings |
+| Song's turn | The sheet turns vermilion for sixteen bars (eight when the song is nearly over), then ink and vermilion alternate |
+| First frame | The song's emblem in full black under the first voice figure |
+| Outro | Each figure held four bars; the sand drains to the bare knot |
+
+**Measurements.** From the fourth review (on v4, before the v5 changes) and the Node
+harness on the frozen and current code.
+
+- Grades by review: D+, C, B-, B.
+- Drops: every one lands on the first 10 fps frame after its line (NBLY 2, Desire 3 plus
+  1:16.25 on the sheets, Ophelia 2, Outside 1, American Boy 1). Ophelia's first reads on
+  the second strip frame at 0:36.60.
+- Plate at 350 px wide: 167 px for NBLY, Desire and Outside. Ophelia and American Boy were
+  128 px under their two-line titles; since v5c the plate moves right of the title at full
+  height instead.
+- Re-forms a minute, v4 → v5: NBLY 16.9 → 11.7, Desire 9.7 → 7.8, Ophelia 9.7 → 7.7,
+  Outside 13.2 → 8.0, American Boy 9.3 → 6.4. Median figure hold 3.5-8.1 s.
+- Sung time with no voice figure: 0-5 % (pass 3: 3-39 %).
+- Bass weight flips a minute: 55-99 (pass 3: 134-169). The re-attack blinks the review
+  found (70-132 a minute) are gone in v5c.
+- The X is on the plate in 0-20 % of frames (pass 3: any X 49-80 %).
+
+**With more time.**
+
+- Measure the frame time on the M4 (262,144 grains, 14 Newton steps each).
+- Replace the ideal cosine modes with a real free-edge square plate's modes (computed once
+  offline), and let the sand migrate with a little physics instead of dissolving.
+- Give American Boy's swing a visible element at phone size (a row of bold cells inside the
+  plate's top edge instead of ticks).
+- A late-only figure per song, so the last third has shapes the first two never had.
 
 ### 2 · Type
 
 **Concept.** The sung words set as posters in a heavy grotesque: each line appears as a pale
-tint and fills in word by word on the frame each word is sung. Around the words there is
-only typography, the song is planned once as a timeline so each passage keeps one
-treatment, and the drop's word is the largest type the song ever shows.
+tint and fills in word by word on the frame each word is sung. Around the words there is only
+typography: the song is planned once as a timeline so each passage keeps one treatment, and
+the drop's word is the largest type the song ever shows.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Voice (sung words) | Each confirmed word fills in solid as it is sung, with a rule under the word being sung; lines with most words confirmed are set |
+| Voice (sung words) | Each confirmed word fills in solid as it is sung, with a rule under the word being sung; a line is set when at least half its words are confirmed; unsung words are tints at about 3:1 against the field |
 | Key word | Reversed out of an ink box inside its line; its running count (01–12) in the corner tab |
-| Kick | The corner tab shows the beat of the bar, solid on each kick |
+| Kick | The corner tab shows the beat of the bar, solid on each kick (while a count runs it only blinks); before the voice, the hook hops from side to side on every kick |
+| Snare | Before the voice, the hook widens for an instant on every snare; the wall's odd rows step on it |
 | Bass | A block of ink rising from the bottom to the note's height, inverting the rows it covers (whole rows at a time) |
-| Harmony | In NBLY's chord passages the chord names, spelled in the song's key |
-| Instrumental passages | One mode per piece of at most eight bars: an intro bar count, the hook wall stepping on kick and snare, the hook breathing once a bar, a late stack |
+| Harmony | In NBLY's chord passages the chord names, spelled in the song's key, with drawn flats |
+| Intro | The song's word through the first bar, then the hook hopping with the kit, then the last four bars counted down to the voice |
+| Instrumental passages | One mode per piece of at most eight bars, taken in turn by section: the hook as a wall stepping on kick and snare, spelled a letter a beat, breathing once a bar; after the turn a stack that grows a row a bar. The drop's word is never used |
 | Breakdown | Lines set smaller, centred, with no ink band or tab |
-| Build | The ink floods up the frame through the lines, the bars to the drop count down where no line is sung |
-| Gap | Full flood and the beats counted down on the grid |
-| Drop | The song's word across the frame, on the field the flood hid; the main drop's word fills the whole frame in two rows (split at a syllable) and holds a bar |
+| Build | The ink floods up the frame, stopping at the edges of rows and numerals; bars counted down where no line is sung |
+| Gap | Full flood; the beats left as a row of full stops (numerals are for bars) |
+| Drop | The song's word across the frame, on the field the flood hid. The main drop's word fills the whole frame below the title (two rows split at a syllable, or run off the foot) and holds a bar; the other drops are a size down |
 | Song's turn | Field and ink swap for good |
 | Ending | The song's word as a tint |
+
+**Measurements.** From the fourth review (on v4, before the v5 changes) and the Node plan
+replay on the current code.
+
+- Grades by review: C-, C+, B- (the third was cut off before its grade).
+- Drops: all ten change on the first frame after the drop line (NBLY 2:18.200 and 4:36.300,
+  Desire 0:45.800, 2:47.700 and 3:48.700, Ophelia 0:36.500 and 1:34.700, Outside 2:21.200,
+  American Boy 0:48.900; Desire 1:16.25 on the 2 fps sheets). Counts and chord names flip on
+  the first frame after their beat lines.
+- Lines set, current code: NBLY 79 of 115, Desire 52 of 53, Ophelia 44 of 47, Outside 40
+  of 54, American Boy 103 of 107. The sung-note time inside a shown line is 80, 91, 75, 66
+  and 93 %. The skipped lines are mostly vocal chops and ad-libs the two transcriptions do
+  not agree on.
+- Flashes (instrumental runs under 2 s between lines): 4 in the set (pass 2: 25).
+- Hierarchy since v5c: the main drop's word, then the secondary drops' (0.82 of a full
+  one-row fit), numerals at most 0.75 of those, other big type at most 0.6.
+
+**With more time.**
+
+- Listen through the lines the two transcriptions disagree on (36 in NBLY, 14 in Outside)
+  and hand-confirm them, so the long ad-lib stretches have words.
+- Give instrumental stretches a direction: the next line's first word assembling over the
+  last four bars before the voice returns.
+- Resume a line cut by a hit from the word being sung, rather than skipping it.
+- Kerning and optical sizes for the poster sizes; a second face for the late palette.
 
 ### 3 · Pocket
 
@@ -227,29 +282,36 @@ frame.
 | Song's turn | The stage goes dark, a different dark per section; later drops flash cream |
 | First frame and ending | The song's poster: the troupe posed in its colour |
 
-### 4 · Plate
+**Measurements.** (Final review in progress.)
 
-**Concept.** A Chladni plate: one square plate on an engraved sheet, with sand lying on the
-nodal lines of the figure the harmony sets, and a second, vermilion sand for the voice. Each
-song has its own family of figures, and the plate moves at the pace of the harmony, not the
-beat: a figure re-forms at most once a bar, so it is the calmest of the four until a drop.
+**With more time.** (To follow the final review.)
+
+### 4 · Rig
+
+**Concept.** A timecoded lighting show in a black room: eight moving heads on a truss, a row
+of floor jets, a follow-spot and truss strobes, each fixture played by one part of the song.
+Nothing is a spectrum or a meter; every cue is a lighting designer's cue, placed at the exact
+time the analysis says it happens, and each song has its own opening, drop and signature.
 
 **Mapping.**
 
 | Musical element | What it drives |
 | --- | --- |
-| Harmony | The figure, from the song's own family (NBLY rings and rosettes, Desire hourglass bands, Ophelia pills, Outside a ruled grid, American Boy columns): its place in the family from the section's energy and the chord's root, re-formed at most once a bar on the downbeat; a repeated progression steps on |
-| Voice | Vermilion sand, one figure per sung phrase (from the sung notes, split at lines); the black sand steps back while it sings |
-| Key word | Concentric rings, used for nothing else, held at least 0.6 s |
-| Bass | Line weight: heavy while a bass note sounds, released over 0.2 s |
-| Kick | The whole plate darkens for an instant, the striker at the centre jumps, a wave runs out to the rim |
-| Snare | The band round the plate's frame fills for an instant |
-| Hats | Ticks along the top edge at their place in the bar |
-| Breakdown | The bare X (the only X in the piece) under the voice |
-| Chord passages (NBLY) | The plate inverts (ivory sand on a black plate) and every chord re-forms it |
-| Build | The figure contracts a step on each downbeat |
-| Gap | The knot alone, shrinking beat by beat |
-| Drop | The knot thrown out into the song's own drop figure on the exact frame, held four bars |
-| Song's turn | The sheet turns vermilion for at least sixteen bars; later sections alternate vermilion and ink |
-| First frame | The song's drop figure with the first voice figure in vermilion |
-| Outro | The sand drains to the bare knot |
+| Kick | The floor jets fire (one row of upward shafts at the stage lip) |
+| Bass note | Every head pans together with the note, low left to high right across the song's own bass range, snapping with an overshoot; a repeated note nods them |
+| Opening | The song's own composition (its thumbnail), breathing over two bars: the heads rise and swell, then sink |
+| Voice | The warm follow-spot from above, moving between five stage marks with the sung pitch (a visit to a neighbouring mark under half a second is ignored) |
+| Snare / hats | Truss strobe cells flash on the backbeat; hats sparkle |
+| Swing (American Boy, Outside) | The heads chase sideways on the beat and on the swung sixteenth, from the first bar |
+| Section | Look (fan, cross, vee, curtain, blade, rain, scissor…) and camera per section and per eight bars; each song's signature look recurs in its drives |
+| Breakdown | A look per breakdown, in each song's own order; one of eight bars or more wakes the rig pair by pair |
+| Key word | Every head sweeps onto the singer's mark just before the word, holds, and lets go over a beat |
+| Build | Beams converge steadily into a spike high over the stage and brighten as they close; the camera pushes in |
+| Gap / breath | Blackout; four big blinders light a pair per beat; the spot stays lit (held at its peak) if someone sings into the hole. A drop without a hole breathes only where the music dips |
+| Drop | Everything fires at the audience on the exact frame, the brightest state of the song for two beats, eased over two more into the drop section, where a pair of heads chases across the rig on the eighths. Each song's drop has a camera no other section of that song uses (NBLY and Outside from above, Desire from the floor, Ophelia from the side, American Boy from below); Desire's main drop pours every head onto the singer, seen from the side. Only drops glare: drives keep their lenses down |
+| Song's turn | The song's gel colour, saved until then (NBLY blue, Desire red, Ophelia mint, Outside amber, American Boy magenta); a hit of its own when the turn is not a drop |
+| End | The opening composition returns for at least the last eight bars, heads dropping out, with a slow sweep; the last two bars fade to black |
+
+**Measurements.** (Final review in progress.)
+
+**With more time.** (To follow the final review.)
