@@ -4,26 +4,23 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- Grades so far: Type C- → C+ (pass 3 cut off by a usage limit before its grade); Pocket
-  D+ → C- → C+ (pass 4 cut off after three songs); Plate D+ → C → B- (pass 4 cut off at its
-  start); Rig C → C+ (pass 3 complete in its notes, cut off before its grade).
-- Built since: Type v4 and Plate v4 (from their pass-3 notes), Rig v5 (from Rig pass 3),
-  Pocket v5 (from Pocket pass 4's three songs).
-- Final review round (pass 4 for Type, Plate and Rig; pass 5 for Pocket), two at a time to
-  stay under the usage limit: frozen build `scratchpad/page-final-a.html` on ports 8090
-  (Type) and 8091 (Plate); Rig v5 and Pocket v5 next on their own snapshot. Review dirs
-  `scratchpad/review5/<variant>` hold the code snapshot each reviews.
+- Final review round grades (each on the build before its last fixes): Plate B (v4), Type
+  B- (v4), Rig B- (v5), Pocket B- (v5). Earlier: Plate D+, C, B-; Type C-, C+ (and a
+  cut-off third); Rig C, C+ (and a cut-off third); Pocket D+, C-, C+ (and a cut-off fourth).
+- Built after those reviews: Plate v5-v5c, Type v5-v5c, Rig v6-v7, Pocket v6. A verification
+  review of Rig v7 and Pocket v6 is running on the frozen build `scratchpad/page-final-c.html`
+  (ports 8095 and 8096); Type and Plate follow on the same build.
+- Acceptance (`tools/render/acceptance.mjs`) on the final build, with Plate as the default
+  on key 1: 218/218.
 - Dev loop: `cd site && node build.mjs --out dist-dev/page.html`; dev server on port 8081
   (`tools/render/test_server.py --port 8081 --page site/dist-dev/page.html --mp3`);
   render with `node render.mjs --port 8081 ...`; Node debug harnesses for Pocket segments,
   Type timelines and Plate schedules in the scratchpad (`pocketdbg.js`, `typedbg.js`,
-  `platedbg.js`); `shots.js` projects the Rig's truss and lenses onto each camera shot.
-- Acceptance (`tools/render/acceptance.mjs`) on the build with Rig v5, Pocket v5, Type v4 and
-  Plate v4: 218/218. (The first run of the day read 213/218: every failure was a seek check
-  on a WebGL visualizer, read in a `seeked` handler that a software GPU dispatches late while
-  the audio plays on; the script now records the time the page sets.)
-- Next: act on the final reviews; acceptance again on the final build; NOTES.md
-  measurements, "more time" and the default visualizer.
+  `platedbg.js`); `shots.js` projects the Rig's truss and lenses onto each camera shot;
+  `tools/render/chladni.py` previews Plate figures; `tools/render/frametime.mjs` times a
+  drawn frame per visualizer.
+- Next: act on the verification reviews; NOTES.md cost section with the measured frame
+  times.
 - Housekeeping: a stray `/pl3` directory (8 render PNGs from a render run with an unset
   variable) exists outside the repo; removing it needs the user's approval.
 
@@ -110,6 +107,36 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
   ceiling in a hold → clamped; Ophelia's bottle-green main drop read as its next dark
   section → emerald; the singer matched the kit's cream on dark blue fields → pink; the
   play button merged with a figure on Desire's poster → the poster's gap is centred on it.
+
+## Review findings acted on (the final round)
+
+- Type (B-): two textures alternating in long instrumentals → the section's modes in turn,
+  with a new letter-a-beat mode; the drop's word used as wallpaper → reserved for drops,
+  thumbnail and ending; the main drop's letters smaller than the secondary drops' → main
+  hit two rows filling the frame, secondary a size down, numerals at most 0.75 of it; a
+  countdown that went up again → beats as full stops; numerals sliced by the flood → the
+  flood stops at their edges; American Boy's 31 s clock → the hook hopping on the kit, a
+  countdown only in the last four bars; stale and never-sung lines at drops → a beat kept
+  clear and such lines skipped; weak tints → set by contrast (about 3:1).
+- Plate (B): the drive carousel → at most every two bars, never straight back, outros four;
+  speckled smear frames → a dissolve instead of flying grains; every drop one picture and
+  half-hidden → first drop on the emblem, later main drop on a denser relative, others on
+  siblings, the black at full for the hold; one X for half a minute → four X figures in
+  turn; shared voice figures → each song its own; the small plate beside two-line titles →
+  moved right at full height; bass blinks → legato notes hand the weight on; Ophelia's late
+  minute without ink → vermilion then alternation at section starts or downbeats.
+- Rig (B-): drops not holding → eight-bar drop sections in thicker haze, three-beat hits,
+  four-beat tails, the chase keeping the drop's level (1.2-1.4x the drives, measured); two
+  pairs of songs sharing a drop camera → overhead for Ophelia and a far camera for Outside;
+  lens-flare hits and breathing → glare cut, beams and widths do the work; stub looks → out
+  of drives and signatures; American Boy's dark turn → a tail and gelled heads compensated.
+- Pocket (B-): the swing cymbal silent in American Boy → rung by the swung bass; a twitchy
+  two-snap lean → one snap a beat on the swung sixteenth, a bigger throw; main drops softer
+  than earlier drops → a cream flash then the song's colour, 1.35x; dead swaps on full
+  stages → the unfeatured performer well under its cap; partner-field gaps and slivers → runs
+  across scenes, dark partners, no block under four bars; calm intros → the song's colour
+  until the first phrase ends; the closing crossfade's overlaps and frozen poster → a cut,
+  no gap while playing, hands keeping the tempo; the maze-eater head → a profile with a nose.
 
 ## Decisions (newest last)
 
