@@ -1222,7 +1222,7 @@ body:has(#player-view:not([hidden])) {
 html[data-visual="rig"] {
   --vz-background: #000;
   --vz-ink: #f2f0ec;
-  --vz-secondary: #8d8a86;
+  --vz-secondary: #d9d6d0;
   --vz-accent: #f2f0ec;
   --vz-button: #f2f0ec;
   --vz-button-ink: #000;
@@ -1234,7 +1234,7 @@ html[data-visual="rig"] {
   --vz-title-weight: 650;
   --vz-title-spacing: -0.035em;
   --vz-credits-font: "IBM Plex Mono", ui-monospace, monospace;
-  --vz-credits-size: 12px;
+  --vz-credits-size: 18px;
   --vz-credits-spacing: 0.08em;
   --vz-credits-transform: uppercase;
 }
@@ -1256,7 +1256,7 @@ html[data-visual="type"] {
   --vz-title-weight: 800;
   --vz-title-spacing: -0.02em;
   --vz-credits-font: "IBM Plex Mono", ui-monospace, monospace;
-  --vz-credits-size: 12px;
+  --vz-credits-size: 18px;
   --vz-credits-spacing: 0.06em;
   --vz-credits-transform: uppercase;
 }
@@ -1275,7 +1275,7 @@ html[data-visual="pocket"] {
   --vz-title-weight: 600;
   --vz-title-spacing: -0.01em;
   --vz-credits-font: "Jost", "Futura", sans-serif;
-  --vz-credits-size: 15px;
+  --vz-credits-size: 20px;
   --vz-credits-spacing: 0.02em;
 }
 
@@ -1294,7 +1294,7 @@ html[data-visual="plate"] {
   --vz-title-spacing: -0.01em;
   --vz-title-scale: 1.25;
   --vz-credits-font: "Instrument Serif", "Times New Roman", serif;
-  --vz-credits-size: 19px;
+  --vz-credits-size: 22px;
   --vz-credits-spacing: 0;
 }
 html[data-visual="plate"] #player-view > .intro h1 {
