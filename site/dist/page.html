@@ -3940,8 +3940,7 @@ registerVisualizer({
       }
       if (cursor < model.duration) free.push({ start: cursor, end: model.duration, previous });
       const firstLine = states.length ? states[0].start : model.duration;
-      // the modes' words: the hook without the drop's word, which is kept for the drops
-      const modeWords = hookWords.length > 1 ? hookWords.slice(1) : hookWords;
+      const modeWords = modeHook();
       let lastMode = "";
       let block = 0,
         turn = 0,
@@ -4032,6 +4031,12 @@ registerVisualizer({
       const opening = timeline.find((state) => state.end > 0.6);
       const firstBar = model.downbeats.find((time) => time > 0.05);
       if (opening && opening.kind === "mode" && opening.mode === "count" && firstBar > 0.6 && firstBar < 4) thumbnailEnd = firstBar;
+    }
+
+    // The modes' words: the hook without the drop's word, which is kept for the drops.
+    function modeHook() {
+      const words = hookWords.filter((word) => word !== hookWords[0]);
+      return words.length ? words : hookWords;
     }
 
     function stateAt(time) {
@@ -4146,7 +4151,7 @@ registerVisualizer({
       const bars = Math.max(0, song.barIndex(time) - song.barIndex(state.from + 0.01));
       const rows = 1 + Math.min(3, bars);
       const rowHeight = (bottom - top) / 4;
-      const words = hookWords.length > 1 ? hookWords.slice(1) : hookWords;
+      const words = modeHook();
       const first = Math.max(0, words.indexOf(state.text));
       for (let row = 0; row < rows; row++) {
         const text = words[(first + row) % words.length];
