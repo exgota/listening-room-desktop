@@ -2824,13 +2824,13 @@ const rigHeadOrder = [3, 4, 1, 6, 2, 5, 0, 7];
 // A drop's camera is never used by any other section of its song; breakdowns take their
 // looks in the song's own order.
 const rigSongs = {
-  "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "vee"] }, signature: "curtain", breaks: ["cathedral", "curtain", "rain", "vee"] }, // NBLY
-  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shot: "floor", mainShot: "side", looks: ["cross", "fan"], funnel: true }, signature: "cross", breaks: ["vee"] }, // Desire
-  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "side", looks: ["rain", "fan"] }, signature: "rain", breaks: ["curtain", "cathedral"] }, // Ophelia
-  "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "high", looks: ["scissor", "vee"] }, signature: "scissor", breaks: ["cathedral", "rain"] }, // Outside
-  "4048d4a6dce44c151690b2b1": { shot: "right", look: "cross", drop: { shot: "low", looks: ["cross", "curtain"] }, signature: "curtain", breaks: ["rain", "vee"] }, // American Boy
+  "5ff86d6cd02ebd7308e03df8": { shot: "hero", look: "cathedral", drop: { shot: "high", looks: ["rain", "cross"] }, signature: "blade", breaks: ["cathedral", "rain", "fan", "rain"] }, // NBLY
+  "1d589940ca458d793a3fad8a": { shot: "hero", look: "blade", drop: { shot: "floor", mainShot: "side", looks: ["cross", "fan"], funnel: true }, signature: "cross", breaks: ["rain"] }, // Desire
+  f127a026dc751f1528bfb95d: { shot: "hero", look: "rain", drop: { shot: "side", looks: ["rain", "fan"] }, signature: "rain", breaks: ["fan", "cathedral"] }, // Ophelia
+  "8eee874c702a10807f79706c": { shot: "wide", look: "scissor", drop: { shot: "high", looks: ["scissor", "rain"] }, signature: "fan", breaks: ["cathedral", "rain"] }, // Outside
+  "4048d4a6dce44c151690b2b1": { shot: "right", look: "cross", drop: { shot: "low", looks: ["cross", "scissor"] }, signature: "fan", breaks: ["rain", "cathedral"] }, // American Boy
 };
-const rigDefaultSong = { shot: "hero", look: "fan", drop: { shot: "floor", looks: ["fan", "vee"] }, signature: "fan", breaks: ["cathedral", "curtain", "rain", "vee"] };
+const rigDefaultSong = { shot: "hero", look: "fan", drop: { shot: "floor", looks: ["fan", "rain"] }, signature: "fan", breaks: ["cathedral", "rain"] };
 const rigGels = {
   "5ff86d6cd02ebd7308e03df8": "#3f74ff", // NBLY: cold blue
   "1d589940ca458d793a3fad8a": "#ff2d2d", // Desire: red
@@ -3027,7 +3027,7 @@ void main() {
     float streaks = 0.75 + 0.25 * texture(uNoise, vec3(p.x * 0.03, 0.5, p.z * 0.8)).r;
     // haze in front of a near floor is dimmed so the pools read; toward the back wall it is
     // kept whole, so a beam does not step down where it crosses the floor line
-    float keep = mix(0.45, 1.0, smoothstep(-3.0, -14.0, p.z));
+    float keep = mix(0.45, 1.0, 1.0 - smoothstep(-14.0, -3.0, p.z));
     color = color * keep + pool * streaks + mirror * uHaze.w * fresnel * streaks;
     color += vec3(0.012, 0.012, 0.014) * (1.0 - smoothstep(0.0, 30.0, floorT));
   }
@@ -3193,9 +3193,9 @@ function createRigShow() {
   // whether the beams lean toward the audience (+1) or away (-1).
   const looks = {
     fan: { spread: 1.7, lift: 0, toward: 1 },
-    vee: { spread: 1.05, lift: 0.12, toward: -1 },
+    vee: { spread: 1.1, lift: 0.35, toward: -1 },
     cross: { spread: -1.3, lift: 0, toward: 1 },
-    curtain: { spread: 0.12, lift: 0.25, toward: -1 },
+    curtain: { spread: 0.4, lift: 0.5, toward: -1 },
     blade: { spread: 2.3, lift: -0.25, toward: 1 },
     cathedral: { spread: 0.7, lift: 0.45, toward: 1 },
     // down onto the stage: columns to the floor, pools and their reflections
@@ -3203,7 +3203,8 @@ function createRigShow() {
     // down and across: two sides crossing over the stage
     scissor: { spread: -1.1, lift: -1.6, toward: 1 },
   };
-  const driveLooks = ["fan", "cross", "vee", "curtain", "fan", "blade", "rain"];
+  // (the looks that lean away, vee and curtain, show the least beam from the front: kept out)
+  const driveLooks = ["fan", "cross", "rain", "blade", "fan", "scissor", "rain"];
 
   function setSong(model) {
     song = model;
@@ -3459,9 +3460,9 @@ function createRigShow() {
       case "intro":
         lookName = config.look; intensity = 18; width = 0.085; shot = config.shot; break;
       case "verse":
-        lookName = [config.signature, "curtain", "rain", "vee"][(scene.kindIndex + eightBars) % 4]; intensity = 14; width = 0.08; shot = ["wide", "right", "hero"][(scene.kindIndex + eightBars) % 3]; break;
+        lookName = [config.signature, "rain", "cross", "fan"][(scene.kindIndex + eightBars) % 4]; intensity = 14; width = 0.08; shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3]; break;
       case "break": {
-        lookName = config.breaks[scene.kindIndex % config.breaks.length]; intensity = 9 + 13 * singing; width = 0.075; shot = ["wide", "right", "hero"][(scene.kindIndex + eightBars) % 3];
+        lookName = config.breaks[scene.kindIndex % config.breaks.length]; intensity = 9 + 13 * singing; width = 0.075; shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3];
         // a breakdown of eight bars or more wakes the rig pair by pair
         const sceneBars = (scene.end - scene.start) / song.barPeriod;
         if (sceneBars >= 8) lit = Math.min(rigSize, 2 + 2 * Math.floor(Math.max(0, barIndex - song.barIndex(scene.start + 0.01)) / Math.max(1, Math.floor(sceneBars / 6))));
@@ -3475,11 +3476,21 @@ function createRigShow() {
         lookName = config.drop.looks[Math.floor(beat) % 2]; intensity = 30; width = 0.06; shot = dropShot; chase = 1; lens = 1.3; break;
       case "drive":
         lookName = phrase % 2 ? config.signature : driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.065;
-        shot = ["wide", "right", "hero"][(scene.kindIndex + eightBars) % 3]; chase = 0.5; lens = 0.7; break;
+        shot = ["wide", "right", "hero"][(scene.index + eightBars) % 3]; chase = 0.5; lens = 0.7; break;
       case "outro":
         lookName = config.look; intensity = 14; shot = config.shot; break;
       case "gap":
         lookName = "fan"; intensity = 0; shot = "hero"; break;
+    }
+    // A drop's section runs at least eight bars, whatever the scene list calls them.
+    if (drop.phase === 3 && scene.kind !== "drop" && scene.kind !== "outro" && drop.since < 8 * song.barPeriod) {
+      lookName = config.drop.looks[Math.floor(beat) % 2];
+      intensity = 30;
+      width = 0.06;
+      shot = dropShot;
+      chase = 1;
+      lens = 1.3;
+      lit = rigSize;
     }
     // The song's first section always opens on its own composition (Outside opens on a groove).
     if (scene.index === 0) {
@@ -3534,8 +3545,8 @@ function createRigShow() {
       shimmerRate = progress < 0.5 ? 1 : progress < 0.75 ? 2 : progress < 0.9 ? 4 : 8;
       shimmer = 0.3 + 0.7 * progress;
       // the gathered beams brighten as they close (the build rises; it never ebbs)
-      intensity = mixValue(13, 23, progress * progress);
-      width = mixValue(0.075, 0.045, progress);
+      intensity = mixValue(13, 30, progress * progress);
+      width = mixValue(0.075, 0.058, progress);
     }
 
     // ---- the key word: every head sweeps onto the singer's mark, from just before the word,
@@ -3622,7 +3633,7 @@ function createRigShow() {
     // Lenses: dimmed while the beams converge, so a build narrows to a spike, not a flare;
     // held down in the drives so only a drop glares, and while the heads tip toward the
     // singer (and so toward the camera) for the key word.
-    state.lens = lens * (1 - 0.6 * converge) * (1 - 0.6 * onSinger);
+    state.lens = lens * (1 - 0.4 * converge) * (1 - 0.6 * onSinger);
     state.lensSize = 1;
 
     // ---- the gap: blackout with four big blinders counting in, a pair per beat, aimed at the
@@ -3657,14 +3668,14 @@ function createRigShow() {
         if (mainHit && config.drop.funnel) {
           aimHead(beam, index, looks.fan, 0.3);
           aimAt(beam, singerX, 0, -1.5, 0.95);
-        } else aimHead(beam, index, looks.blade, 0.2);
+        } else aimHead(beam, index, looks.blade, 0.35); // over the audience's heads, not into the lens
         mixAim(beam, dx, dy, dz, release);
         beam.angle = 0.065;
         beam.intensity = 36;
       }
       state.flash[0] = 1; state.flash[1] = 0.98; state.flash[2] = 0.95;
-      state.flash[3] = 0.8 * hitDecay(hitAge, 0.12);
-      state.lens = 3;
+      state.flash[3] = 0.5 * hitDecay(hitAge, 0.1);
+      state.lens = 2.4;
       state.truss = 1;
       if (dropHit) shot = dropShot;
     } else if (sinceDrop < hitLength * 2 && !inGap) {
