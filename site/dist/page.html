@@ -1197,10 +1197,10 @@ body:has(#player-view:not([hidden])) {
 #player-view .volume input {
   accent-color: var(--vz-ink);
 }
-.visual-playing #player-view .play-orbit {
-  visibility: hidden;
-}
 @media (min-width: 901px) {
+  .visual-playing #player-view .play-orbit {
+    visibility: hidden;
+  }
   #player-view .stage {
     bottom: 0;
   }
@@ -1260,7 +1260,7 @@ html[data-visual="rig"] {
   --vz-credits-transform: uppercase;
 }
 html[data-visual="rig"] #player-view > .intro {
-  mix-blend-mode: difference;
+  text-shadow: 0 0 18px rgb(0 0 0 / 0.75), 0 0 3px rgb(0 0 0 / 0.6);
 }
 
 /* Type: one saturated field per song, set by the visualizer; the page follows its ink. */
@@ -1320,6 +1320,20 @@ html[data-visual="plate"] {
 }
 html[data-visual="plate"] #player-view > .intro h1 {
   font-style: italic;
+}
+html[data-visual="type"] {
+  --vz-scrim: linear-gradient(to top, var(--type-field, #2530f2) 55%, transparent);
+}
+html[data-visual="type"] #player-view .play,
+html[data-visual="pocket"] #player-view .play,
+html[data-visual="plate"] #player-view .play {
+  box-shadow: 0 0 0 10px var(--vz-background);
+}
+html[data-visual="pocket"] {
+  --vz-scrim: linear-gradient(to top, var(--pocket-field, #f2e8d3) 45%, transparent);
+}
+html[data-visual="plate"] {
+  --vz-scrim: linear-gradient(to top, var(--plate-ground, #efe9dc) 50%, transparent);
 }
 </style>
   </head>
@@ -2426,17 +2440,17 @@ function applyVisualizerTheme() {
 
 function selectVisualizer(key, remember = true) {
   const instance = visualizerInstance(key);
-  if (!instance || instance === visualizerActive) return;
+  if (!instance) return;
+  if (remember) {
+    try {
+      localStorage.setItem(visualizerChoiceKey, instance.definition.key);
+    } catch (error) {}
+  }
+  if (instance === visualizerActive) return;
   visualizerActive?.setActive(false);
   visualizerActive = instance;
   instance.setActive(true);
-  const definition = instance.definition;
-  document.documentElement.dataset.visual = definition.key;
-  if (remember) {
-    try {
-      localStorage.setItem(visualizerChoiceKey, definition.key);
-    } catch (error) {}
-  }
+  document.documentElement.dataset.visual = instance.definition.key;
   applyVisualizerTheme();
   drawVisualizer();
   drawWaveform();
@@ -2484,9 +2498,10 @@ function prepareVisualizer(track, version) {
       drawVisualizer();
       drawWaveform();
       visualizerReadyResolve?.(true);
-      // Warm the next track in the library so its first frame is ready too.
-      const next = adjacentTrack(1);
-      if (next) setTimeout(() => loadSongModel(next).catch(() => {}), 1500);
+      // Warm every other track's analysis, one at a time, so switching songs never shows a
+      // frame without its data.
+      tracks.filter((entry) => !songModelCache.has(entry.identifier)).forEach((entry, index) =>
+        setTimeout(() => loadSongModel(entry).catch(() => {}), 800 + index * 700));
     })
     .catch(() => visualizerReadyResolve?.(false));
 }
@@ -2561,7 +2576,8 @@ function showControls() {
   if (document.body.classList.contains("visual-playing")) {
     controlsIdleTimer = setTimeout(() => {
       if (!document.body.classList.contains("visual-playing")) return;
-      if (document.querySelector("#player-view .waveform:focus-within, #player-view .transport:focus-within, #player-view .download-row:focus-within, .header:focus-within"))
+      // Keyboard focus in the controls keeps them; a mouse click that left focus there does not.
+      if (document.querySelector("#player-view .waveform :focus-visible, #player-view .transport :focus-visible, #player-view .download-row :focus-visible, .header :focus-visible"))
         return;
       document.body.classList.add("controls-idle");
     }, 2600);
@@ -2576,7 +2592,7 @@ document.addEventListener("pointermove", (event) => {
   showControls();
 });
 document.addEventListener("focusin", (event) => {
-  if (event.target.closest?.("#player-view, .header")) showControls();
+  if (event.target.closest?.("#player-view, .header") && event.target.matches?.(":focus-visible")) showControls();
 });
 
 // Clicking the picture pauses or resumes, since the play button is away while audio plays.
@@ -2599,7 +2615,8 @@ document.addEventListener("keydown", (event) => {
     selectVisualizer(visualizerDefinitions[position].key);
     return;
   }
-  if (event.key === " " && !event.target.closest?.("button, a, input, dialog") && currentView === "player" && selected) {
+  // Space plays and pauses, except where it already means something (buttons, links, typing).
+  if (event.key === " " && !event.target.closest?.("button, a, dialog, input:not([type=range])") && currentView === "player" && selected) {
     event.preventDefault();
     if (playbackRequested || !audio.paused) pausePlayback();
     else resumePlayback();
@@ -2766,11 +2783,11 @@ function canvasPixels(width, height, ratio, maximumPixels) {
 // every fixture on its exact frame. The beams are single scattering in haze, integrated in
 // closed form per pixel (no bloom, no post-process).
 
-const rigHeadCount = 16;
+const rigHeadCount = 8;
 const rigJetCount = 8;
 const rigBeamCount = rigHeadCount + rigJetCount + 1;
 // Fixture order: symmetric pairs spreading outward, so a partly lit rig stays balanced.
-const rigHeadOrder = [7, 8, 3, 12, 5, 10, 1, 14, 6, 9, 2, 13, 4, 11, 0, 15];
+const rigHeadOrder = [3, 4, 1, 6, 2, 5, 0, 7];
 const rigGels = {
   "5ff86d6cd02ebd7308e03df8": "#3f74ff", // NBLY: cold blue
   "1d589940ca458d793a3fad8a": "#ff2d2d", // Desire: red
@@ -2872,14 +2889,16 @@ vec3 beamScatter(vec3 origin, vec3 direction, int index, float far, bool texture
 }
 
 // A lens seen from the front: a hard disc, brightest when the fixture points at the eye.
+// Small angles only, so the angle is taken from the cosine without acos.
 vec3 lensGlow(vec3 origin, vec3 direction, int index) {
   vec4 axisData = uBeamAxis[index];
   vec3 toLens = uBeamApex[index].xyz - origin;
   float distanceToLens = length(toLens);
-  float facing = max(0.0, dot(-normalize(toLens), axisData.xyz));
-  float radius = 0.16;
-  float angle = acos(clamp(dot(direction, toLens / distanceToLens), -1.0, 1.0));
-  float size = radius / distanceToLens;
+  vec3 toLensUnit = toLens / distanceToLens;
+  float facing = max(0.0, -dot(toLensUnit, axisData.xyz));
+  float size = 0.34 / distanceToLens;
+  float angle = sqrt(max(0.0, 2.0 - 2.0 * dot(direction, toLensUnit)));
+  if (angle > size * 12.0) return vec3(0.0);
   float disc = 1.0 - smoothstep(size * 0.8, size, angle);
   float halo = exp(-angle / (size * 2.5)) * 0.25;
   float power = axisData.w * (0.08 + 2.0 * pow(facing, 12.0));
@@ -2929,9 +2948,9 @@ void main() {
     float tz = direction.z < -1e-4 ? (trussZ - origin.z) / direction.z : INF;
     if (tz < far) {
       vec3 p = origin + direction * tz;
-      if (abs(p.y - trussY) < 0.16 && abs(p.x) < 10.0) {
-        float cell = floor(p.x / 0.5);
-        float inCell = step(abs(fract(p.x / 0.5) - 0.5), 0.3);
+      if (abs(p.y - trussY) < 0.3 && abs(p.x) < 11.0) {
+        float cell = floor(p.x / 1.1);
+        float inCell = step(abs(fract(p.x / 1.1) - 0.5), 0.32);
         float sparkle = step(1.0 - uStrobe.y, hash12(vec2(cell, uStrobe.z)));
         float light = uStrobe.x + sparkle * 0.9 + uStrobe.w * 0.06;
         color += vec3(1.0, 0.97, 0.92) * inCell * light * 1.4;
@@ -3071,7 +3090,7 @@ registerVisualizer({
 
 function createRigShow() {
   const white = [1.0, 0.96, 0.9];
-  const warm = [1.0, 0.88, 0.74];
+  const warm = [1.0, 0.86, 0.7];
   const beams = Array.from({ length: rigBeamCount }, () => ({
     x: 0, y: 0, z: 0, dx: 0, dy: -1, dz: 0, angle: 0.08, intensity: 0, r: 1, g: 1, b: 1, length: 40,
   }));
@@ -3091,26 +3110,36 @@ function createRigShow() {
     wash: [1, 1, 1, 0],
     lens: 1,
   };
-  const spacing = 1.5;
-  const headX = (index) => (index - 7.5) * spacing;
+  const spacing = 2.5;
+  const headX = (index) => (index - 3.5) * spacing;
   const headY = 7.6,
     headZ = -7.0;
   let song = null;
   let gel = white;
   let mainDrop = -1;
-  const look = [0, 0, 0];
-  const look2 = [0, 0, 0];
+  const DEG = Math.PI / 180;
 
-  // Camera shots: [position, target, vertical fov in radians]
+  // Camera shots: [position, target, vertical fov]. All stand in front of the floor jets.
   const shots = {
-    hero: [[0, 0.7, 4.6], [0, 7.2, -7], 1.18], // low and close, looking up into the rig
-    wide: [[0, 2.0, 10.5], [0, 4.6, -7], 1.0],
-    left: [[-6.8, 1.6, 6.5], [1.5, 5.0, -7], 1.05],
-    right: [[6.8, 1.6, 6.5], [-1.5, 5.0, -7], 1.05],
-    high: [[0, 7.5, 7.5], [0, 1.2, -5], 1.0],
-    truss: [[0, 2.6, 0.2], [0, 8.2, -7], 1.32],
-    floor: [[0, 0.35, 8.5], [0, 2.4, -7], 0.95], // eye on the stage floor, jets huge
+    hero: [[0, 0.8, 5.5], [0, 7.2, -7], 1.15],
+    wide: [[0, 2.0, 11], [0, 4.6, -7], 1.0],
+    left: [[-6.5, 1.7, 7.5], [1.5, 5.0, -7], 1.05],
+    right: [[6.5, 1.7, 7.5], [-1.5, 5.0, -7], 1.05],
+    floor: [[0, 0.45, 8.5], [0, 2.8, -7], 0.98],
+    close: [[0, 2.6, 4.2], [0, 7.6, -7], 1.25],
+    high: [[0, 7.2, 8.5], [0, 2.0, -5], 1.0],
   };
+  // Looks for the heads: fan spread (radians, negative crosses), elevation bias, and
+  // whether the beams lean toward the audience (+1) or away (-1).
+  const looks = {
+    fan: { spread: 1.7, lift: 0, toward: 1 },
+    vee: { spread: 1.05, lift: 0.12, toward: -1 },
+    cross: { spread: -1.3, lift: 0, toward: 1 },
+    curtain: { spread: 0.12, lift: 0.25, toward: -1 },
+    blade: { spread: 2.3, lift: -0.25, toward: 1 },
+    cathedral: { spread: 0.7, lift: 0.45, toward: 1 },
+  };
+  const driveLooks = ["fan", "cross", "vee", "curtain", "fan", "blade"];
 
   function setSong(model) {
     song = model;
@@ -3119,34 +3148,6 @@ function createRigShow() {
     if (!model) return;
     gel = hexColor(rigGels[model.identifier] || "#ffffff");
     mainDrop = model.mainDrop;
-  }
-
-  function aim(beam, x, y, z) {
-    const dx = x - beam.x, dy = y - beam.y, dz = z - beam.z;
-    const length = Math.hypot(dx, dy, dz) || 1;
-    beam.dx = dx / length;
-    beam.dy = dy / length;
-    beam.dz = dz / length;
-  }
-
-  // Target point for head i under a named look.
-  function lookTarget(name, index, into) {
-    const x = headX(index);
-    const side = x < 0 ? -1 : 1;
-    const outer = Math.abs(x) / (7.5 * spacing);
-    switch (name) {
-      case "fanUp": into[0] = x * 2.4; into[1] = 34; into[2] = -12; break;
-      case "cathedral": into[0] = x * 0.45; into[1] = 30; into[2] = -9; break;
-      case "fanOut": into[0] = x * 2.0; into[1] = 2.0; into[2] = 16; break;
-      case "cross": into[0] = -x * 1.5; into[1] = 0; into[2] = 2.5; break;
-      case "curtain": into[0] = x * 1.0; into[1] = 0; into[2] = -5.5; break;
-      case "pools": into[0] = x * 0.5; into[1] = 0; into[2] = -1.0; break;
-      case "vee": into[0] = side * (6 + 16 * outer); into[1] = 26; into[2] = -5; break;
-      case "tunnel": into[0] = x * 0.25; into[1] = 1.6; into[2] = 20; break;
-      case "wave": into[0] = x * 1.2; into[1] = 18 + 12 * Math.sin(index * 0.8); into[2] = 4; break;
-      default: into[0] = 0; into[1] = 4; into[2] = -2;
-    }
-    return into;
   }
 
   function blank() {
@@ -3160,225 +3161,277 @@ function createRigShow() {
 
   function useShot(name, drift = 0) {
     const shot = shots[name];
-    state.camera = [shot[0][0] + drift * 0.9, shot[0][1] + drift * 0.2, shot[0][2] - drift * 1.4];
+    state.camera = [shot[0][0] + drift * 0.9, shot[0][1] + drift * 0.2, shot[0][2] - drift * 1.2];
     state.target = [shot[1][0], shot[1][1], shot[1][2]];
     state.fov = shot[2];
   }
 
-  // Standby: before the analysis arrives, a still, symmetric cathedral of light.
-  function standby() {
-    blank();
+  // Aim head i by look, elevation (radians above horizontal) and a pan offset.
+  function aimHead(beam, index, look, elevation, pan = 0) {
+    const spread = look.spread;
+    const azimuth = spread * ((index - 3.5) / 3.5) * 0.5 + pan;
+    const e = clampRange(elevation + look.lift, 0.12, 1.5);
+    beam.dx = Math.sin(azimuth) * Math.cos(e);
+    beam.dy = Math.sin(e);
+    beam.dz = Math.cos(azimuth) * Math.cos(e) * look.toward;
+  }
+
+  function mixAim(beam, dx, dy, dz, amount) {
+    beam.dx = mixValue(beam.dx, dx, amount);
+    beam.dy = mixValue(beam.dy, dy, amount);
+    beam.dz = mixValue(beam.dz, dz, amount);
+    const length = Math.hypot(beam.dx, beam.dy, beam.dz) || 1;
+    beam.dx /= length;
+    beam.dy /= length;
+    beam.dz /= length;
+  }
+
+  function placeHeads() {
     for (let index = 0; index < rigHeadCount; index++) {
       const beam = beams[index];
       beam.x = headX(index); beam.y = headY; beam.z = headZ;
-      lookTarget("cathedral", index, look);
-      aim(beam, look[0], look[1], look[2]);
-      beam.angle = 0.06;
-      beam.intensity = rigHeadOrder.indexOf(index) < 8 ? 12 : 0;
+      beam.length = 55;
       beam.r = white[0]; beam.g = white[1]; beam.b = white[2];
-      beam.length = 45;
+    }
+  }
+
+  // Standby: before the analysis arrives, a still cathedral of light.
+  function standby() {
+    blank();
+    placeHeads();
+    for (let index = 0; index < rigHeadCount; index++) {
+      aimHead(beams[index], index, looks.cathedral, 0.9);
+      beams[index].angle = 0.08;
+      beams[index].intensity = 14;
     }
     useShot("hero");
-    state.haze = 1; state.hazeTexture = 0.7; state.gloss = 0.5; state.lens = 1; state.truss = 1;
+    state.haze = 1.2; state.hazeTexture = 0.7; state.gloss = 0.5; state.lens = 1; state.truss = 1;
     return state;
   }
 
   function at(time) {
     if (!song) return standby();
     blank();
+    placeHeads();
     const scene = song.scene(time);
     const sceneProgress = clamp01((time - scene.start) / Math.max(0.1, scene.end - scene.start));
     const drop = song.dropContext(time);
     const beat = song.beatPosition(time);
     const bar = song.barPosition(time);
     const barIndex = Math.floor(bar);
+    const phrase = Math.floor(barIndex / 4);
+    const afterMain = mainDrop >= 0 && time >= song.drops[mainDrop].time;
+    const peak = song.peakAt(time);
+    const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
+    const inGap = drop.phase === 2 || leadIn >= 0;
+    const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
+    const hitLength = song.beatPeriod * 2;
+    const inHit = sinceDrop < hitLength;
+    const vocal = song.value("vocal", time);
+    const singing = clamp01((vocal - 0.22) / 0.45);
+    // The rig grows: six heads until the first drop, all eight after it.
     let dropsPassed = 0;
     for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
-    const afterMain = mainDrop >= 0 && time >= song.drops[mainDrop].time;
-    const songProgress = time / song.duration;
-    const peak = song.peakAt(time);
+    const rigSize = dropsPassed === 0 && song.drops.length ? 6 : 8;
 
-    // How much of the rig exists: it grows through the song.
-    let lit = scene.kind === "intro" ? 8 : 10;
-    if (dropsPassed >= 1) lit = 14;
-    if (dropsPassed >= 2 || songProgress > 0.62) lit = 16;
-    if (!song.drops.length) lit = Math.min(16, 10 + 2 * Math.floor(scene.index / 2));
-
-    // Look for the heads, per scene kind; drive scenes move on every four bars.
-    const drivers = ["fanOut", "vee", "cross", "wave", "fanUp", "tunnel"];
-    let lookName = "fanUp",
-      lookIntensity = 10,
-      beamAngle = 0.05,
-      shot = "wide";
-    const phrase = Math.floor(barIndex / 4);
-    switch (scene.kind) {
-      case "intro": lookName = "cathedral"; lookIntensity = 12; beamAngle = 0.06; shot = "hero"; break;
-      case "verse": lookName = ["curtain", "vee"][scene.kindIndex % 2]; lookIntensity = 7; beamAngle = 0.06; shot = ["wide", "left", "right"][scene.kindIndex % 3]; break;
-      case "break": lookName = "cathedral"; lookIntensity = 4; beamAngle = 0.04; shot = "high"; lit = 4; break;
-      case "groove": lookName = drivers[(phrase + scene.index) % 4 + 1]; lookIntensity = 10; shot = ["left", "right", "hero"][scene.index % 3]; break;
-      case "build": lookName = "fanUp"; lookIntensity = 9; shot = "truss"; break;
-      case "drop": lookName = "fanOut"; lookIntensity = 14; beamAngle = 0.035; shot = "floor"; break;
-      case "drive": lookName = drivers[(phrase + scene.kindIndex) % drivers.length]; lookIntensity = 12; beamAngle = 0.04; shot = ["wide", "left", "right", "floor"][(scene.kindIndex + Math.floor(phrase / 2)) % 4]; break;
-      case "outro": lookName = "fanUp"; lookIntensity = 9 * (1 - sceneProgress * 0.85); shot = "wide"; lit = Math.max(2, Math.round(lit * (1 - sceneProgress))); break;
-      case "gap": lookName = "fanUp"; lookIntensity = 0; shot = "truss"; break;
-    }
-
-    // Chord passages: every stab of the other stem throws the heads into the next look.
-    let stabHit = 0;
-    if (peak && peak.kind === "chords") {
-      const stab = song.stabs.last(time);
-      let count = 0;
-      for (let index = stab; index >= 0 && song.stabs.time[index] >= peak.start; index--) if (song.stabs.strength[index] > 0.45) count++;
-      lookName = drivers[count % drivers.length];
-      stabHit = stab >= 0 ? hitDecay(time - song.stabs.time[stab], 0.18) * song.stabs.strength[stab] : 0;
-      lookIntensity = 14;
-      beamAngle = 0.04;
-      shot = ["floor", "left", "right", "hero"][count % 4];
-    }
-
-    // Bass line → the whole fan swings (mirrored) with a snap onto each new note.
-    const noteIndex = song.bassNotes.last(time);
-    let pan = 0,
+    // ---- the bass: the fan's elevation follows the note (low note, low beams), and each
+    // new note tips it like a see-saw, so repeated notes move it too.
+    const notes = song.bassNotes;
+    const noteIndex = notes.last(time);
+    let elevation = 0.75,
+      seesaw = 0,
       bassPush = 0;
     if (noteIndex >= 0) {
-      const pitchOf = (index) => (((song.bassNotes.pitch[index] - 24) % 24) + 24) % 24 / 24 - 0.5;
-      const current = pitchOf(noteIndex);
-      const previous = noteIndex > 0 ? pitchOf(noteIndex - 1) : current;
-      const age = time - song.bassNotes.start[noteIndex];
-      pan = mixValue(previous, current, easeOutCubic(age / 0.08));
-      const sounding = time < song.bassNotes.end[noteIndex] + 0.05;
-      bassPush = sounding ? song.bassNotes.strength[noteIndex] * hitDecay(age, 0.3) : 0;
+      const heightOf = (index) => 0.35 + 0.95 * fract((notes.pitch[index] - 24) / 24);
+      const age = time - notes.start[noteIndex];
+      const settle = easeOutCubic(age / 0.08);
+      const previous = noteIndex > 0 ? heightOf(noteIndex - 1) : heightOf(noteIndex);
+      elevation = mixValue(previous, heightOf(noteIndex), settle);
+      const side = noteIndex % 2 === 0 ? 1 : -1;
+      seesaw = mixValue(-side, side, settle) * 0.2;
+      const sounding = time < notes.end[noteIndex] + 0.05;
+      bassPush = sounding ? notes.strength[noteIndex] * hitDecay(age, 0.3) : 0;
     }
     const bassLevel = song.value("bass", time);
 
-    // Build → converge on a focus point; a shimmer that subdivides as the build rises.
+    // ---- look and shot per scene
+    let lookName = "fan",
+      intensity = 16,
+      width = 0.075,
+      shot = "wide",
+      lit = rigSize;
+    const eightBars = Math.floor(barIndex / 8);
+    switch (scene.kind) {
+      case "intro":
+        lookName = "fan"; intensity = 18; width = 0.085; shot = "hero"; break;
+      case "verse":
+        lookName = ["curtain", "vee"][scene.kindIndex % 2]; intensity = 12; width = 0.08; shot = ["wide", "left", "right"][(scene.kindIndex + eightBars) % 3]; break;
+      case "break":
+        lookName = "cathedral"; intensity = 8 + 14 * singing; width = 0.075; shot = ["wide", "left", "right"][eightBars % 3]; break;
+      case "groove":
+        lookName = driveLooks[(phrase + scene.index) % 4]; intensity = 16; shot = ["left", "right", "hero"][(scene.index + eightBars) % 3]; break;
+      case "build":
+        lookName = "fan"; intensity = 14; shot = "wide"; break;
+      case "drop":
+        lookName = driveLooks[Math.floor(beat) % 2 === 0 ? 0 : 2]; intensity = 20; width = 0.055; shot = "floor"; break;
+      case "drive":
+        lookName = driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.06;
+        shot = ["wide", "left", "right", "floor", "hero"][(scene.kindIndex + eightBars) % 5]; break;
+      case "outro":
+        lookName = "cathedral"; intensity = 14 * (1 - sceneProgress * 0.8); shot = "wide"; lit = Math.max(2, Math.round(rigSize * (1 - sceneProgress))); break;
+      case "gap":
+        lookName = "fan"; intensity = 0; shot = "hero"; break;
+    }
+    // Chord passages: a new look on each chord stab, at most one per beat; the camera holds.
+    let stabHit = 0;
+    if (peak && peak.kind === "chords") {
+      let count = 0,
+        lastBeat = -1;
+      for (let index = 0; index < song.stabs.length && song.stabs.time[index] <= time; index++) {
+        const stabTime = song.stabs.time[index];
+        if (stabTime < peak.start || song.stabs.strength[index] < 0.45) continue;
+        const stabBeat = Math.floor(song.beatPosition(stabTime));
+        if (stabBeat !== lastBeat) {
+          count++;
+          lastBeat = stabBeat;
+        }
+      }
+      lookName = driveLooks[count % driveLooks.length];
+      const stab = song.stabs.last(time);
+      stabHit = stab >= 0 ? hitDecay(time - song.stabs.time[stab], 0.2) * song.stabs.strength[stab] : 0;
+      intensity = 20;
+      width = 0.06;
+    }
+    const look = looks[lookName];
+
+    // ---- build: the beams gather onto one point above the stage and the camera pushes in;
+    // a shimmer subdivides as the build rises.
     let converge = 0,
       shimmer = 0,
       shimmerRate = 1;
     if (drop.phase === 1) {
-      converge = easeInCubic(drop.progress) * 0.94;
+      converge = easeInCubic(drop.progress) * 0.95;
       shimmerRate = drop.progress < 0.5 ? 1 : drop.progress < 0.75 ? 2 : drop.progress < 0.9 ? 4 : 8;
-      shimmer = 0.4 + 0.6 * drop.progress;
-      lookIntensity = mixValue(8, 16, drop.progress);
-      beamAngle = mixValue(0.05, 0.028, drop.progress);
+      shimmer = 0.3 + 0.7 * drop.progress;
+      intensity = mixValue(12, 22, drop.progress);
+      width = mixValue(0.075, 0.035, drop.progress);
     }
-    const inGap = drop.phase === 2;
-    const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
-    const hitLength = song.beatPeriod * 2;
 
-    // Anchor: the key word pulls every head onto the singer; the lead-in is the blackout.
+    // ---- the key word: every head sweeps onto the singer, holds, and sweeps back.
     const anchorIndex = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
-    const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
-    const blackout = inGap || leadIn >= 0;
-
-    // Voice → follow spot, x from the sung pitch.
+    let onSinger = 0;
+    if (anchorIndex >= 0) {
+      const moment = song.anchor.moments[anchorIndex];
+      onSinger = Math.min(easeOutCubic((time - moment.start) / 0.15), 1 - easeInCubic(clamp01((time - (moment.end - 0.1)) / 0.15)));
+    }
     const pitch = song.value("pitch", time);
-    const vocal = song.value("vocal", time);
-    const singerX = pitch > 0 ? clampRange(((pitch - 64) / 12) * 4.5, -5.5, 5.5) : 0;
+    const singerX = pitch > 0 ? clampRange(((pitch - 64) / 12) * 4, -5, 5) : 0;
 
     const tintColor = afterMain ? gel : white;
-    const phraseHit = scene.kind === "drive" && barIndex % 8 === 0 ? hitDecay(bar - barIndex, 0.22) : 0;
+    const phraseHit = scene.kind === "drive" && barIndex % 8 === 0 ? hitDecay(bar - barIndex, 0.2) : 0;
+    const voiceSway = scene.kind === "break" ? Math.sin(time * 0.35) * 0.25 + (pitch > 0 ? (pitch - 64) / 60 : 0) : 0;
     for (let index = 0; index < rigHeadCount; index++) {
       const beam = beams[index];
-      beam.x = headX(index); beam.y = headY; beam.z = headZ;
       const rank = rigHeadOrder.indexOf(index);
-      const on = rank < lit;
-      lookTarget(lookName, index, look);
-      const side = beam.x < 0 ? -1 : 1;
-      look[0] += side * pan * 16;
-      if (shimmer > 0) look[1] += Math.sin((beat * shimmerRate + index * 0.5) * Math.PI) * shimmer * 5;
+      const side = index < 4 ? -1 : 1;
+      let e = elevation + seesaw * side + (shimmer > 0 ? Math.sin((beat * shimmerRate + index * 0.5) * Math.PI) * shimmer * 0.2 : 0);
+      aimHead(beam, index, look, e, voiceSway);
       if (converge > 0) {
-        look[0] = mixValue(look[0], 0, converge);
-        look[1] = mixValue(look[1], 4.8, converge);
-        look[2] = mixValue(look[2], -1.0, converge);
+        const fx = 0 - beam.x, fy = 4.8 - beam.y, fz = -0.5 - beam.z;
+        const length = Math.hypot(fx, fy, fz);
+        mixAim(beam, fx / length, fy / length, fz / length, converge);
       }
-      if (anchorIndex >= 0) {
-        look[0] = mixValue(look[0], singerX, 0.9);
-        look[1] = mixValue(look[1], 0, 0.9);
-        look[2] = mixValue(look[2], -1.5, 0.9);
+      if (onSinger > 0) {
+        const fx = singerX - beam.x, fy = 0 - beam.y, fz = -1.5 - beam.z;
+        const length = Math.hypot(fx, fy, fz);
+        mixAim(beam, fx / length, fy / length, fz / length, onSinger * 0.92);
       }
       if (phraseHit > 0.02) {
-        lookTarget("fanOut", index, look2);
-        look[0] = mixValue(look[0], look2[0], phraseHit);
-        look[1] = mixValue(look[1], look2[1], phraseHit);
-        look[2] = mixValue(look[2], look2[2], phraseHit);
+        aimHead(beams[rigBeamCount - 1], index, looks.blade, 0.2);
+        mixAim(beam, beams[rigBeamCount - 1].dx, beams[rigBeamCount - 1].dy, beams[rigBeamCount - 1].dz, phraseHit);
       }
-      aim(beam, look[0], look[1], look[2]);
-      beam.angle = beamAngle * (1 + 0.3 * bassPush);
-      let intensity = on ? lookIntensity * (0.7 + 0.6 * bassLevel) * (1 + 0.5 * bassPush + 0.8 * stabHit) : 0;
-      if (anchorIndex >= 0) intensity = rank < 16 ? 14 : 0;
-      if (blackout) intensity = 0;
-      beam.intensity = intensity;
+      beam.angle = width * (1 + 0.35 * bassPush);
+      let level = rank < lit ? intensity * (0.7 + 0.5 * bassLevel) * (1 + 0.45 * bassPush + 0.8 * stabHit) : 0;
+      if (onSinger > 0) level = Math.max(level, 18 * onSinger);
+      if (inGap) level = 0;
+      beam.intensity = level;
       const tint = index % 2 === 0 ? tintColor : white;
       beam.r = tint[0]; beam.g = tint[1]; beam.b = tint[2];
-      beam.length = 50;
     }
 
-    // Kick → floor jets: a row of short upward shafts at the stage lip.
+    // ---- kick: the floor jets, a row of upward shafts at the stage lip.
     const kickIndex = song.kicks.last(time);
     const kickAge = kickIndex >= 0 ? time - song.kicks.time[kickIndex] : Infinity;
     const kickPower = kickIndex >= 0 ? song.kicks.strength[kickIndex] * hitDecay(kickAge, 0.12) : 0;
     for (let jet = 0; jet < rigJetCount; jet++) {
       const beam = beams[rigHeadCount + jet];
-      beam.x = (jet - 3.5) * 2.4; beam.y = 0.05; beam.z = 1.0;
-      beam.dx = (jet - 3.5) * 0.045; beam.dy = 1; beam.dz = 0.16;
+      beam.x = (jet - 3.5) * 2.5; beam.y = 0.05; beam.z = 1.0;
+      beam.dx = (jet - 3.5) * 0.04; beam.dy = 1; beam.dz = 0.14;
       const norm = Math.hypot(beam.dx, beam.dy, beam.dz);
       beam.dx /= norm; beam.dy /= norm; beam.dz /= norm;
-      beam.angle = 0.12;
-      beam.length = 3.0 + 3.0 * kickPower;
-      beam.intensity = blackout ? 0 : kickPower * 14;
+      beam.angle = 0.13;
+      beam.length = 3.2 + 3.2 * kickPower;
+      beam.intensity = inGap ? 0 : kickPower * 16;
       beam.r = white[0]; beam.g = white[1]; beam.b = white[2];
     }
 
-    // Voice → follow spot from high above, onto the singer's mark.
+    // ---- voice: the follow-spot from high above, onto the singer's mark.
     const spot = beams[rigBeamCount - 1];
     spot.x = singerX * 0.3; spot.y = 16; spot.z = 1.5;
-    aim(spot, singerX, 0, -1.5);
-    spot.angle = scene.kind === "break" || scene.kind === "verse" ? 0.1 : 0.075;
+    {
+      const fx = singerX - spot.x, fy = 0 - spot.y, fz = -1.5 - spot.z;
+      const length = Math.hypot(fx, fy, fz);
+      spot.dx = fx / length; spot.dy = fy / length; spot.dz = fz / length;
+    }
+    spot.angle = scene.kind === "break" || scene.kind === "verse" ? 0.1 : 0.08;
     spot.length = 40;
-    const singing = clamp01((vocal - 0.22) / 0.45);
-    spot.intensity = blackout ? 0 : singing * (scene.kind === "break" || scene.kind === "verse" ? 40 : 22) * (anchorIndex >= 0 ? 1.6 : 1);
+    // In the gap the voice keeps its light if it is singing: one warm column in the dark
+    // (Desire's "Is it desire?" is sung into its hole).
+    spot.intensity = inGap
+      ? singing * 46
+      : singing * (scene.kind === "break" || scene.kind === "verse" ? 42 : 24) * (onSinger > 0 ? 1.4 : 1);
     spot.r = warm[0]; spot.g = warm[1]; spot.b = warm[2];
 
-    // Snare → truss cells flash; hats → sparkle.
-    state.snareFlash = blackout ? 0 : song.snares.impulse(time, 0.06, 0.45) * 1.3;
-    state.hatSparkle = blackout ? 0 : clamp01(song.hats.impulse(time, 0.04, 0.2)) * 0.4;
+    // ---- snare → truss cells flash; hats → sparkle.
+    state.snareFlash = inGap ? 0 : song.snares.impulse(time, 0.06, 0.45) * 1.4;
+    state.hatSparkle = inGap ? 0 : clamp01(song.hats.impulse(time, 0.04, 0.2)) * 0.45;
     state.strobeSeed = song.hats.last(time);
-    state.truss = blackout ? 0 : 1;
+    state.truss = inGap ? 0 : 1;
 
-    // Harmony → a faint wash on the back wall: white before the main drop, the gel after.
+    // ---- harmony: a faint wash on the back wall, white before the main drop, the gel after.
     const other = song.value("other", time);
     state.wash[0] = tintColor[0]; state.wash[1] = tintColor[1]; state.wash[2] = tintColor[2];
-    state.wash[3] = blackout ? 0 : other * (0.25 + 1.5 * stabHit);
+    state.wash[3] = inGap ? 0 : other * (0.35 + 1.5 * stabHit);
 
-    // Gap: blackout that counts in; each beat of the gap lights one more pair of lenses.
+    // ---- the gap: blackout with blinders counting in, one pair per beat, aimed at the eye.
     state.lens = 1;
-    if (blackout) {
-      const gapStart = inGap ? drop.drop.gapStart : song.anchor.moments[leadIn].start;
-      const gapEnd = inGap ? drop.drop.time : song.anchor.moments[leadIn].end;
+    if (inGap) {
+      const gapStart = drop.phase === 2 ? drop.drop.gapStart : song.anchor.moments[leadIn].start;
+      const gapEnd = drop.phase === 2 ? drop.drop.time : song.anchor.moments[leadIn].end;
       const beatsTotal = Math.max(1, Math.round((gapEnd - gapStart) / song.beatPeriod));
       const beatsIn = Math.min(beatsTotal - 1, Math.floor((time - gapStart) / song.beatPeriod));
-      const pairs = Math.max(1, Math.round(((beatsIn + 1) / beatsTotal) * 8));
+      const pairs = Math.max(1, Math.round(((beatsIn + 1) / beatsTotal) * 4));
       for (let index = 0; index < rigHeadCount; index++) {
         const beam = beams[index];
-        lookTarget("tunnel", index, look2);
-        aim(beam, look2[0], look2[1], look2[2]);
-        beam.angle = 0.03;
-        beam.intensity = rigHeadOrder.indexOf(index) < pairs * 2 ? 0.02 : 0;
+        const fx = state.camera ? 0 : 0;
+        aimHead(beam, index, looks.blade, 0.12);
+        beam.angle = 0.02;
+        beam.intensity = rigHeadOrder.indexOf(index) < pairs * 2 ? 0.05 : 0;
       }
-      state.lens = 60;
+      state.lens = 80;
     }
 
-    // Drop: the exact frame fires everything straight at the audience with a flash, holds
-    // for two beats (the hit), then lets the show move.
-    if (sinceDrop < hitLength) {
+    // ---- the drop: the exact frame fires everything at the audience with a flash, holds
+    // two beats (the hit), then the chase takes over.
+    if (inHit) {
       const release = easeInCubic(clamp01((sinceDrop - song.beatPeriod) / song.beatPeriod));
       for (let index = 0; index < rigHeadCount; index++) {
-        lookTarget("fanOut", index, look2);
-        lookTarget(lookName, index, look);
-        aim(beams[index], mixValue(look2[0], look[0], release), mixValue(look2[1], look[1], release), mixValue(look2[2], look[2], release));
-        beams[index].angle = 0.045;
-        beams[index].intensity = 16;
+        const beam = beams[index];
+        const dx = beam.dx, dy = beam.dy, dz = beam.dz;
+        aimHead(beam, index, looks.blade, 0.2);
+        mixAim(beam, dx, dy, dz, release);
+        beam.angle = 0.06;
+        beam.intensity = 24;
       }
       state.flash[0] = 1; state.flash[1] = 0.98; state.flash[2] = 0.95;
       state.flash[3] = 1.4 * hitDecay(sinceDrop, 0.035);
@@ -3386,20 +3439,20 @@ function createRigShow() {
       shot = "floor";
     }
 
-    // Camera: a shot per scene with a slow move inside it, a push in through a build.
+    // ---- camera: the scene's shot with a slow move inside it; a push through a build.
     useShot(shot, sceneProgress - 0.5);
     if (drop.phase === 1) {
       const push = easeInCubic(drop.progress);
-      state.camera[2] -= push * 4.5;
-      state.camera[1] += push * 0.5;
-      state.fov += push * 0.15;
+      const close = shots.close;
+      state.camera = [mixValue(state.camera[0], close[0][0], push), mixValue(state.camera[1], close[0][1], push), mixValue(state.camera[2], close[0][2], push)];
+      state.target = [mixValue(state.target[0], close[1][0], push), mixValue(state.target[1], close[1][1], push), mixValue(state.target[2], close[1][2], push)];
+      state.fov = mixValue(state.fov, close[2], push);
     }
-    if (blackout) useShot("hero");
-    if (sinceDrop < hitLength) useShot("floor");
+    if (inGap) useShot("hero");
 
-    state.haze = scene.kind === "break" ? 0.8 : 1.0;
+    state.haze = scene.kind === "break" ? 1.05 : 1.25;
     state.hazeTexture = 0.75;
-    state.gloss = 0.5;
+    state.gloss = 0.55;
     return state;
   }
 
@@ -3407,12 +3460,16 @@ function createRigShow() {
 }
 
 // Type: the sung words set as posters. Each sung line is laid out ahead of time as a block
-// of justified rows in a heavy grotesque (nothing reflows); each word appears on the frame
-// it is sung. Words the transcription could not confirm are set as redaction bars. Around
-// the words, only typography: the kick is a beat counter, the bass is a block of ink rising
-// from the bottom that inverts the type it covers, instrumental passages are a wall of the
-// song's hook stepping on the kick and the snare, the gap before a drop counts down, and
-// the drop slams the hook across the whole frame, inverted.
+// of rows in a heavy grotesque and shown whole as a hairline outline when it begins; each
+// word fills in solid on the frame it is sung, so the poster assembles itself in the
+// singer's rhythm. Only words that two transcriptions agree on are set; a line the
+// transcription could not confirm is left out. Around the words, only typography: the kick
+// is a beat counter; the bass is a block of ink rising from the bottom that inverts the type
+// it covers; a build floods the ink up the frame; the gap before a drop is a countdown; the
+// drop slams the hook across the frame, inverted. Instrumental passages cycle through
+// typographic modes by phrase: the hook as a wall stepping on kick and snare, the hook
+// alone changing width on the beat, the four beats of the bar, and, where the harmony leads
+// (NBLY's chord passages), the chords themselves.
 
 const typePalettes = {
   "5ff86d6cd02ebd7308e03df8": { field: "#2530f2", ink: "#f3efe4", hook: ["NBLY", "LIKE YOU", "NEVER", "LIKE YOU"] },
@@ -3423,7 +3480,9 @@ const typePalettes = {
 };
 const typeDefaultPalette = { field: "#2530f2", ink: "#f3efe4", hook: [] };
 const typeFamily = '"Archivo", "Arial Narrow", sans-serif';
-const typeStretches = ["extra-condensed", "condensed", "semi-condensed", "normal", "semi-expanded", "expanded"];
+const typeChordNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+// Posters are made for the feed: a swear word is set as a solid bar of its own shape.
+const typeBleeped = /^(fuck\w*|motherfuck\w*|shit\w*|bitch\w*|nigg\w*)$/;
 
 registerVisualizer({
   key: "type",
@@ -3439,6 +3498,7 @@ registerVisualizer({
     let mainDrop = -1;
     let scale = 1;
     let inverted = null;
+    let songEnd = Infinity;
     const blockCache = new Map();
 
     function setFont(target, weight, size, stretch) {
@@ -3452,7 +3512,8 @@ registerVisualizer({
     }
 
     // Split words into rows that each fill the measure; pick the split whose block best
-    // fills the box without overflowing, with the least disparity between rows.
+    // fills the box without overflowing, with the least disparity between rows and no row of
+    // one or two letters.
     function layout(words, boxWidth, boxHeight, weight = 900) {
       const count = words.length;
       let best = null;
@@ -3470,10 +3531,12 @@ registerVisualizer({
         if (rows.length > 4) continue;
         let total = 0,
           smallest = Infinity,
-          largest = 0;
+          largest = 0,
+          tiny = 0;
         const sized = rows.map((row) => {
           const text = row.map((index) => words[index].display).join(" ");
           const letters = text.length;
+          if (letters <= 2 && count > 1) tiny++;
           const stretch = letters <= 4 ? "expanded" : letters <= 7 ? "normal" : letters <= 12 ? "condensed" : "extra-condensed";
           const natural = textWidth(text, weight, 100, stretch);
           let size = (100 * boxWidth) / natural;
@@ -3485,7 +3548,7 @@ registerVisualizer({
         });
         const fill = total / boxHeight;
         const overflow = Math.max(0, fill - 1);
-        const score = -Math.abs(0.86 - Math.min(fill, 1)) * 2 - overflow * 4 - (largest / smallest - 1) * 0.25 - rows.length * 0.05;
+        const score = -Math.abs(0.86 - Math.min(fill, 1)) * 2 - overflow * 4 - (largest / smallest - 1) * 0.25 - rows.length * 0.05 - tiny * 1.5;
         if (!best || score > best.score) best = { score, rows: sized, total };
       }
       const shrink = best.total > boxHeight ? boxHeight / best.total : 1;
@@ -3498,17 +3561,15 @@ registerVisualizer({
         let x = 0;
         const spaceWidth = textWidth(" ", weight, size, row.stretch);
         for (const index of row.indices) {
-          const word = words[index];
-          const width = textWidth(word.display, weight, size, row.stretch);
+          const width = textWidth(words[index].display, weight, size, row.stretch);
           placed[index] = { x, baseline: y, width, size, stretch: row.stretch, ascent };
           x += width + spaceWidth;
         }
         const rowWidth = x - spaceWidth;
-        // justify: spread the leftover across the row's gaps (rows only shrink when too tall)
-        if (row.indices.length > 1 && shrink === 1) {
-          const extra = (boxWidth - rowWidth) / (row.indices.length - 1);
-          row.indices.forEach((index, position) => (placed[index].x += extra * position));
-        }
+        // justify only a small shortfall; a big one would open rivers, so the row sits left
+        const extra = boxWidth - rowWidth;
+        if (row.indices.length > 1 && extra > 0 && extra < boxWidth * 0.12)
+          row.indices.forEach((index, position) => (placed[index].x += (extra / (row.indices.length - 1)) * position));
         y += size * 0.08;
       }
       return { placed, height: y };
@@ -3518,10 +3579,10 @@ registerVisualizer({
       const key = `${line.number}:${Math.round(boxWidth)}:${Math.round(boxHeight)}`;
       if (!blockCache.has(key)) {
         if (blockCache.size > 60) blockCache.clear();
-        const words = line.words.map((word) => ({
+        const words = line.shown.map((word) => ({
           ...word,
           display: word.text.replace(/[.,!?;:"]/g, "").toUpperCase(),
-          sure: word.votes > 0 || word.probability >= 0.8,
+          bleep: typeBleeped.test(word.text.toLowerCase().replace(/[^a-z']/g, "")),
         }));
         blockCache.set(key, { words, ...layout(words, boxWidth, boxHeight) });
       }
@@ -3535,31 +3596,111 @@ registerVisualizer({
       hookWords = palette.hook.length ? palette.hook : [model?.title?.toUpperCase() || ""];
       mainDrop = -1;
       inverted = null;
+      songEnd = Infinity;
       if (!model) return;
       mainDrop = model.mainDrop;
-      // A line is sung text when most of it was confirmed by two transcriptions.
+      // A line is set when most of it was confirmed by two transcriptions; it shows only its
+      // confirmed words.
       for (const line of model.lyrics.lines) {
-        const sure = line.words.filter((word) => word.votes > 0 || word.probability >= 0.8).length;
-        line.confidence = sure / line.words.length;
+        line.shown = line.words.filter((word) => word.votes > 0 || word.probability >= 0.85);
+        line.confidence = line.shown.length / line.words.length;
+      }
+      // The song's end: the last moment anything sounds.
+      const mix = model.series.mix;
+      if (mix) {
+        let index = mix.length - 1;
+        while (index > 0 && mix[index] < 0.08) index--;
+        songEnd = index / 100 + 0.3;
       }
     }
 
-    // The sung line at `time`, if one is showing: from its first word until the next line
-    // starts, or 1.2 s after its last word.
+    // The sung line at `time`, if one is showing: its outline from just before its first
+    // word until the next line starts, or 1.2 s after its last word.
     function lineAt(time) {
-      const index = song.lineIndex(time);
+      const index = song.lineIndex(time + 0.12);
       if (index < 0) return null;
       const line = song.lyrics.lines[index];
       const next = song.lyrics.lines[index + 1];
-      const until = Math.min(next ? next.start : Infinity, line.end + 1.2);
-      if (time >= until || line.confidence < 0.5) return null;
+      const until = Math.min(next ? next.start - 0.12 : Infinity, line.end + 1.2);
+      // the first half second belongs to the hook (it is the thumbnail)
+      if (time < 0.6 || time >= until || line.confidence < 0.7 || !line.shown.length) return null;
       return line;
     }
 
-    function drawWall(time, width, top, bottom, text, rows, field, ink, bassEdge) {
+    // Text in ink above the ink block's edge and in field colour inside it; filled or outlined.
+    function drawTextInverted(text, x, baseline, field, ink, edge, clipHeight, outline = 0) {
+      const top = baseline - clipHeight;
+      const paint = (color) => {
+        if (outline > 0) {
+          context.lineWidth = outline;
+          context.strokeStyle = color;
+          context.strokeText(text, x, baseline);
+        } else {
+          context.fillStyle = color;
+          context.fillText(text, x, baseline);
+        }
+      };
+      if (edge > top) {
+        context.save();
+        context.beginPath();
+        context.rect(-10, top - 10, 1e5, Math.min(edge, baseline + clipHeight) - top + 10);
+        context.clip();
+        paint(ink);
+        context.restore();
+      }
+      if (edge < baseline + clipHeight * 0.3) {
+        context.save();
+        context.beginPath();
+        context.rect(-10, edge, 1e5, 1e5);
+        context.clip();
+        paint(field);
+        context.restore();
+      }
+    }
+
+    // A word (or a short phrase) as large as the box allows: condensed so it can be tall,
+    // and split over two rows when that makes it larger.
+    function drawBigWord(word, left, top, right, bottom, field, ink, edge, outline = 0) {
+      const boxWidth = right - left,
+        boxHeight = bottom - top;
+      const fit = (text, rowsHeight) => {
+        let best = { size: 0, stretch: "normal" };
+        for (const stretch of ["expanded", "normal", "condensed", "extra-condensed"]) {
+          const size = Math.min((100 * boxWidth) / textWidth(text, 900, 100, stretch), rowsHeight / 0.74);
+          if (size > best.size + 0.5) best = { size, stretch };
+        }
+        return best;
+      };
+      const single = fit(word, boxHeight);
+      const space = word.indexOf(" ");
+      if (space > 0) {
+        // two rows: split at the space nearest the middle
+        let cut = space,
+          middle = word.length / 2;
+        for (let index = 0; index < word.length; index++) if (word[index] === " " && Math.abs(index - middle) < Math.abs(cut - middle)) cut = index;
+        const rows = [word.slice(0, cut), word.slice(cut + 1)];
+        const rowHeight = boxHeight / 2 - boxHeight * 0.02;
+        const fits = rows.map((row) => fit(row, rowHeight));
+        const size = Math.min(fits[0].size, fits[1].size);
+        if (size > single.size * 1.15) {
+          rows.forEach((row, index) => {
+            setFont(context, 900, size, fits[index].stretch);
+            const baseline = top + (index + 1) * (boxHeight / 2) - (boxHeight / 2 - size * 0.72) / 2;
+            drawTextInverted(row, left, baseline, field, ink, edge, size, outline);
+          });
+          return size;
+        }
+      }
+      setFont(context, 900, single.size, single.stretch);
+      const baseline = (top + bottom) / 2 + single.size * 0.36;
+      drawTextInverted(word, left, baseline, field, ink, edge, single.size, outline);
+      return single.size;
+    }
+
+    function drawWall(time, width, top, bottom, text, rows, field, ink, edge) {
       const rowHeight = (bottom - top) / rows;
       const size = rowHeight / 0.78;
-      const stretch = rows >= 6 ? "condensed" : "normal";
+      const stretch = rows >= 5 ? "condensed" : "normal";
       const unit = `${text}  `;
       setFont(context, 900, size, stretch);
       const unitWidth = context.measureText(unit).width;
@@ -3571,35 +3712,45 @@ registerVisualizer({
       for (let row = 0; row < rows; row++) {
         const even = row % 2 === 0;
         const steps = even ? kicks - 1 + kickEase : snares - 1 + snareEase;
-        const stepSize = unitWidth / 4;
-        let offset = ((steps * stepSize) % unitWidth) * (even ? -1 : 1) - unitWidth * (row % 3) * 0.37;
+        let offset = (((steps * unitWidth) / 4) % unitWidth) * (even ? -1 : 1) - unitWidth * (row % 3) * 0.37;
         offset = ((offset % unitWidth) + unitWidth) % unitWidth - unitWidth;
         const baseline = top + rowHeight * (row + 1) - rowHeight * 0.13;
-        drawTextInverted(unit.repeat(Math.ceil(width / unitWidth) + 2), offset, baseline, field, ink, bassEdge, rowHeight);
+        drawTextInverted(unit.repeat(Math.ceil(width / unitWidth) + 2), offset, baseline, field, ink, edge, rowHeight);
       }
     }
 
-    // Draw text in ink above the bass block's edge and in field colour inside it.
-    function drawTextInverted(text, x, baseline, field, ink, edge, clipHeight) {
-      const top = baseline - clipHeight;
-      if (edge > top) {
-        context.save();
-        context.beginPath();
-        context.rect(-10, top - 10, 1e5, Math.min(edge, baseline + clipHeight) - top + 10);
-        context.clip();
-        context.fillStyle = ink;
-        context.fillText(text, x, baseline);
-        context.restore();
-      }
-      if (edge < baseline + clipHeight * 0.3) {
-        context.save();
-        context.beginPath();
-        context.rect(-10, edge, 1e5, 1e5);
-        context.clip();
-        context.fillStyle = field;
-        context.fillText(text, x, baseline);
-        context.restore();
-      }
+    // The hook alone, filling the box; its width steps on every beat (condensed, normal,
+    // expanded, normal), so the word breathes in the tempo.
+    function drawBreathing(time, left, top, right, bottom, text, field, ink, edge) {
+      const beat = Math.floor(song.beatPosition(time));
+      const stretch = ["condensed", "normal", "expanded", "normal"][((beat % 4) + 4) % 4];
+      const boxWidth = right - left;
+      const size = Math.min((100 * boxWidth) / textWidth(text, 900, 100, stretch), (bottom - top) / 0.74);
+      setFont(context, 900, size, stretch);
+      const width = context.measureText(text).width;
+      const baseline = (top + bottom) / 2 + size * 0.36;
+      drawTextInverted(text, left + (boxWidth - width) / 2, baseline, field, ink, edge, size);
+    }
+
+    // The bar's four beats across the frame; the current one solid, the others outlined.
+    function drawBeats(time, left, top, right, bottom, field, ink, edge) {
+      const current = Math.min(3, Math.floor(fract(song.barPosition(time)) * 4));
+      const cell = (right - left) / 4;
+      const size = Math.min(cell / 0.62, (bottom - top) / 0.74);
+      setFont(context, 900, size, "normal");
+      context.textAlign = "center";
+      const baseline = (top + bottom) / 2 + size * 0.36;
+      for (let index = 0; index < 4; index++)
+        drawTextInverted(String(index + 1), left + cell * (index + 0.5), baseline, field, ink, edge, size, index === current ? 0 : Math.max(3, size * 0.012));
+      context.textAlign = "left";
+    }
+
+    // The chord, as its name: where the harmony leads.
+    function drawChord(time, left, top, right, bottom, field, ink, edge) {
+      const index = song.chordIndex(time);
+      if (index < 0) return;
+      const chord = song.chords[index];
+      drawBigWord(typeChordNames[chord.root] + (chord.minor ? "m" : ""), left, top, right, bottom, field, ink, edge);
     }
 
     function render(time, frame) {
@@ -3613,13 +3764,15 @@ registerVisualizer({
       }
       const drop = song.dropContext(time);
       const afterMain = mainDrop >= 0 && time >= song.drops[mainDrop].time;
-      const hitLength = song.beatPeriod * 2;
       const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
+      // the main drop holds its hit for a bar, the others for two beats
+      const hitLength = song.beatPeriod * (drop.index === mainDrop ? 4 : 2);
       const inHit = sinceDrop < hitLength;
-      // Palette: the song's field and ink; swapped from the main drop on, and for each hit.
+      const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
+      const inGap = drop.phase === 2 || leadIn >= 0;
+      // Every drop swaps field and ink for its hit; the main drop swaps them for good.
       let field = palette.field,
         ink = palette.ink;
-      // Every drop swaps field and ink for its hit; the main drop swaps them for good.
       const mainHit = inHit && drop.index === mainDrop;
       const swap = afterMain !== (inHit && !mainHit);
       if (swap) [field, ink] = [ink, field];
@@ -3631,26 +3784,28 @@ registerVisualizer({
         waveformTheme = null;
       }
       const scene = song.scene(time);
-
-      // Build: the field is drawn toward the ink as the build gathers.
-      let fieldColor = field;
-      if (drop.phase === 1) fieldColor = cssColor(mixColor(hexColor(field), hexColor(ink), 0.35 * easeInCubic(drop.progress)));
-      context.fillStyle = fieldColor;
+      context.fillStyle = field;
       context.fillRect(0, 0, width, height);
 
-      // Bass → a block of ink from the bottom, its height from the sounding note's pitch.
-      const noteIndex = song.bassNotes.active(time);
+      // Ink from the bottom: the bass note's height, or the build's flood rising up the
+      // frame; the whole frame in the gap.
       let blockHeight = 0;
-      if (noteIndex >= 0) {
-        const pitch = song.bassNotes.pitch[noteIndex];
-        const age = time - song.bassNotes.start[noteIndex];
-        const level = 0.1 + 0.26 * clamp01((pitch - 26) / 24);
-        const previous = noteIndex > 0 && song.bassNotes.end[noteIndex - 1] > song.bassNotes.start[noteIndex] - 0.12
-          ? 0.1 + 0.26 * clamp01((song.bassNotes.pitch[noteIndex - 1] - 26) / 24)
-          : 0;
-        blockHeight = mixValue(previous, level, easeOutCubic(age / 0.07)) * height * clamp01(song.value("bass", time) * 1.6);
+      {
+        // the bass note's height, sampled as an envelope (fast attack, slow release) so a
+        // busy bass line swells and settles instead of strobing
+        let level = 0;
+        for (let step = 0; step < 8; step++) {
+          const at = time - step * 0.04;
+          const note = song.bassNotes.active(at);
+          if (note < 0) continue;
+          const height = 0.05 + 0.13 * clamp01((song.bassNotes.pitch[note] - 26) / 24);
+          level = Math.max(level, height * Math.exp(-step * 0.04 / 0.12));
+        }
+        blockHeight = level * height * clamp01(song.value("bass", time) * 1.6);
       }
-      if (drop.phase === 2 || inHit) blockHeight = 0;
+      if (drop.phase === 1) blockHeight = Math.max(blockHeight, easeInCubic(drop.progress) * height * 0.82);
+      if (inGap) blockHeight = height;
+      if (inHit || time > songEnd) blockHeight = 0;
       const edge = height - blockHeight;
       context.fillStyle = ink;
       if (blockHeight > 0.5) context.fillRect(0, edge, width, blockHeight);
@@ -3659,104 +3814,125 @@ registerVisualizer({
       // The title owns the top band; everything set here stays below it.
       const top = Math.max(height * 0.2, (frame.titleBottom || 0) + height * 0.035),
         bottom = height * 0.93;
-      const anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
+      let anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
       const line = lineAt(time);
+      const peak = song.peakAt(time);
+      // A short key word inside a sung line stays in the line (set reversed there); a held
+      // one, or one in a gap or a hit, takes the frame.
+      if (anchor >= 0 && line && !inGap && !inHit) {
+        const moment = song.anchor.moments[anchor];
+        if (moment.end - moment.start < 0.45) anchor = -1;
+      }
 
-      if (drop.phase === 2 && anchor >= 0) {
-        // The key word sung into the gap: drawn in outline, filled by the drop.
-        const word = song.anchor.word.toUpperCase();
-        const natural = textWidth(word, 900, 100, "expanded");
-        const size = Math.min((100 * (width - margin * 2)) / natural, (bottom - top) / 0.74);
-        setFont(context, 900, size, "expanded");
-        context.lineWidth = Math.max(3, height * 0.008);
-        context.strokeStyle = ink;
-        context.strokeText(word, margin, (top + bottom) / 2 + size * 0.36);
-      } else if (drop.phase === 2) {
-        // The gap: the field alone and a countdown of the beats left before the drop.
-        const beatsLeft = Math.ceil((drop.drop.time - time) / song.beatPeriod - 1e-6);
+      if (time > songEnd) {
+        // After the last sound: the hook, still, in outline.
+        drawBigWord(hookWords[0], margin, top, width - margin, bottom, field, ink, edge, Math.max(3, height * 0.006));
+      } else if (inGap && anchor >= 0) {
+        // The key word sung into the gap: outlined in the flood, filled by the drop.
+        drawBigWord(song.anchor.word.toUpperCase(), margin, top, width - margin, bottom, field, ink, edge, Math.max(3, height * 0.008));
+      } else if (inGap) {
+        // The gap: the flood and a countdown of the beats left before the drop.
+        const end = drop.phase === 2 ? drop.drop.time : song.anchor.moments[leadIn].end;
+        const beatsLeft = Math.max(1, Math.ceil((end - time) / song.beatPeriod - 1e-6));
         const size = (bottom - top) / 0.74;
         setFont(context, 900, size, "normal");
         context.textAlign = "center";
-        context.lineWidth = Math.max(3, height * 0.012);
-        context.strokeStyle = ink;
-        context.strokeText(String(Math.max(1, beatsLeft)), width / 2, bottom);
+        drawTextInverted(String(beatsLeft), width / 2, bottom, field, ink, edge, size, Math.max(3, height * 0.012));
         context.textAlign = "left";
       } else if (inHit || anchor >= 0) {
-        // The hit and the key word: one word across the whole frame.
+        // The hit and the key word: one word as large as the frame allows.
         const word = anchor >= 0 ? song.anchor.word.toUpperCase() : hookWords[0];
-        const natural = textWidth(word, 900, 100, "expanded");
-        const size = Math.min((100 * (width - margin * 2)) / natural, (bottom - top) / 0.74);
-        setFont(context, 900, size, "expanded");
-        const baseline = (top + bottom) / 2 + size * 0.36;
-        drawTextInverted(word, margin, baseline, field, ink, edge, size);
+        drawBigWord(word, margin, top, width - margin, bottom, field, ink, edge);
         if (anchor >= 0) {
+          const countSize = Math.round(height * 0.05);
+          context.font = `500 ${countSize}px "IBM Plex Mono", monospace`;
           context.fillStyle = ink;
-          setFont(context, 500, Math.round(height * 0.028), "normal");
-          context.font = `500 ${Math.round(height * 0.028)}px "IBM Plex Mono", monospace`;
-          const count = `${String(anchor + 1).padStart(2, "0")} / ${String(song.anchor.moments.length).padStart(2, "0")}`;
           context.textAlign = "right";
-          context.fillText(count, width - margin, height * 0.12);
+          context.fillText(`${String(anchor + 1).padStart(2, "0")}/${String(song.anchor.moments.length).padStart(2, "0")}`, width - margin, top - countSize * 0.4);
           context.textAlign = "left";
         }
       } else if (line) {
-        // A sung line: its block, words appearing as they are sung.
+        // A sung line: the whole poster in outline, each word filling in as it is sung.
         const block = blockFor(line, width - margin * 2, bottom - top);
         const offsetY = top + (bottom - top - block.height) / 2;
         const current = song.wordIndex(time);
+        const outline = Math.max(2.5, height * 0.0048);
         block.words.forEach((word, index) => {
-          if (time < word.start) return;
           const place = block.placed[index];
           const x = margin + place.x,
             baseline = offsetY + place.baseline;
-          const sung = word.index < current;
-          if (!word.sure) {
-            // Redaction bar: the rhythm of the word without guessing at it.
-            context.fillStyle = sung ? cssColor(hexColor(ink), 0.55) : ink;
+          setFont(context, 900, place.size, place.stretch);
+          const sung = time >= word.start;
+          if (word.bleep) {
             const barTop = baseline - place.ascent;
-            if (barTop < edge) context.fillRect(x, barTop, place.width, Math.min(place.ascent, edge - barTop));
-            if (baseline > edge) {
-              context.fillStyle = field;
-              context.fillRect(x, Math.max(edge, barTop), place.width, baseline - Math.max(edge, barTop));
+            context.fillStyle = barTop < edge ? ink : field;
+            if (sung) context.fillRect(x, barTop, place.width, place.ascent);
+            else {
+              context.lineWidth = outline;
+              context.strokeStyle = barTop < edge ? ink : field;
+              context.strokeRect(x, barTop, place.width, place.ascent);
             }
             return;
           }
-          setFont(context, 900, place.size, place.stretch);
-          context.globalAlpha = sung ? 0.55 : 1;
-          drawTextInverted(word.display, x, baseline, field, ink, edge, place.size);
-          context.globalAlpha = 1;
+          // the key word, when it is sung within a line, is set reversed out of an ink box
+          const keyNow = word.key && sung && time < word.end + 0.15;
+          if (keyNow) {
+            const pad = place.size * 0.06;
+            context.fillStyle = ink;
+            context.fillRect(x - pad, baseline - place.ascent - pad, place.width + pad * 2, place.ascent + pad * 2);
+            context.fillStyle = field;
+            context.fillText(word.display, x, baseline);
+            return;
+          }
+          drawTextInverted(word.display, x, baseline, field, ink, edge, place.size, sung ? 0 : outline);
+          // the word being sung now carries a rule under it
+          if (sung && word.index === current && time < word.end + 0.05) {
+            const rule = Math.max(4, place.size * 0.06);
+            context.fillStyle = baseline + rule * 1.5 < edge ? ink : field;
+            context.fillRect(x, baseline + rule * 0.9, place.width, rule);
+          }
         });
       } else {
-        // Instrumental: the hook as a wall, rows stepping on the kick and the snare.
+        // Instrumental: a typographic mode per eight-bar phrase.
         const phrase = Math.max(0, Math.floor(song.barPosition(time) / 8));
-        const text = hookWords[((phrase % hookWords.length) + hookWords.length) % hookWords.length];
+        const text = hookWords[phrase % hookWords.length];
         const full = scene.kind === "drop" || scene.kind === "drive";
-        drawWall(time, width, top, bottom, text, full ? 5 : 4, field, ink, edge);
+        let mode;
+        if (peak && peak.kind === "chords") mode = "chords";
+        else if (scene.kind === "intro" && phrase === 0) mode = "wall";
+        else mode = ["wall", "breathing", "wall", "beats"][(phrase + scene.index) % 4];
+        if (mode === "chords") drawChord(time, margin, top, width - margin, bottom, field, ink, edge);
+        else if (mode === "breathing") drawBreathing(time, margin, top, width - margin, bottom, text, field, ink, edge);
+        else if (mode === "beats") drawBeats(time, margin, top, width - margin, bottom, field, ink, edge);
+        else drawWall(time, width, top, bottom, text, full ? 5 : 4, field, ink, edge);
       }
 
-      // Kick → the beat counter: the beat of the bar, bold on a kick, outlined without one.
-      if (drop.phase !== 2 && !inHit) {
+      // Kick → the beat counter: the beat of the bar on a tab of the field, solid for the
+      // instant of a kick, outlined otherwise. Only while playing (the paused frame has the
+      // controls there).
+      if (frame.playing && !inGap && !inHit && time <= songEnd) {
         const beatNumber = Math.min(4, Math.floor(fract(song.barPosition(time)) * 4) + 1);
         const kickAge = song.kicks.since(time);
-        const kicked = kickAge < song.beatPeriod * 0.9;
-        const counterSize = height * 0.16;
-        setFont(context, 900, counterSize, "normal");
-        const x = width - margin - counterSize * 0.55,
-          baseline = height - margin * 0.6;
-        const punch = 1 + 0.18 * hitDecay(kickAge, 0.06);
-        context.save();
-        context.translate(x + counterSize * 0.28, baseline - counterSize * 0.36);
-        context.scale(punch, punch);
-        context.translate(-(x + counterSize * 0.28), -(baseline - counterSize * 0.36));
-        const colorHere = baseline - counterSize * 0.4 > edge ? field : ink;
+        const kicked = kickAge < 0.13;
+        const size = height * 0.17;
+        const tabWidth = size * 0.78,
+          tabHeight = size * 0.92;
+        const tabX = width - margin * 0.5 - tabWidth,
+          tabY = height - margin * 0.4 - tabHeight;
+        context.fillStyle = kicked ? ink : field;
+        context.fillRect(tabX, tabY, tabWidth, tabHeight);
+        setFont(context, 900, size, "normal");
+        context.textAlign = "center";
+        const baseline = tabY + tabHeight / 2 + size * 0.36;
         if (kicked) {
-          context.fillStyle = colorHere;
-          context.fillText(String(beatNumber), x, baseline);
+          context.fillStyle = field;
+          context.fillText(String(beatNumber), tabX + tabWidth / 2, baseline);
         } else {
-          context.lineWidth = Math.max(2, height * 0.004);
-          context.strokeStyle = colorHere;
-          context.strokeText(String(beatNumber), x, baseline);
+          context.lineWidth = Math.max(3, height * 0.005);
+          context.strokeStyle = ink;
+          context.strokeText(String(beatNumber), tabX + tabWidth / 2, baseline);
         }
-        context.restore();
+        context.textAlign = "left";
       }
     }
 
@@ -3764,6 +3940,8 @@ registerVisualizer({
       canvas,
       setSong,
       themeFor(model) {
+        // The slot resets the page colours; the next frame sets them for its time again.
+        inverted = null;
         const colors = (model && typePalettes[model.identifier]) || typeDefaultPalette;
         return { "--type-field": colors.field, "--type-ink": colors.ink };
       },
@@ -3786,23 +3964,36 @@ registerVisualizer({
 // movement is keyed to that instrument's own onsets, so the groove on screen is the band's
 // groove: the drum (a black disc) touches the floor exactly on each kick; the bass (a red
 // dome) winds up before each note and lands on it, wherever the bass line pushes or lays
-// back; the hands clap on the backbeat; the fringe marks every hi-hat where it actually
-// falls against a faint sixteenth grid, so swing shows as uneven spacing; the singer
-// stretches with the sung pitch. Figures walk on when their instrument enters and leave when
-// it stops. Builds wind everyone up, the gap holds them in the air, the drop lands them.
+// back; the hands clap on the backbeat; the fringe marks every hi-hat against a faint
+// sixteenth grid; the singer stretches with the sung pitch and sways with the song's own
+// swing (measured from where the bass lands against the beat). Each figure keeps its colour
+// all song; the fields come from a pale family none of them can vanish into. The troupe
+// moves between formations by section (a trio, a solo for the singer, a chorus line that
+// grows after each drop); after the main drop the stage goes to night. A build darkens the
+// stage and crouches everyone, the gap holds them in the air, the drop lands them together.
 
-const pocketColors = {
+const pocketInk = {
   cream: "#f2e8d3",
   black: "#151413",
   tomato: "#e4472b",
   mustard: "#eab12c",
   cobalt: "#2749b5",
-  pink: "#f2a6b8",
-  teal: "#17806f",
 };
-// Field colours by scene, chosen so no figure disappears into the field.
-const pocketFields = ["mustard", "pink", "teal", "cobalt", "tomato", "cream"];
-const pocketFigureColor = { drum: "black", bass: "tomato", hands: "mustard", singer: "cobalt", fringe: "black" };
+const pocketFields = {
+  cream: "#f2e8d3",
+  blush: "#f6c6cf",
+  mint: "#bfe2d3",
+  sky: "#c2d3ee",
+  night: "#151413",
+};
+
+// Where the troupe stands. x in frame widths; a dome's pair is the range its notes span.
+const pocketFormations = {
+  trio: { drums: [0.19], drumScale: 1, domes: [[0.34, 0.9]], domeScale: 1, singer: 0.62, singerScale: 1, hands: [0.8, 0.4], handsScale: 1 },
+  solo: { drums: [0.11], drumScale: 0.68, domes: [[0.2, 0.4]], domeScale: 0.72, singer: 0.56, singerScale: 1.22, hands: [0.85, 0.34], handsScale: 0.8 },
+  line3: { drums: [0.16, 0.5, 0.84], drumScale: 0.72, domes: [[0.08, 0.42], [0.58, 0.92]], domeScale: 0.78, singer: 0.33, singerScale: 1.05, hands: [0.67, 0.36], handsScale: 0.9 },
+  line5: { drums: [0.1, 0.3, 0.5, 0.7, 0.9], drumScale: 0.6, domes: [[0.06, 0.4], [0.6, 0.94]], domeScale: 0.74, singer: 0.4, singerScale: 1.0, hands: [0.6, 0.34], handsScale: 0.85 },
+};
 
 registerVisualizer({
   key: "pocket",
@@ -3814,36 +4005,71 @@ registerVisualizer({
     let song = null;
     let scale = 1;
     let presence = null;
-    let sceneFields = [];
     let themeField = "";
+    let swingLate = 0; // where the swung sixteenth lands, in beats past the straight one
+    let sceneLooks = [];
     // A cut edge per figure: fixed small irregularities so the shapes read as cut paper.
     const cutEdge = Array.from({ length: 64 }, (_, index) => 1 + (hash01(index * 31 + 7) - 0.5) * 0.035);
-
-    function fieldFor(sceneIndex, kind) {
-      return sceneFields[sceneIndex] || "mustard";
-    }
+    // The drum lands on every kick and on every drop frame; the hands close on the strong
+    // backbeats only (the snare band's ghost notes just twitch them).
+    let landing = new SongEvents([]);
+    let backbeats = new SongEvents([]);
 
     function setSong(model) {
       song = model;
       presence = null;
-      sceneFields = [];
+      themeField = "";
+      sceneLooks = [];
+      landing = new SongEvents([]);
+      backbeats = new SongEvents([]);
       if (!model) return;
-      // Scene colours: breaks cool, drops hot, the rest cycling, never the same twice in a row.
-      let previous = "";
-      model.scenes.forEach((scene, index) => {
-        let name;
-        if (scene.kind === "drop") name = "tomato";
-        else if (scene.kind === "break" || scene.kind === "gap") name = "cobalt";
-        else if (scene.kind === "build") name = "pink";
-        else name = ["mustard", "teal", "pink", "cream"][(scene.kindIndex + index) % 4];
-        if (name === previous) name = name === "mustard" ? "teal" : "mustard";
-        sceneFields.push(name);
-        previous = name;
+      const strong = [];
+      for (let index = 0; index < model.snares.length; index++)
+        if (model.snares.strength[index] > 0.4) strong.push([model.snares.time[index], model.snares.strength[index]]);
+      backbeats = new SongEvents(strong);
+      const events = [];
+      for (let index = 0; index < model.kicks.length; index++) events.push([model.kicks.time[index], model.kicks.strength[index]]);
+      for (const drop of model.drops) if (!events.some(([time]) => Math.abs(time - drop.time) < 0.03)) events.push([drop.time, 1]);
+      events.sort((first, second) => first[0] - second[0]);
+      landing = new SongEvents(events);
+      // Swing, measured: the median place of bass notes that fall in the last quarter of the
+      // beat, against the straight sixteenth at 0.75.
+      const late = [];
+      for (let index = 0; index < model.bassNotes.length; index++) {
+        const phase = fract(model.beatPosition(model.bassNotes.start[index]));
+        if (phase > 0.6 && phase < 0.97) late.push(phase);
+      }
+      late.sort((a, b) => a - b);
+      swingLate = late.length > 20 ? clampRange(late[late.length >> 1] - 0.75, 0, 0.15) : 0;
+      // Each scene's field and formation.
+      model.scenes.forEach((scene) => {
+        let dropsSeen = 0;
+        for (const drop of model.drops) if (drop.time <= scene.start + 0.05) dropsSeen++;
+        const afterMain = model.mainDrop >= 0 && scene.start >= model.drops[model.mainDrop].time - 0.05;
+        let field, formation;
+        switch (scene.kind) {
+          case "intro": field = "cream"; formation = "trio"; break;
+          case "verse": field = afterMain ? "night" : "blush"; formation = "solo"; break;
+          case "break": field = afterMain ? "night" : "sky"; formation = "solo"; break;
+          case "groove": field = "mint"; formation = "trio"; break;
+          case "build": field = "blush"; formation = "trio"; break;
+          case "gap": field = "night"; formation = "trio"; break;
+          case "drop":
+            field = afterMain ? "night" : ["cream", "mint", "blush"][scene.kindIndex % 3];
+            formation = dropsSeen === 0 ? "trio" : afterMain || dropsSeen >= 2 ? "line5" : "line3";
+            break;
+          case "drive":
+            field = afterMain ? "night" : ["cream", "mint", "blush"][scene.kindIndex % 3];
+            // after the drops the troupe keeps changing shape, scene by scene
+            formation = dropsSeen === 0 ? "trio" : [afterMain || dropsSeen >= 2 ? "line5" : "line3", "trio", "line3"][scene.kindIndex % 3];
+            break;
+          case "outro": field = afterMain ? "night" : "cream"; formation = "trio"; break;
+          default: field = "cream"; formation = "trio";
+        }
+        sceneLooks.push({ field, formation });
       });
-      // Who is on stage: each stem present from the first bar it plays until two quiet bars.
+      // Who is playing: each stem awake from the first bar it plays until two quiet bars.
       const bars = model.downbeats;
-      const performance = model;
-      const present = (series, start, end, floor) => performance.mean(series, start, end) > floor;
       presence = {};
       for (const [figure, series, floor] of [["drum", null, 0], ["bass", "bass", 0.18], ["singer", "vocal", 0.2], ["hands", null, 0], ["fringe", "hats", 0.12]]) {
         const spans = [];
@@ -3853,17 +4079,11 @@ registerVisualizer({
           const start = bars[index],
             end = index + 1 < bars.length ? bars[index + 1] : model.duration;
           let on;
-          if (figure === "drum") {
-            const first = model.kicks.last(start) + 1,
-              last = model.kicks.last(end - 0.001);
-            on = last - first + 1 >= 2;
-          } else if (figure === "hands") {
-            const first = model.snares.last(start) + 1,
-              last = model.snares.last(end - 0.001);
-            let strong = 0;
-            for (let event = first; event <= last; event++) if (model.snares.strength[event] > 0.5) strong++;
-            on = strong >= 1;
-          } else on = present(series, start, end, floor);
+          if (figure === "drum") on = model.kicks.last(end - 0.001) - model.kicks.last(start) >= 2;
+          else if (figure === "hands") {
+            on = false;
+            for (let event = model.snares.last(start) + 1; event <= model.snares.last(end - 0.001); event++) if (model.snares.strength[event] > 0.5) on = true;
+          } else on = model.mean(series, start, end) > floor;
           if (on) {
             quiet = 0;
             if (!open) open = { start, end };
@@ -3878,24 +4098,22 @@ registerVisualizer({
       }
     }
 
-    // How awake a figure is: 0 resting (its instrument is not playing), 1 playing. Everyone
-    // stays on stage so every frame is composed; a figure wakes over the half second before
-    // its instrument's first bar and settles over the half second after its last.
-    function onStage(figure, time) {
+    // How awake a figure is: 0 resting (its instrument is silent), 1 playing.
+    function awake(figure, time) {
       const spans = presence?.[figure];
-      if (!spans) return { amount: 1, entering: 0 };
+      if (!spans) return 1;
       for (const span of spans) {
         if (time >= span.start - 0.45 && time < span.end + 0.6) {
-          if (time < span.start) return { amount: easeInCubic(1 - (span.start - time) / 0.45), entering: 0 };
-          if (time > span.end) return { amount: 1 - easeInOutCubic((time - span.end) / 0.6), entering: 0 };
-          return { amount: 1, entering: 0 };
+          if (time < span.start) return easeInCubic(1 - (span.start - time) / 0.45);
+          if (time > span.end) return 1 - easeInOutCubic((time - span.end) / 0.6);
+          return 1;
         }
       }
-      return { amount: 0, entering: 0 };
+      return 0;
     }
 
     function paperShape(points, color) {
-      context.fillStyle = pocketColors[color] || color;
+      context.fillStyle = color;
       context.beginPath();
       points.forEach(([x, y], index) => (index ? context.lineTo(x, y) : context.moveTo(x, y)));
       context.closePath();
@@ -3903,87 +4121,83 @@ registerVisualizer({
     }
 
     function disc(cx, cy, rx, ry, color, seed = 0) {
-      const points = [];
+      context.fillStyle = color;
+      context.beginPath();
       for (let index = 0; index < 48; index++) {
         const angle = (index / 48) * Math.PI * 2;
         const wobble = cutEdge[(index + seed) % 64];
-        points.push([cx + Math.cos(angle) * rx * wobble, cy + Math.sin(angle) * ry * wobble]);
+        const x = cx + Math.cos(angle) * rx * wobble,
+          y = cy + Math.sin(angle) * ry * wobble;
+        if (index) context.lineTo(x, y);
+        else context.moveTo(x, y);
       }
-      paperShape(points, color);
+      context.closePath();
+      context.fill();
     }
 
     function dome(cx, floor, width, height, lean, color) {
-      const points = [];
+      context.fillStyle = color;
+      context.beginPath();
       for (let index = 0; index <= 32; index++) {
         const angle = Math.PI + (index / 32) * Math.PI;
         const wobble = cutEdge[(index + 11) % 64];
         const y = floor + Math.sin(angle) * height * wobble;
         const x = cx + Math.cos(angle) * width * 0.5 * wobble + lean * (floor - y);
-        points.push([x, y]);
+        if (index) context.lineTo(x, y);
+        else context.moveTo(x, y);
       }
-      paperShape(points, color);
+      context.closePath();
+      context.fill();
     }
 
-    // Height of a figure bouncing between events: on the floor at each event, a parabola
-    // between them, lower when the events come faster. With no event for a while it rests,
-    // and hops up in time to land on the next one.
-    function bounce(events, time, maximum, perSecond) {
-      const index = events.last(time);
-      const next = index + 1 < events.length ? events.time[index + 1] : Infinity;
-      const last = index >= 0 ? events.time[index] : -Infinity;
+    // Height of the drum between landings: on the floor at each, a parabola between them,
+    // lower when they come faster. With no landing for a while it rests, and hops up in time
+    // to land on the next one.
+    function bounce(time, maximum, perSecond) {
+      const index = landing.last(time);
+      const next = index + 1 < landing.length ? landing.time[index + 1] : Infinity;
+      const last = index >= 0 ? landing.time[index] : -Infinity;
+      const strength = index >= 0 ? landing.strength[index] : 0;
       const gap = next - last;
       if (gap <= 1.6) {
         const u = (time - last) / gap;
-        return { height: Math.min(maximum, gap * perSecond) * 4 * u * (1 - u), age: time - last };
+        return { height: Math.min(maximum, gap * perSecond) * 4 * u * (1 - u), age: time - last, strength };
       }
       const toNext = next - time;
       if (toNext < 0.4) {
         const u = 1 - toNext / 0.4;
-        return { height: Math.min(maximum, 0.4 * perSecond) * 4 * u * (1 - u), age: time - last };
+        return { height: Math.min(maximum, 0.4 * perSecond) * 4 * u * (1 - u), age: time - last, strength };
       }
-      return { height: 0, age: time - last };
+      return { height: 0, age: time - last, strength };
     }
 
-    // ---- figures: each drawn at a song time, so echoes are the same figure a beat late ----
-
-    function drawDrum(time, x, floor, unit, color, size, windUp, hang) {
-      const radius = 195 * unit * size;
-      // the bounce stays under the title band
-      const jump = bounce(song.kicks, time, 300 * unit * size, 1300 * unit * size);
-      const contact = hitDecay(jump.age, 0.06);
-      const rx = radius * (1 + 0.3 * contact - 0.12 * windUp);
-      const ry = radius * (1 - 0.32 * contact + 0.12 * windUp);
-      const cy = floor - ry - jump.height * (1 - windUp * 0.6) - hang * 330 * unit;
-      disc(x, cy, rx, ry, color, 3);
+    function bassX(index, range, width) {
+      if (index < 0) return (width * (range[0] + range[1])) / 2;
+      return width * (range[0] + (range[1] - range[0]) * fract((song.bassNotes.pitch[index] - 24) / 24));
     }
 
-    function bassX(index, width) {
-      if (index < 0) return width * 0.62;
-      return width * (0.3 + 0.62 * fract((song.bassNotes.pitch[index] - 24) / 24));
-    }
-
-    function drawBass(time, floor, unit, width, color, size, windUp, hang, slam, awake = 1) {
+    function drawBass(time, range, floor, unit, width, size, crouch, lift, slam, awakeness) {
       const notes = song.bassNotes;
       const last = notes.last(time);
       const next = last + 1 < notes.length ? last + 1 : -1;
-      let x = bassX(last, width),
-        lift = 0,
+      let x = bassX(last, range, width),
+        hop = 0,
         lean = 0;
-      if (next >= 0) {
+      if (next >= 0 && awakeness > 0.2) {
         const nextStart = notes.start[next];
         const gapToNext = nextStart - (last >= 0 ? notes.start[last] : nextStart - 1);
         const flight = Math.min(0.2, gapToNext * 0.8);
         if (time > nextStart - flight) {
           const u = (time - (nextStart - flight)) / flight;
-          x = mixValue(bassX(last, width), bassX(next, width), easeInOutCubic(u));
-          lift = 4 * u * (1 - u) * Math.min(240, 1300 * flight) * unit * size;
-          lean = bassX(next, width) > bassX(last, width) ? 0.22 : -0.22;
+          x = mixValue(bassX(last, range, width), bassX(next, range, width), easeInOutCubic(u));
+          hop = 4 * u * (1 - u) * Math.min(240, 1300 * flight) * unit * size;
+          lean = bassX(next, range, width) > bassX(last, range, width) ? 0.22 : -0.22;
         }
       }
       const squash = last >= 0 ? hitDecay(time - notes.start[last], 0.07) * notes.strength[last] : 0;
-      const w = 600 * unit * size * (1 + 0.2 * squash) * (1 + windUp * 0.15);
-      const h = 290 * unit * size * (1 - 0.28 * squash) * (1 - windUp * 0.35) * (1 + slam * 0.3) * (0.5 + 0.5 * awake);
-      dome(x, floor - lift * awake - hang * 180 * unit, w, h, lean * awake, color);
+      const w = 600 * unit * size * (1 + 0.2 * squash) * (1 + crouch * 0.25);
+      const h = 290 * unit * size * (1 - 0.28 * squash) * (1 - crouch * 0.4) * (1 + slam * 0.35) * (0.5 + 0.5 * awakeness);
+      dome(x, floor - hop * awakeness - lift, w, h, lean * awakeness, pocketInk.tomato);
     }
 
     function render(time, frame) {
@@ -3991,70 +4205,92 @@ registerVisualizer({
         height = frame.height;
       context.setTransform(scale, 0, 0, scale, 0, 0);
       if (!song) {
-        context.fillStyle = pocketColors.mustard;
+        context.fillStyle = pocketFields.cream;
         context.fillRect(0, 0, width, height);
         return;
       }
-      const scene = song.scene(time);
-      const drop = song.dropContext(time);
-      const inGap = drop.phase === 2;
-      const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
       const unit = height / 1080;
-      const floor = height * 0.885;
+      const floor = height * 0.86;
+      // nothing rises into the title
+      const ceiling = Math.max(height * 0.2, (frame.titleBottom || 0) + 12 * unit);
+      const sceneIndex = song.sceneIndex(time);
+      const scene = song.scenes[sceneIndex];
+      const look = sceneLooks[sceneIndex];
+      const previousLook = sceneLooks[Math.max(0, sceneIndex - 1)];
+      const drop = song.dropContext(time);
+      const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
+      const inGap = drop.phase === 2 || leadIn >= 0;
+      const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
+      const hit = sinceDrop < song.beatPeriod * 2;
 
-      // Fields: the scene's colour on the left; the harmony's panel on the right, its edge
-      // moving to a new place on each chord change.
-      let fieldName = fieldFor(scene.index, scene.kind);
-      if (inGap) fieldName = "black";
-      const field = pocketColors[fieldName] || pocketColors.black;
-      const dark = fieldName === "black" || fieldName === "cobalt" || fieldName === "teal" || fieldName === "tomato";
-      if (fieldName !== themeField) {
-        themeField = fieldName;
+      // Field: the scene's; a build darkens it toward night; each drop's hit is night.
+      let fieldColor = hexColor(pocketFields[look.field]);
+      const windUp = drop.phase === 1 ? drop.progress : 0;
+      if (windUp > 0) fieldColor = mixColor(fieldColor, hexColor(pocketFields.night), 0.72 * easeInCubic(windUp));
+      if (inGap || hit) fieldColor = hexColor(pocketFields.night);
+      const dark = fieldColor[0] + fieldColor[1] + fieldColor[2] < 1.2;
+      const field = cssColor(fieldColor);
+      const inkName = dark ? "cream" : "black";
+      if (field !== themeField) {
+        themeField = field;
         document.documentElement.style.setProperty("--pocket-field", field);
-        document.documentElement.style.setProperty("--pocket-ink", dark ? pocketColors.cream : pocketColors.black);
+        document.documentElement.style.setProperty("--pocket-ink", pocketInk[inkName]);
         waveformTheme = null;
       }
       context.fillStyle = field;
       context.fillRect(0, 0, width, height);
-      const panelNames = ["cream", "pink", "mustard", "teal", "cobalt", "tomato"].filter((name) => name !== fieldName);
+
+      // Harmony: two neutral wings at the sides of the stage, their edges set by the chord.
       const chordIndex = song.chordIndex(time);
-      if (!inGap && chordIndex >= 0) {
+      if (chordIndex >= 0 && song.value("other", time) > 0.15) {
         const chord = song.chords[chordIndex];
         const previous = chordIndex > 0 ? song.chords[chordIndex - 1] : chord;
-        const edgeFor = (entry) => width * (0.52 + 0.3 * fract(entry.root * 5 / 12 + entry.minor * 0.37));
-        const move = easeOutCubic((time - chord.start) / 0.18);
-        const edge = mixValue(edgeFor(previous), edgeFor(chord), move);
-        const panel = panelNames[(chord.root + chord.minor * 3) % panelNames.length];
-        context.fillStyle = pocketColors[panel];
-        context.fillRect(edge, 0, width - edge, floor);
+        const reach = (root, minor) => 0.05 + 0.11 * fract(((root * 7) % 12) / 12 + minor * 0.5);
+        const move = easeOutCubic((time - chord.start) / 0.2);
+        const left = mixValue(reach(previous.root, previous.minor), reach(chord.root, chord.minor), move) * width;
+        const right = mixValue(reach(previous.root + 5, previous.minor), reach(chord.root + 5, chord.minor), move) * width;
+        context.fillStyle = cssColor(mixColor(fieldColor, dark ? [1, 1, 1] : [0, 0, 0], 0.07));
+        context.fillRect(0, 0, left, floor);
+        context.fillRect(width - right, 0, right, floor);
       }
-      const floorColor = dark ? pocketColors.cream : pocketColors.black;
-      context.fillStyle = floorColor;
+      // Floor: the field, a shade darker (the transport sits on it when shown).
+      context.fillStyle = cssColor(mixColor(fieldColor, dark ? [1, 1, 1] : [0, 0, 0], dark ? 0.1 : 0.14));
       context.fillRect(0, floor, width, height - floor);
-      const onField = (name) => (name === fieldName ? "cream" : name === "black" && dark && fieldName !== "tomato" && fieldName !== "teal" ? "cream" : name);
 
-      // Wind-up through a build; hold in the air through the gap; slam on the drop.
-      const windUp = drop.phase === 1 ? easeInCubic(drop.progress) : 0;
-      const hang = inGap ? easeOutCubic(clamp01((time - drop.drop.gapStart) / 0.25)) : 0;
+      // Formation: the scene's, walked to over 0.6 s from the previous scene's; a drop
+      // puts the troupe on its marks on the drop frame itself.
+      const into = scene.kind === "drop" ? 1 : easeInOutCubic((time - scene.start) / 0.6);
+      const from = pocketFormations[previousLook.formation],
+        to = pocketFormations[look.formation];
+      const position = (a, b) => mixValue(a, b, into);
+
+      // Wind-up: everyone crouches through a build; the gap holds them in the air; the drop
+      // lands them with a slam.
+      const crouch = 0.55 * windUp;
+      const shake = windUp > 0 ? Math.sin(time * 70) * (3 + 10 * windUp) * unit : 0;
+      let hang = 0;
+      if (inGap) {
+        const holdStart = drop.phase === 2 ? drop.drop.gapStart : song.anchor.moments[leadIn].start;
+        hang = easeOutCubic(clamp01((time - holdStart) / 0.25));
+      }
       const slam = sinceDrop < 0.25 ? 1 - sinceDrop / 0.25 : 0;
-      const shake = windUp > 0 ? Math.sin(time * 90) * windUp * 9 * unit : 0;
-      // Echoes join later in the song: the same figures an eighth and a quarter note late.
-      const echoes = scene.kind === "drive" || scene.kind === "drop" ? (time / song.duration > 0.55 ? 2 : 1) : 0;
+      const liftFor = (maximum) => hang * Math.min(maximum, (floor - ceiling) * 0.45);
+      // the main drop lands the cast a size larger, settling over its first bar
+      const grow = drop.phase === 3 && drop.index === song.mainDrop ? 1 + 0.22 * (1 - easeInOutCubic(sinceDrop / (song.beatPeriod * 4))) : 1;
 
-      // Hats → the fringe along the top: each hat of the last beat and a half is a tick at its
-      // true phase in the bar, over a faint grid of the bar's sixteenths.
-      const gridLeft = width * 0.44,
-        gridRight = width * 0.975,
-        gridTop = 0;
-      const fringe = onStage("fringe", time);
+      // Hats → the fringe along the top right: each hat of the last beat and a half is a tick
+      // at its phase in the bar, over a faint grid of the bar's sixteenths.
+      const inkColor = hexColor(pocketInk[inkName]);
       {
-        const tickWidth = 34 * unit,
-          tickHeight = 210 * unit * (0.3 + 0.7 * fringe.amount);
-        const ink = hexColor(pocketColors[onField(pocketFigureColor.fringe)]);
-        context.fillStyle = cssColor(ink, 0.18);
+        const fringeAwake = awake("fringe", time);
+        const gridLeft = width * 0.5,
+          gridRight = width * 0.975;
+        const tickWidth = 30 * unit,
+          tickHeight = Math.min(170 * unit, ceiling * 0.8) * (0.35 + 0.65 * fringeAwake);
+        context.fillStyle = cssColor(inkColor, 0.16);
         for (let step = 0; step < 16; step++) {
           const x = gridLeft + (step / 16) * (gridRight - gridLeft);
-          context.fillRect(x - 3 * unit, gridTop, 6 * unit, tickHeight * (step % 4 === 0 ? 0.42 : 0.24));
+          context.fillRect(x - 3 * unit, 0, 6 * unit, tickHeight * (step % 4 === 0 ? 0.42 : 0.24));
         }
         let index = song.hats.last(time);
         while (index >= 0) {
@@ -4064,82 +4300,197 @@ registerVisualizer({
           const barAt = song.barPosition(hatTime);
           const x = gridLeft + (barAt - Math.floor(barAt)) * (gridRight - gridLeft);
           const fresh = hitDecay(age, song.beatPeriod * 0.4);
-          const length = tickHeight * (0.5 + 0.5 * song.hats.strength[index]) * (0.3 + 0.7 * fresh);
-          context.fillStyle = cssColor(ink, 0.3 + 0.7 * fresh);
-          context.fillRect(x - tickWidth / 2, gridTop, tickWidth, length * (1 - hang * 0.4));
+          context.fillStyle = cssColor(inkColor, 0.3 + 0.7 * fresh);
+          context.fillRect(x - tickWidth / 2, 0, tickWidth, tickHeight * (0.5 + 0.5 * song.hats.strength[index]) * (0.3 + 0.7 * fresh) * (1 - hang * 0.4));
           index--;
         }
       }
 
-      // Voice → the singer: a tall column, taller with the pitch, its mouth open with the level.
-      const singer = onStage("singer", time);
-      const singerX = width * 0.6 + shake;
+      // Voice → the singer: a tall column, taller with the pitch, its mouth open with the
+      // level, swaying with the song's swing.
+      const singerAwake = awake("singer", time);
+      const singerX = position(from.singer, to.singer) * width + shake;
+      const singerScale = position(from.singerScale, to.singerScale) * grow;
       {
         const pitch = song.value("pitch", time);
         const level = clamp01((song.value("vocal", time) - 0.15) / 0.6);
         const range = pitch > 0 ? clamp01((pitch - 50) / 28) : 0.2;
-        const bodyHeight = (420 + 420 * range) * unit * (0.62 + 0.38 * level) * (0.45 + 0.55 * singer.amount);
-        const bodyWidth = 230 * unit;
-        const lift = hang * 140 * unit;
+        const phase = fract(song.beatPosition(time));
+        const split = 0.5 + swingLate * 2; // the swung eighth lands late by twice the sixteenth's lag
+        const swayPhase = phase < split ? (phase / split) * 0.5 : 0.5 + ((phase - split) / (1 - split)) * 0.5;
+        const sway = Math.sin(swayPhase * Math.PI * 2) * 0.1 * singerAwake * (1 - windUp);
+        const bodyWidth = 230 * unit * singerScale;
+        const available = floor - ceiling - bodyWidth * 0.2;
+        const bodyHeight = Math.min(available, (380 + 420 * range) * unit * singerScale * (0.62 + 0.38 * level) * (0.5 + 0.5 * singerAwake) * (1 - crouch * 0.4));
+        const lift = liftFor(260 * unit);
         const top = floor - bodyHeight - lift;
-        context.fillStyle = pocketColors[onField(pocketFigureColor.singer)];
+        const base = floor - lift;
+        context.fillStyle = pocketInk.cobalt;
         context.beginPath();
-        context.moveTo(singerX - bodyWidth / 2, floor - lift);
-        context.lineTo(singerX - bodyWidth / 2, top + bodyWidth / 2);
-        context.arc(singerX, top + bodyWidth / 2, bodyWidth / 2, Math.PI, 0);
-        context.lineTo(singerX + bodyWidth / 2, floor - lift);
+        context.moveTo(singerX - bodyWidth / 2, base);
+        context.lineTo(singerX - bodyWidth / 2 + sway * bodyHeight, top + bodyWidth / 2);
+        context.arc(singerX + sway * bodyHeight, top + bodyWidth / 2, bodyWidth / 2, Math.PI, 0);
+        context.lineTo(singerX + bodyWidth / 2, base);
         context.closePath();
         context.fill();
-        context.fillStyle = field;
-        const mouthHeight = 10 * unit + 120 * unit * level;
-        context.beginPath();
-        context.ellipse(singerX, top + bodyWidth * 0.66, 60 * unit, mouthHeight / 2, 0, 0, Math.PI * 2);
-        context.fill();
+        // the mouth, only where the body is tall enough to hold it
+        if (bodyHeight > bodyWidth * 1.1) {
+          context.fillStyle = field;
+          const slot = Math.min(bodyWidth * 0.42, 8 * unit + 110 * unit * level * singerScale);
+          const slotWidth = bodyWidth * 0.62;
+          const cx = singerX + sway * bodyHeight * 0.85,
+            cy = top + bodyWidth * 0.7;
+          context.beginPath();
+          context.roundRect(cx - slotWidth / 2, cy - slot / 2, slotWidth, slot, slot / 2);
+          context.fill();
+        }
       }
 
-      // Snare → the hands: two big triangles that meet on each backbeat.
-      const hands = onStage("hands", time);
+      // Snare → the hands: two triangles that meet on each backbeat.
       {
-        const next = song.snares.until(time);
-        const last = song.snares.since(time);
+        const handsAwake = awake("hands", time);
+        const next = backbeats.until(time);
+        const last = backbeats.since(time);
         const approach = song.beatPeriod * 0.5;
         let apart = 1;
         if (next < approach) apart = next / approach;
         if (last < 0.14) apart = Math.min(apart, easeOutCubic(last / 0.14));
-        apart = mixValue(1.25, apart, hands.amount);
-        const cx = width * 0.8 + shake,
-          cy = height * 0.4 - hang * 80 * unit + (1 - hands.amount) * 150 * unit;
-        const gap = 14 * unit + 260 * unit * apart;
-        const size = 200 * unit;
-        const color = onField(pocketFigureColor.hands);
-        paperShape([[cx - gap / 2, cy], [cx - gap / 2 - size, cy - size * 0.8], [cx - gap / 2 - size, cy + size * 0.8]], color);
-        paperShape([[cx + gap / 2, cy], [cx + gap / 2 + size, cy - size * 0.8], [cx + gap / 2 + size, cy + size * 0.8]], color);
+        apart -= 0.12 * song.snares.impulse(time, 0.05) * (1 - clamp01(1 - apart));
+        if (inGap) apart = 0.15;
+        apart = mixValue(1.25, apart, handsAwake);
+        const handsScale = position(from.handsScale, to.handsScale);
+        const cx = position(from.hands[0], to.hands[0]) * width + shake;
+        const size = 190 * unit * handsScale;
+        const cy = Math.max(ceiling + size * 0.8, position(from.hands[1], to.hands[1]) * height - liftFor(120 * unit) + (1 - handsAwake) * 120 * unit + crouch * 90 * unit);
+        const gap = 14 * unit + 250 * unit * handsScale * apart;
+        paperShape([[cx - gap / 2, cy], [cx - gap / 2 - size, cy - size * 0.8], [cx - gap / 2 - size, cy + size * 0.8]], pocketInk.mustard);
+        paperShape([[cx + gap / 2, cy], [cx + gap / 2 + size, cy - size * 0.8], [cx + gap / 2 + size, cy + size * 0.8]], pocketInk.mustard);
       }
 
-      // Bass → the dome, with echoes behind it.
-      const bass = onStage("bass", time);
+      // Bass → the domes (a second one in the chorus line), each hopping to every bass note.
       {
-        const entering = 0;
-        for (let echo = echoes; echo >= 1; echo--) {
+        const bassAwake = awake("bass", time);
+        const domeScale = position(from.domeScale, to.domeScale) * grow;
+        const count = Math.max(from.domes.length, to.domes.length);
+        for (let index = 0; index < count; index++) {
+          const a = from.domes[Math.min(index, from.domes.length - 1)],
+            b = to.domes[Math.min(index, to.domes.length - 1)];
+          const appear = index < from.domes.length ? (index < to.domes.length ? 1 : 1 - into) : into;
+          if (appear < 0.02) continue;
+          const range = [position(a[0], b[0]), position(a[1], b[1])];
           context.save();
-          context.translate(0, -entering);
-          drawBass(time - echo * song.beatPeriod * 0.5, floor, unit, width, onField(echo === 1 ? "pink" : "mustard"), 1 - 0.18 * echo, windUp, hang, 0, bass.amount);
+          context.translate(shake, 0);
+          drawBass(time, range, floor, unit, width, domeScale * appear, crouch, liftFor(200 * unit), slam, bassAwake);
           context.restore();
         }
-        context.save();
-        context.translate(shake, -entering);
-        drawBass(time, floor, unit, width, onField(pocketFigureColor.bass), 1, windUp, hang, slam, bass.amount);
-        context.restore();
       }
 
-      // Kick → the drum: a big disc that touches the floor exactly on each kick.
-      const drum = onStage("drum", time);
+      // Kick → the drums: discs that touch the floor exactly on each kick (and on each drop).
       {
+        const drumAwake = awake("drum", time);
+        const drumScale = position(from.drumScale, to.drumScale) * grow;
+        const count = Math.max(from.drums.length, to.drums.length);
+        const jump = bounce(time, 300 * unit, 1300 * unit);
+        const contact = hitDecay(jump.age, 0.06) * (0.4 + 0.6 * jump.strength);
+        const color = dark ? pocketInk.cream : pocketInk.black;
+        for (let index = 0; index < count; index++) {
+          const a = from.drums[Math.min(index, from.drums.length - 1)],
+            b = to.drums[Math.min(index, to.drums.length - 1)];
+          const appear = index < from.drums.length ? (index < to.drums.length ? 1 : 1 - into) : into;
+          if (appear < 0.02) continue;
+          const radius = 195 * unit * drumScale * appear;
+          const rx = radius * (1 + 0.32 * contact + crouch * 0.35);
+          const ry = radius * (1 - 0.34 * contact - crouch * 0.3);
+          const rise = jump.height * drumAwake * drumScale * (1 - windUp * 0.5);
+          const cy = Math.max(ceiling + ry, floor - ry - rise - liftFor(330 * unit));
+          disc(position(a, b) * width + shake, cy, rx, ry, color, 3 + index * 7);
+        }
+      }
+
+      // The groove lane along the floor: the bar as a line of sixteen steps, each performer
+      // stamping where it actually landed (the drum a disc, the bass a half-dome, the clap a
+      // triangle, the hats a tick), the previous bar ghosted ahead of the playhead. The pocket
+      // and the swing show as offsets from the steps in a single frame.
+      {
+        const laneLeft = width * 0.03,
+          laneRight = width * 0.97,
+          laneTop = floor + (height - floor) * 0.14,
+          laneBottom = height - (height - floor) * 0.12;
+        const laneHeight = laneBottom - laneTop;
+        const barPosition = song.barPosition(time);
+        const barIndex = Math.floor(barPosition);
+        const phaseNow = barPosition - barIndex;
+        const xAt = (phase) => laneLeft + (laneRight - laneLeft) * phase;
+        const laneInk = hexColor(pocketInk[inkName]);
+        context.fillStyle = cssColor(laneInk, 0.2);
+        for (let step = 0; step < 16; step++) context.fillRect(xAt(step / 16) - 1.5 * unit, laneTop, 3 * unit, laneHeight * (step % 4 === 0 ? 1 : 0.45));
+        const size = laneHeight * 0.3;
+        const stamp = (list, kind, fromTime, toTime, alpha, minimum = 0) => {
+          let index = list.last(toTime);
+          while (index >= 0) {
+            const at = list.time ? list.time[index] : list.start[index];
+            if (at < fromTime) break;
+            const strength = list.strength[index];
+            if (strength >= minimum) {
+              const position = song.barPosition(at);
+              const x = xAt(position - Math.floor(position));
+              context.globalAlpha = alpha;
+              if (kind === "kick") disc(x, laneTop + laneHeight * 0.62, size * 0.62, size * 0.62, dark ? pocketInk.cream : pocketInk.black, index);
+              else if (kind === "bass") dome(x, laneBottom, size * 1.25, size * 0.75, 0, pocketInk.tomato);
+              else if (kind === "clap") paperShape([[x, laneTop + laneHeight * 0.05], [x - size * 0.45, laneTop + laneHeight * 0.45], [x + size * 0.45, laneTop + laneHeight * 0.45]], pocketInk.mustard);
+              else {
+                context.fillStyle = cssColor(laneInk);
+                context.fillRect(x - 2 * unit, laneTop, 4 * unit, laneHeight * 0.18);
+              }
+              context.globalAlpha = 1;
+            }
+            index--;
+          }
+        };
+        const barStart = song.barTime(barIndex),
+          previousStart = song.barTime(barIndex - 1);
+        // ghost of the previous bar, ahead of the playhead
         context.save();
-        for (let echo = echoes; echo >= 1; echo--)
-          drawDrum(time - echo * song.beatPeriod * 0.5, width * 0.17 + echo * 150 * unit, floor, unit, onField(echo === 1 ? "cobalt" : "teal"), 1 - 0.25 * echo, windUp, hang);
-        drawDrum(time, width * 0.17 + shake, floor, unit, onField(pocketFigureColor.drum), 1, windUp, hang);
+        context.beginPath();
+        context.rect(xAt(phaseNow), laneTop - laneHeight, laneRight - xAt(phaseNow) + 10 * unit, laneHeight * 2.2);
+        context.clip();
+        stamp(song.bassNotes, "bass", previousStart, barStart - 0.001, 0.28);
+        stamp(landing, "kick", previousStart, barStart - 0.001, 0.28);
+        stamp(backbeats, "clap", previousStart, barStart - 0.001, 0.28);
+        stamp(song.hats, "hat", previousStart, barStart - 0.001, 0.28, 0.25);
         context.restore();
+        // this bar, up to now
+        stamp(song.bassNotes, "bass", barStart, time, 1);
+        stamp(landing, "kick", barStart, time, 1);
+        stamp(backbeats, "clap", barStart, time, 1);
+        stamp(song.hats, "hat", barStart, time, 1, 0.25);
+        context.fillStyle = cssColor(laneInk, 0.85);
+        context.fillRect(xAt(phaseNow) - 2 * unit, laneTop - 4 * unit, 4 * unit, laneHeight + 8 * unit);
+      }
+
+      // Every key word sung so far lies in a pile of paper slips at the right of the stage.
+      if (song.anchor.kind === "word") {
+        const word = song.anchor.word.toUpperCase();
+        const slipHeight = Math.min(38 * unit, (floor - ceiling) * 0.9 / Math.max(8, song.anchor.moments.length));
+        context.font = `800 ${slipHeight * 0.78}px "Jost", sans-serif`;
+        const slipWidth = context.measureText(word).width + slipHeight * 0.6;
+        let count = 0;
+        for (const moment of song.anchor.moments) {
+          const landed = moment.end + song.beatPeriod;
+          if (landed > time) break;
+          const fall = easeInCubic(clamp01((time - landed) / 0.3));
+          const y = floor - (count + 1) * slipHeight - (1 - fall) * 200 * unit;
+          const x = width * 0.965 - slipWidth + (hash01(count * 13 + 5) - 0.5) * slipHeight;
+          context.save();
+          context.translate(x + slipWidth / 2, y + slipHeight / 2);
+          context.rotate((hash01(count * 7 + 3) - 0.5) * 0.12);
+          context.fillStyle = dark ? pocketInk.cream : pocketInk.black;
+          context.fillRect(-slipWidth / 2, -slipHeight / 2, slipWidth, slipHeight * 0.92);
+          context.fillStyle = field;
+          context.fillText(word, -slipWidth / 2 + slipHeight * 0.3, slipHeight * 0.26);
+          context.restore();
+          count++;
+        }
       }
 
       // The key word leaves the singer as big cut-paper letters.
@@ -4147,18 +4498,30 @@ registerVisualizer({
       if (anchor >= 0) {
         const moment = song.anchor.moments[anchor];
         const age = time - moment.start;
-        const size = 230 * unit;
-        context.font = `700 ${size}px "Jost", sans-serif`;
-        context.textAlign = "center";
-        context.fillStyle = pocketColors[onField("cream")];
-        const rise = easeOutBack(age / 0.22) * 230 * unit;
-        context.fillText(song.anchor.word.toUpperCase(), singerX, floor - 420 * unit - rise);
-        context.textAlign = "left";
+        const word = song.anchor.word.toUpperCase();
+        const size = Math.min(260 * unit, (width * 0.8) / Math.max(3, word.length) / 0.62);
+        context.font = `800 ${size}px "Jost", sans-serif`;
+        const total = context.measureText(word).width;
+        let x = clampRange(singerX - total / 2, width * 0.03, width * 0.97 - total);
+        const baseline = Math.max(ceiling + size * 0.8, floor * 0.55) - easeOutBack(age / 0.22) * 60 * unit;
+        context.fillStyle = dark ? pocketInk.cream : pocketInk.black;
+        for (let index = 0; index < word.length; index++) {
+          const letter = word[index];
+          const letterWidth = context.measureText(letter).width;
+          const pop = easeOutBack(clamp01((age - index * 0.03) / 0.18));
+          context.save();
+          context.translate(x + letterWidth / 2, baseline - size * 0.35);
+          context.rotate((hash01(index * 17 + anchor) - 0.5) * 0.3);
+          context.scale(pop, pop);
+          context.fillText(letter, -letterWidth / 2, size * 0.35);
+          context.restore();
+          x += letterWidth;
+        }
       }
 
       // The drop: the floor rises to meet everything for its first frames.
       if (slam > 0) {
-        context.fillStyle = floorColor;
+        context.fillStyle = dark ? pocketInk.cream : pocketInk.black;
         context.fillRect(0, floor - height * 0.05 * slam, width, height * 0.05 * slam);
       }
     }
@@ -4170,7 +4533,8 @@ registerVisualizer({
         setSong(model);
       },
       themeFor() {
-        return { "--pocket-field": pocketColors.mustard, "--pocket-ink": pocketColors.black };
+        themeField = "";
+        return { "--pocket-field": pocketFields.cream, "--pocket-ink": pocketInk.black };
       },
       setActive(on) {
         canvas.hidden = !on;
@@ -4202,16 +4566,15 @@ const plateVoiceGrains = 65536;
 const plateVertexShader = `#version 300 es
 precision highp float;
 layout(location = 0) in vec4 aSeed;
-uniform vec4 uModeA;     // pattern the sand is leaving: n1 m1 n2 m2
-uniform vec4 uModeB;     // pattern it is moving to
-uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w sign
-uniform vec2 uAspect;    // pattern units across x, y
+uniform vec4 uModeA;     // figure the sand is leaving: n1 m1 n2 m2
+uniform vec4 uModeB;     // figure it is moving to
+uniform vec4 uMix;       // x weight of the second mode (A), y (B), z settle 0..1, w sign (B)
+uniform float uSignA;    // sign of figure A
+uniform vec3 uScale;     // pattern units per plate half-width (x), half-height (y); z unused
 uniform vec4 uRect;      // plate in clip space: x0 y0 x1 y1
-uniform vec4 uGather;    // x pull to the centre 0..1, y knot radius, z present 0..1, w hat shimmer
+uniform vec4 uGather;    // x pull to the centre 0..1, y knot radius, z present 0..1, w line weight
 uniform vec4 uRipple[4]; // x age s, y strength, z speed, w unused
-uniform float uTime;
 uniform float uPointSize;
-uniform float uSeedOffset;
 out float vAlpha;
 out float vShade;
 
@@ -4252,51 +4615,49 @@ vec2 settle(vec2 p, vec4 mode, float second, float sign, out float residual) {
   return p;
 }
 
-float hash(float n) { return fract(sin(n * 12.9898 + uSeedOffset) * 43758.5453); }
-
 void main() {
-  // seed in pattern space: [0, aspect.x] x [0, aspect.y]
-  vec2 home = aSeed.xy * uAspect;
+  // Pattern space is centred on the plate's centre (where the kick strikes and the knot
+  // gathers), so every figure is symmetric about it.
+  vec2 home = (aSeed.xy * 2.0 - 1.0) * uScale.xy;
   float r1, r2;
-  vec2 a = settle(home, uModeA, uMix.x, uMix.w, r1);
+  vec2 a = settle(home, uModeA, uMix.x, uSignA, r1);
   vec2 b = settle(home, uModeB, uMix.y, uMix.w, r2);
   float s = uMix.z;
   vec2 p = mix(a, b, s);
   float residual = mix(r1, r2, s);
-  // a band of sand, not a hairline: each grain sits a little off the line
+  // Line weight: each grain sits off the line by its own amount, scaled by the bass.
   vec2 grad = gradient(p, uModeB, uMix.y, uMix.w);
   vec2 normal = length(grad) > 1e-4 ? normalize(grad) : vec2(0.0, 1.0);
-  p += normal * (aSeed.z - 0.5) * 0.018;
-  // hats: a shimmer along the line
-  p += vec2(sin(aSeed.w * 40.0 + uTime * 31.0), cos(aSeed.w * 33.0 + uTime * 27.0)) * uGather.w * 0.004;
+  p += normal * (aSeed.z - 0.5) * uGather.w;
 
-  // to plate-normalized coordinates -1..1 around the centre
-  vec2 q = p / uAspect * 2.0 - 1.0;
-  vec2 aspectScale = vec2(uAspect.x / uAspect.y, 1.0);
-  // kick: waves run out from the centre and throw the sand they pass
+  vec2 q = p / uScale.xy; // -1..1 across the plate
+  vec2 aspect = vec2(uScale.x / uScale.y, 1.0);
+  // Kick: a wave runs out from the centre and throws the sand it passes outward.
   for (int i = 0; i < 4; i++) {
     vec4 ripple = uRipple[i];
     if (ripple.y <= 0.0) continue;
     float radius = ripple.x * ripple.z;
-    vec2 qs = q * aspectScale;
+    vec2 qs = q * aspect;
     float distance = length(qs);
-    float band = exp(-pow((distance - radius) / 0.07, 2.0));
-    float fade = exp(-ripple.x / 0.45);
-    q += (distance > 1e-4 ? qs / distance : vec2(0.0)) / aspectScale * band * ripple.y * fade * 0.05;
+    float band = exp(-pow((distance - radius) / 0.1, 2.0));
+    float fade = exp(-ripple.x / 0.5);
+    q += (distance > 1e-4 ? qs / distance : vec2(0.0)) / aspect * band * ripple.y * fade * 0.075;
   }
-  // gather: the whole figure contracts toward the centre through a build (it stays a
-  // figure, only smaller and denser); fully gathered it is a knot of the given radius
-  vec2 knot = vec2(cos(aSeed.w * 6.2831853), sin(aSeed.w * 6.2831853)) * sqrt(aSeed.z) * uGather.y / aspectScale;
-  float contract = 1.0 - 0.8 * uGather.x;
-  q *= contract;
+  // Gather: the figure contracts toward the centre through a build; fully gathered it is a
+  // knot of the given radius.
+  vec2 knot = vec2(cos(aSeed.w * 6.2831853), sin(aSeed.w * 6.2831853)) * sqrt(aSeed.z) * uGather.y / aspect;
+  q *= 1.0 - 0.8 * uGather.x;
   q = mix(q, knot, smoothstep(0.9, 1.0, uGather.x));
+  // Nothing leaves the plate.
+  float outside = step(1.0, max(abs(q.x), abs(q.y)));
+  q = clamp(q, -1.0, 1.0);
 
   vec2 clip = mix(uRect.xy, uRect.zw, q * 0.5 + 0.5);
   gl_Position = vec4(clip, 0.0, 1.0);
   gl_PointSize = uPointSize * (0.75 + 0.5 * aSeed.w);
   // grains that did not reach a line are faint (real sand leaves the antinodes empty)
   float onLine = 1.0 - smoothstep(0.004, 0.02, residual);
-  vAlpha = mix(onLine, 1.0, uGather.x) * uGather.z;
+  vAlpha = mix(onLine, 1.0, uGather.x) * uGather.z * (1.0 - outside);
   vShade = aSeed.z;
 }`;
 
@@ -4393,83 +4754,137 @@ registerVisualizer({
     let themeGround = "";
     const ripples = new Float32Array(16);
 
+    let voiceFigures = []; // [{time, pitch}] where the voice figure changes
+    let voicePhrases = []; // [{start, end}] where the voice sand is present
+    let figures = []; // [{start, chord, variant}]: one per chord, and a new variant every two bars of a long one
+    let figureStarts = new Float64Array(0);
+
     function setSong(model) {
       song = model;
       themeGround = "";
+      voiceFigures = [];
+      voicePhrases = [];
+      figures = [];
+      if (!model) {
+        figureStarts = new Float64Array(0);
+        return;
+      }
+      // A chord held for more than three bars gets a related figure every two bars, so a long
+      // pedal (Outside's 28 s outro, NBLY's 31 s intro) keeps moving at the bar, never faster.
+      model.chords.forEach((chord, index) => {
+        figures.push({ start: chord.start, chord: index, variant: 0 });
+        const bar = model.barIndex(chord.start + 0.05);
+        for (let step = 1; ; step++) {
+          const start = model.barTime(bar + step * 2);
+          if (start > chord.end - model.barPeriod) break;
+          figures.push({ start, chord: index, variant: step });
+        }
+      });
+      figureStarts = Float64Array.from(figures.map((figure) => figure.start));
+      // Sung notes merge into phrases (gaps under 0.4 s); inside a phrase the figure changes
+      // only for a new pitch class held after at least 0.3 s, so syllables do not flicker it.
+      const notes = model.vocalNotes;
+      let phrase = null,
+        lastFigure = -Infinity,
+        lastClass = -1;
+      for (let index = 0; index < notes.length; index++) {
+        if (notes.strength[index] < 0.2) continue;
+        const start = notes.start[index],
+          end = notes.end[index];
+        if (!phrase || start - phrase.end > 0.4) {
+          phrase = { start, end };
+          voicePhrases.push(phrase);
+          lastFigure = -Infinity;
+          lastClass = -1;
+        }
+        phrase.end = Math.max(phrase.end, end);
+        const pitchClass = Math.round(notes.pitch[index]) % 12;
+        if (pitchClass !== lastClass && start - lastFigure >= 0.3) {
+          voiceFigures.push({ time: start, pitch: notes.pitch[index] });
+          lastFigure = start;
+          lastClass = pitchClass;
+        }
+      }
     }
 
-    // The figure for the harmony at a time: chord root around the circle of fifths picks the
-    // family, minor flips the sign, the scene's intensity adds complexity, and the sounding
-    // bass note adds a second mode.
-    function harmonyMode(time, into) {
-      const chordIndex = song ? song.chordIndex(time) : -1;
-      const scene = song ? song.scene(time) : null;
+    // The figure for the harmony: one per chord (and per two bars of a held chord). The root
+    // around the circle of fifths picks the family, the section's intensity at the chord's start
+    // adds complexity, minor flips the sign, and a second mode tied to the root enriches it.
+    // Before the first chord the song's first figure is already on the plate.
+    function harmonyMode(figureIndex, into) {
       let root = 0,
-        minor = 0;
-      if (chordIndex >= 0) {
-        root = song.chords[chordIndex].root;
-        minor = song.chords[chordIndex].minor;
+        minor = 0,
+        intensity = 0.5,
+        start = 0,
+        variant = 0;
+      const figure = figures[Math.max(0, figureIndex)];
+      if (figure) {
+        const chord = song.chords[figure.chord];
+        root = chord.root;
+        minor = chord.minor;
+        start = figureIndex >= 0 ? figure.start : -Infinity;
+        variant = figure.variant;
+        intensity = song.scene(chord.start + 0.01).intensity;
       }
-      const intensity = scene ? scene.intensity : 0.5;
-      const base = Math.min(plateModes.length - 1, Math.round(plateCircle.indexOf(root) * 0.7 + intensity * 8));
+      const circle = plateCircle.indexOf(root);
+      // capped so the figure stays bold at phone size
+      const base = Math.min(11, Math.round(circle * 0.45 + intensity * 6));
       const [n, m] = plateModes[base];
-      const note = song ? song.bassNotes.active(time) : -1;
-      const pitchClass = note >= 0 ? Math.round(song.bassNotes.pitch[note]) % 12 : root;
-      const [n2, m2] = plateModes[(plateCircle.indexOf(pitchClass) + 3) % 10];
+      const [n2, m2] = plateModes[(circle * 5 + 3 + variant * 3) % 8];
       into.mode[0] = n; into.mode[1] = m; into.mode[2] = n2; into.mode[3] = m2;
-      into.second = note >= 0 ? 0.3 : 0;
+      into.second = variant % 2 ? -0.3 : 0.35;
       into.sign = minor ? -1 : 1;
-      into.start = Math.max(chordIndex >= 0 ? song.chords[chordIndex].start : 0, note >= 0 ? song.bassNotes.start[note] : 0);
+      into.start = start;
       return into;
     }
 
-    function voiceMode(time, into) {
-      const note = song ? song.vocalNotes.active(time) : -1;
-      const anchor = song && song.anchor.kind === "word" ? song.anchorAt(time) : -1;
-      if (anchor >= 0) {
-        into.mode[0] = 3; into.mode[1] = 3; into.mode[2] = 1; into.mode[3] = 7;
-        into.second = 0.6;
-        into.sign = -1;
-        into.start = song.anchor.moments[anchor].start;
-        into.present = 1;
-        return into;
+    function figureIndexAt(time) {
+      let low = 0,
+        high = voiceFigures.length - 1,
+        found = -1;
+      while (low <= high) {
+        const middle = (low + high) >> 1;
+        if (voiceFigures[middle].time <= time) {
+          found = middle;
+          low = middle + 1;
+        } else high = middle - 1;
       }
-      if (note < 0) {
-        into.present = 0;
-        into.start = 0;
-        return into;
-      }
-      const pitch = Math.round(song.vocalNotes.pitch[note]);
-      const [n, m] = plateModes[(plateCircle.indexOf(pitch % 12) + Math.max(0, Math.floor((pitch - 48) / 12)) * 3) % plateModes.length];
+      return found;
+    }
+
+    function voiceFigure(index, into) {
+      const pitch = Math.round(voiceFigures[index].pitch);
+      // the voice keeps to the simplest figures, drawn large, so it reads apart from the lattice
+      const [n, m] = plateModes[(plateCircle.indexOf(pitch % 12) + Math.max(0, Math.floor((pitch - 48) / 12)) * 2) % 8];
       into.mode[0] = n; into.mode[1] = m; into.mode[2] = m; into.mode[3] = n + 1;
-      into.second = 0.25;
+      into.second = 0.2;
       into.sign = 1;
-      into.start = song.vocalNotes.start[note];
-      into.present = clamp01((song.vocalNotes.strength[note] - 0.15) / 0.3);
+      into.start = voiceFigures[index].time;
       return into;
     }
 
-    const current = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 1 };
-    const previous = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 1 };
-    const voiceNow = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 0 };
-    const voiceBefore = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0, present: 0 };
+    const anchorFigure = { mode: [1, 3, 2, 2], second: 0.35, sign: -1, start: 0 };
+    const current = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
+    const previous = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
+    const voiceNow = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
+    const voiceBefore = { mode: [1, 2, 1, 3], second: 0, sign: 1, start: 0 };
 
     let density = 1.1;
-    function drawSand(vertexArray, count, modeA, modeB, settle, gather, knot, present, color, time, pointSize, rippleData, shimmer, seedOffset) {
+    // The plate: 95.5% of the width, from under the title to just above the captions.
+    const plate = { top: 0.17, bottom: 0.935 };
+    function drawSand(vertexArray, count, modeA, modeB, settle, gather, knot, present, color, pointSize, rippleData, weight, scaleFactor = 1) {
       const u = sand.uniforms;
       gl.useProgram(sand.program);
       gl.uniform4f(u.uModeA, modeA.mode[0], modeA.mode[1], modeA.mode[2], modeA.mode[3]);
       gl.uniform4f(u.uModeB, modeB.mode[0], modeB.mode[1], modeB.mode[2], modeB.mode[3]);
       gl.uniform4f(u.uMix, modeA.second, modeB.second, settle, modeB.sign);
-      // the plate: 95.5% of the width, 80% of the height, below the title band
-      const aspect = (0.955 * size.width) / Math.max(1, 0.8 * size.height);
-      gl.uniform2f(u.uAspect, density * aspect, density);
-      gl.uniform4f(u.uRect, -0.955, -0.94, 0.955, 0.66);
-      gl.uniform4f(u.uGather, gather, knot, present, shimmer);
+      gl.uniform1f(u.uSignA, modeA.sign);
+      const aspect = (0.955 * size.width) / Math.max(1, (plate.bottom - plate.top) * size.height);
+      gl.uniform3f(u.uScale, density * scaleFactor * aspect, density * scaleFactor, 0);
+      gl.uniform4f(u.uRect, -0.955, 1 - 2 * plate.bottom, 0.955, 1 - 2 * plate.top);
+      gl.uniform4f(u.uGather, gather, knot, present, weight);
       gl.uniform4fv(u.uRipple, rippleData);
-      gl.uniform1f(u.uTime, time);
       gl.uniform1f(u.uPointSize, pointSize);
-      gl.uniform1f(u.uSeedOffset, seedOffset);
       gl.uniform3f(u.uColor, color[0], color[1], color[2]);
       gl.bindVertexArray(vertexArray);
       gl.drawArrays(gl.POINTS, 0, count);
@@ -4479,6 +4894,7 @@ registerVisualizer({
       const width = frame.width,
         height = frame.height;
       size = { width, height };
+      plate.top = Math.max(0.17, ((frame.titleBottom || 0) + height * 0.02) / height);
       const drop = song ? song.dropContext(time) : null;
       const afterMain = song && song.mainDrop >= 0 && time >= song.drops[song.mainDrop].time;
       const groundColor = afterMain ? vermilion : ivory;
@@ -4496,7 +4912,7 @@ registerVisualizer({
       gl.uniform3f(ground.uniforms.uGround, groundColor[0], groundColor[1], groundColor[2]);
       gl.uniform3f(ground.uniforms.uInk, ink[0], ink[1], ink[2]);
       gl.uniform2f(ground.uniforms.uResolution, canvas.width, canvas.height);
-      gl.uniform4f(ground.uniforms.uFrame, 0.016, 0.022, 0.984, 0.836);
+      gl.uniform4f(ground.uniforms.uFrame, 0.0165, 1 - plate.bottom - 0.008, 0.9835, 1 - plate.top + 0.008);
       gl.bindVertexArray(emptyVertexArray);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -4510,13 +4926,15 @@ registerVisualizer({
       // Each drop makes the plate finer: more cells in the same frame.
       let dropsPassed = 0;
       for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
-      density = 1.1 + 0.28 * Math.min(2, dropsPassed);
-      // Harmony: the figure now, and the one before it for the migration.
-      harmonyMode(time, current);
-      harmonyMode(Math.max(0, current.start - 0.01), previous);
-      const settle = easeInOutCubic((time - current.start) / 0.32);
+      density = 1.0 + 0.14 * Math.min(2, dropsPassed);
+      // Harmony: the figure, migrating from the previous one over 0.25 s.
+      const figureIndex = lastIndexAtOrBefore(figureStarts, time);
+      harmonyMode(figureIndex, current);
+      harmonyMode(figureIndex - 1, previous);
+      const settle = figureIndex > 0 ? easeInOutCubic((time - current.start) / 0.25) : 1;
 
       // Gather through a build; in the gap a knot that shrinks each beat; the drop throws it.
+      // A drop with no gap still gets one: the last beat before it is the knot.
       let gather = 0,
         knot = 0.2;
       if (drop.phase === 1) gather = easeInCubic(drop.progress) * 0.88;
@@ -4525,36 +4943,68 @@ registerVisualizer({
         gather = 1;
         knot = 0.03 + 0.035 * Math.max(0, beatsLeft);
       }
+      const nextDrop = drop.phase === 3 ? song.drops[drop.index + 1] : drop.drop;
+      if (nextDrop && nextDrop.gapStart >= nextDrop.time - 0.05) {
+        const lead = nextDrop.time - time;
+        if (lead > 0 && lead <= song.beatPeriod) {
+          gather = Math.max(gather, easeOutCubic(1 - lead / song.beatPeriod) * 0.9 + 0.1);
+          knot = 0.06;
+        }
+      }
+      const leadIn = song.anchor.kind === "lead_in" ? song.anchorAt(time) : -1;
+      if (leadIn >= 0 && drop.phase !== 2) {
+        gather = 1;
+        knot = 0.06;
+      }
+      // The drop throws the knot out into the figure over the next 0.18 s.
       const sinceDrop = drop.phase === 3 ? drop.since : Infinity;
-      if (sinceDrop < 0.12) gather = 0;
+      if (sinceDrop < 0.18) gather = 1 - easeOutCubic(sinceDrop / 0.18);
 
-      // Kick: the last four strikes, as waves.
+      // Kick: the last four strikes run out from the centre as waves.
       let rippleIndex = song.kicks.last(time);
       for (let slot = 0; slot < 4; slot++) {
         const age = rippleIndex >= 0 ? time - song.kicks.time[rippleIndex] : Infinity;
-        const alive = age < 1.2;
+        const alive = age < 1.4 && gather < 0.5;
         ripples[slot * 4] = alive ? age : 0;
-        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] * (drop.phase === 2 ? 0 : 1) : 0;
-        ripples[slot * 4 + 2] = 1.8;
+        ripples[slot * 4 + 1] = alive ? song.kicks.strength[rippleIndex] : 0;
+        ripples[slot * 4 + 2] = 1.7;
         ripples[slot * 4 + 3] = 0;
         rippleIndex--;
       }
-      if (sinceDrop < 1.2) {
+      if (sinceDrop < 1.4) {
         ripples[0] = sinceDrop;
-        ripples[1] = 2.5;
+        ripples[1] = 2.2;
       }
-      const shimmer = clamp01(song.hats.impulse(time, 0.05, 0.2));
-      const pointSize = Math.max(1.5, 2.3 * (canvas.height / 1080));
-      const grains = afterMain ? plateGrains : Math.round(plateGrains * (0.62 + 0.38 * Math.min(1, time / Math.max(1, song.drops[song.mainDrop]?.time || song.duration))));
-      drawSand(sandArray, grains, previous, current, settle, gather, knot, 1, ink, time, pointSize, ripples, shimmer, 0);
+      // Bass: the plate rings harder, so the sand band widens with the bass.
+      const bassLevel = clamp01(song.mean("bass", time - 0.04, time + 0.01));
+      const weight = 0.028 + 0.05 * bassLevel * bassLevel;
+      const pointSize = Math.max(1.5, 2.4 * (canvas.height / 1080));
+      const grains = afterMain ? plateGrains : Math.round(plateGrains * (0.7 + 0.3 * Math.min(1, time / Math.max(1, song.drops[song.mainDrop]?.time || song.duration))));
+      // Voice: vermilion sand in the figure of the sung note, present through each phrase. On
+      // the key word the black sand steps back and the voice's own figure takes the plate.
+      const anchor = song.anchor.kind === "word" ? song.anchorAt(time) : -1;
+      const keyMoment = anchor >= 0 ? easeOutCubic((time - song.anchor.moments[anchor].start) / 0.12) : 0;
+      drawSand(sandArray, grains, previous, current, settle, gather, knot, 1 - 0.7 * keyMoment, ink, pointSize, ripples, weight);
 
-      // Voice: vermilion sand in the figure of the sung note; away when nobody sings.
-      voiceMode(time, voiceNow);
-      if (voiceNow.present > 0 || voiceNow.start > 0) {
-        voiceMode(Math.max(0, voiceNow.start - 0.01), voiceBefore);
-        const voiceSettle = easeOutCubic((time - voiceNow.start) / 0.12);
-        const present = voiceNow.present * (voiceBefore.present > 0 ? 1 : voiceSettle);
-        drawSand(voiceArray, plateVoiceGrains, voiceBefore.present > 0 ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather * 0.6, knot * 1.6, present, voiceColor, time, pointSize * 1.1, ripples, 0, 3.7);
+      let presence = 0;
+      for (const phrase of voicePhrases) {
+        if (phrase.start - 0.15 > time) break;
+        if (time < phrase.end + 0.25) presence = Math.max(presence, Math.min(clamp01((time - phrase.start + 0.15) / 0.15), clamp01((phrase.end + 0.25 - time) / 0.25)));
+      }
+      if (anchor >= 0) {
+        anchorFigure.start = song.anchor.moments[anchor].start;
+        const figure = figureIndexAt(anchorFigure.start - 0.01);
+        if (figure >= 0) voiceFigure(figure, voiceBefore);
+        const voiceSettle = easeOutCubic((time - anchorFigure.start) / 0.2);
+        drawSand(voiceArray, plateVoiceGrains, figure >= 0 ? voiceBefore : anchorFigure, anchorFigure, voiceSettle, gather * 0.6, knot * 1.6, 1, voiceColor, pointSize * 1.5, ripples, 0.04, 0.45);
+      } else if (presence > 0) {
+        const figure = figureIndexAt(time);
+        if (figure >= 0) {
+          voiceFigure(figure, voiceNow);
+          if (figure > 0) voiceFigure(figure - 1, voiceBefore);
+          const voiceSettle = figure > 0 ? easeInOutCubic((time - voiceNow.start) / 0.2) : 1;
+          drawSand(voiceArray, plateVoiceGrains, figure > 0 ? voiceBefore : voiceNow, voiceNow, voiceSettle, gather * 0.6, knot * 1.6, presence, voiceColor, pointSize * 1.3, ripples, 0.03, 0.55);
+        }
       }
       drawLabels(time, width, height, drop);
     }
@@ -4570,23 +5020,41 @@ registerVisualizer({
       const chordIndex = song.chordIndex(time);
       const names = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
       const chord = chordIndex >= 0 ? song.chords[chordIndex] : null;
-      const figureNumber = chordIndex >= 0 ? chordIndex + 1 : 0;
+      const figureNumber = Math.max(0, lastIndexAtOrBefore(figureStarts, time)) + 1;
       labels.textAlign = "right";
-      labels.fillText(`Fig. ${figureNumber}`, width * 0.9825 - 6 * unit, height * 0.975);
+      labels.fillText(`Fig. ${figureNumber}`, width * 0.9835, height * 0.982);
       labels.textAlign = "left";
+      // Kick: the striker at the plate's centre, a black boss that jumps on every kick.
+      const kickAge = song.kicks.since(time);
+      const kickIndex = song.kicks.last(time);
+      const hit = kickIndex >= 0 ? song.kicks.strength[kickIndex] * hitDecay(kickAge, 0.09) : 0;
+      const gathered = drop && (drop.phase === 2 || (drop.phase === 1 && drop.progress > 0.9));
+      if (!gathered) {
+        const cx = width / 2,
+          cy = height * (plate.top + plate.bottom) / 2;
+        labels.fillStyle = "#171513";
+        labels.beginPath();
+        labels.arc(cx, cy, (14 + 34 * hit) * unit, 0, Math.PI * 2);
+        labels.fill();
+        labels.fillStyle = themeGround;
+        labels.beginPath();
+        labels.arc(cx, cy, (5 + 10 * hit) * unit, 0, Math.PI * 2);
+        labels.fill();
+      }
       labels.font = `400 ${Math.round(13 * unit)}px "IBM Plex Mono", monospace`;
       const bar = Math.max(0, Math.floor(song.barPosition(time)) + 1);
       const beat = Math.floor(fract(song.barPosition(time)) * 4) + 1;
       const mode = `(${current.mode[0]}, ${current.mode[1]})${current.second > 0 ? ` + (${current.mode[2]}, ${current.mode[3]})` : ""}`;
       const harmony = chord ? `${names[chord.root]}${chord.minor ? " minor" : " major"}` : "";
       const line = `MODE ${mode}   ${harmony.toUpperCase()}   BAR ${String(bar).padStart(3, "0")}.${beat}   ${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, "0")}`;
-      labels.fillText(line, width * 0.0175 + 6 * unit, height * 0.975 - 8 * unit);
+      labels.fillText(line, width * 0.0165, height * 0.982 - 6 * unit);
     }
 
     return {
       canvas: container,
       setSong,
       themeFor() {
+        themeGround = "";
         return { "--plate-ground": "#efe9dc" };
       },
       setActive(on) {

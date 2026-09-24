@@ -133,9 +133,10 @@ function prepareVisualizer(track, version) {
       drawVisualizer();
       drawWaveform();
       visualizerReadyResolve?.(true);
-      // Warm the next track in the library so its first frame is ready too.
-      const next = adjacentTrack(1);
-      if (next) setTimeout(() => loadSongModel(next).catch(() => {}), 1500);
+      // Warm every other track's analysis, one at a time, so switching songs never shows a
+      // frame without its data.
+      tracks.filter((entry) => !songModelCache.has(entry.identifier)).forEach((entry, index) =>
+        setTimeout(() => loadSongModel(entry).catch(() => {}), 800 + index * 700));
     })
     .catch(() => visualizerReadyResolve?.(false));
 }

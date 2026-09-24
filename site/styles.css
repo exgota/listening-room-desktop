@@ -1176,10 +1176,10 @@ body:has(#player-view:not([hidden])) {
 #player-view .volume input {
   accent-color: var(--vz-ink);
 }
-.visual-playing #player-view .play-orbit {
-  visibility: hidden;
-}
 @media (min-width: 901px) {
+  .visual-playing #player-view .play-orbit {
+    visibility: hidden;
+  }
   #player-view .stage {
     bottom: 0;
   }

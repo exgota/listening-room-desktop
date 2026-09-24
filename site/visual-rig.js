@@ -451,6 +451,10 @@ function createRigShow() {
     const inHit = sinceDrop < hitLength;
     const vocal = song.value("vocal", time);
     const singing = clamp01((vocal - 0.22) / 0.45);
+    // The rig grows: six heads until the first drop, all eight after it.
+    let dropsPassed = 0;
+    for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
+    const rigSize = dropsPassed === 0 && song.drops.length ? 6 : 8;
 
     // ---- the bass: the fan's elevation follows the note (low note, low beams), and each
     // new note tips it like a see-saw, so repeated notes move it too.
@@ -477,15 +481,15 @@ function createRigShow() {
       intensity = 16,
       width = 0.075,
       shot = "wide",
-      lit = 8;
+      lit = rigSize;
     const eightBars = Math.floor(barIndex / 8);
     switch (scene.kind) {
       case "intro":
-        lookName = "fan"; intensity = 18; width = 0.085; shot = "hero"; lit = 8; break;
+        lookName = "fan"; intensity = 18; width = 0.085; shot = "hero"; break;
       case "verse":
         lookName = ["curtain", "vee"][scene.kindIndex % 2]; intensity = 12; width = 0.08; shot = ["wide", "left", "right"][(scene.kindIndex + eightBars) % 3]; break;
       case "break":
-        lookName = "cathedral"; intensity = 8 + 14 * singing; width = 0.075; shot = ["wide", "left", "right"][eightBars % 3]; lit = 8; break;
+        lookName = "cathedral"; intensity = 8 + 14 * singing; width = 0.075; shot = ["wide", "left", "right"][eightBars % 3]; break;
       case "groove":
         lookName = driveLooks[(phrase + scene.index) % 4]; intensity = 16; shot = ["left", "right", "hero"][(scene.index + eightBars) % 3]; break;
       case "build":
@@ -496,7 +500,7 @@ function createRigShow() {
         lookName = driveLooks[(phrase + scene.kindIndex) % driveLooks.length]; intensity = 18; width = 0.06;
         shot = ["wide", "left", "right", "floor", "hero"][(scene.kindIndex + eightBars) % 5]; break;
       case "outro":
-        lookName = "cathedral"; intensity = 14 * (1 - sceneProgress * 0.8); shot = "wide"; lit = Math.max(2, Math.round(8 * (1 - sceneProgress))); break;
+        lookName = "cathedral"; intensity = 14 * (1 - sceneProgress * 0.8); shot = "wide"; lit = Math.max(2, Math.round(rigSize * (1 - sceneProgress))); break;
       case "gap":
         lookName = "fan"; intensity = 0; shot = "hero"; break;
     }
@@ -603,7 +607,11 @@ function createRigShow() {
     }
     spot.angle = scene.kind === "break" || scene.kind === "verse" ? 0.1 : 0.08;
     spot.length = 40;
-    spot.intensity = inGap ? 0 : singing * (scene.kind === "break" || scene.kind === "verse" ? 42 : 24) * (onSinger > 0 ? 1.4 : 1);
+    // In the gap the voice keeps its light if it is singing: one warm column in the dark
+    // (Desire's "Is it desire?" is sung into its hole).
+    spot.intensity = inGap
+      ? singing * 46
+      : singing * (scene.kind === "break" || scene.kind === "verse" ? 42 : 24) * (onSinger > 0 ? 1.4 : 1);
     spot.r = warm[0]; spot.g = warm[1]; spot.b = warm[2];
 
     // ---- snare → truss cells flash; hats → sparkle.

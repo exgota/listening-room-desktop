@@ -30,12 +30,17 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
   tiling off-centre → pattern space centred on the striker; kick invisible → stronger wave
   and a striker boss; hat shimmer (codec killer) removed; bass → line weight; lace after
   drops → capped complexity; gapless drops → knot over the last beat, burst over 0.18 s;
-  key word → black sand dims, vermilion figure takes over.
+  key word → black sand dims, vermilion figure takes over. Later: a chord held longer than
+  three bars gets a related figure every two bars (Outside's 28 s outro was frozen); before
+  the first chord the song's first figure is shown (Ophelia and Outside had identical t=0).
 - Rig: hairline beams → 8 fat heads; bass pan invisible → elevation + see-saw per note;
   dead breakdowns → voice-led cathedral toward the audience; count-in specks → blinders;
   cut storm on chord stabs → looks change at most once per beat, camera fixed per 8 bars;
   static drops → chase after the 2-beat hit; jets behind the camera → all shots in front;
-  title difference blend → white with shadow.
+  title difference blend → white with shadow. Later: six heads until the first drop, eight
+  after (the rig grows); the follow-spot stays lit for singing inside a gap.
+- Pocket (after v2): the groove lane (hats against a sixteenth grid), claps only on the
+  backbeat, a pile of slipped notes, the slot mouth, and the cast growing on the main drop.
 
 ## Decisions (newest last)
 

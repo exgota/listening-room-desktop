@@ -204,13 +204,31 @@ registerVisualizer({
 
     let voiceFigures = []; // [{time, pitch}] where the voice figure changes
     let voicePhrases = []; // [{start, end}] where the voice sand is present
+    let figures = []; // [{start, chord, variant}]: one per chord, and a new variant every two bars of a long one
+    let figureStarts = new Float64Array(0);
 
     function setSong(model) {
       song = model;
       themeGround = "";
       voiceFigures = [];
       voicePhrases = [];
-      if (!model) return;
+      figures = [];
+      if (!model) {
+        figureStarts = new Float64Array(0);
+        return;
+      }
+      // A chord held for more than three bars gets a related figure every two bars, so a long
+      // pedal (Outside's 28 s outro, NBLY's 31 s intro) keeps moving at the bar, never faster.
+      model.chords.forEach((chord, index) => {
+        figures.push({ start: chord.start, chord: index, variant: 0 });
+        const bar = model.barIndex(chord.start + 0.05);
+        for (let step = 1; ; step++) {
+          const start = model.barTime(bar + step * 2);
+          if (start > chord.end - model.barPeriod) break;
+          figures.push({ start, chord: index, variant: step });
+        }
+      });
+      figureStarts = Float64Array.from(figures.map((figure) => figure.start));
       // Sung notes merge into phrases (gaps under 0.4 s); inside a phrase the figure changes
       // only for a new pitch class held after at least 0.3 s, so syllables do not flicker it.
       const notes = model.vocalNotes;
@@ -237,28 +255,32 @@ registerVisualizer({
       }
     }
 
-    // The figure for the harmony: one per chord. The root around the circle of fifths picks
-    // the family, the section's intensity at the chord's start adds complexity, minor flips
-    // the sign, and a second mode tied to the root enriches it. Nothing else changes it.
-    function harmonyMode(chordIndex, into) {
+    // The figure for the harmony: one per chord (and per two bars of a held chord). The root
+    // around the circle of fifths picks the family, the section's intensity at the chord's start
+    // adds complexity, minor flips the sign, and a second mode tied to the root enriches it.
+    // Before the first chord the song's first figure is already on the plate.
+    function harmonyMode(figureIndex, into) {
       let root = 0,
         minor = 0,
         intensity = 0.5,
-        start = 0;
-      if (song && chordIndex >= 0) {
-        const chord = song.chords[chordIndex];
+        start = 0,
+        variant = 0;
+      const figure = figures[Math.max(0, figureIndex)];
+      if (figure) {
+        const chord = song.chords[figure.chord];
         root = chord.root;
         minor = chord.minor;
-        start = chord.start;
+        start = figureIndex >= 0 ? figure.start : -Infinity;
+        variant = figure.variant;
         intensity = song.scene(chord.start + 0.01).intensity;
       }
       const circle = plateCircle.indexOf(root);
       // capped so the figure stays bold at phone size
       const base = Math.min(11, Math.round(circle * 0.45 + intensity * 6));
       const [n, m] = plateModes[base];
-      const [n2, m2] = plateModes[(circle * 5 + 3) % 8];
+      const [n2, m2] = plateModes[(circle * 5 + 3 + variant * 3) % 8];
       into.mode[0] = n; into.mode[1] = m; into.mode[2] = n2; into.mode[3] = m2;
-      into.second = 0.35;
+      into.second = variant % 2 ? -0.3 : 0.35;
       into.sign = minor ? -1 : 1;
       into.start = start;
       return into;
@@ -353,11 +375,11 @@ registerVisualizer({
       let dropsPassed = 0;
       for (const entry of song.drops) if (entry.time <= time) dropsPassed++;
       density = 1.0 + 0.14 * Math.min(2, dropsPassed);
-      // Harmony: the chord's figure, migrating from the previous chord's over 0.35 s.
-      const chordIndex = song.chordIndex(time);
-      harmonyMode(chordIndex, current);
-      harmonyMode(chordIndex - 1, previous);
-      const settle = chordIndex >= 0 ? easeInOutCubic((time - current.start) / 0.25) : 1;
+      // Harmony: the figure, migrating from the previous one over 0.25 s.
+      const figureIndex = lastIndexAtOrBefore(figureStarts, time);
+      harmonyMode(figureIndex, current);
+      harmonyMode(figureIndex - 1, previous);
+      const settle = figureIndex > 0 ? easeInOutCubic((time - current.start) / 0.25) : 1;
 
       // Gather through a build; in the gap a knot that shrinks each beat; the drop throws it.
       // A drop with no gap still gets one: the last beat before it is the knot.
@@ -403,7 +425,7 @@ registerVisualizer({
       }
       // Bass: the plate rings harder, so the sand band widens with the bass.
       const bassLevel = clamp01(song.mean("bass", time - 0.04, time + 0.01));
-      const weight = 0.02 + 0.05 * bassLevel * bassLevel;
+      const weight = 0.028 + 0.05 * bassLevel * bassLevel;
       const pointSize = Math.max(1.5, 2.4 * (canvas.height / 1080));
       const grains = afterMain ? plateGrains : Math.round(plateGrains * (0.7 + 0.3 * Math.min(1, time / Math.max(1, song.drops[song.mainDrop]?.time || song.duration))));
       // Voice: vermilion sand in the figure of the sung note, present through each phrase. On
@@ -446,7 +468,7 @@ registerVisualizer({
       const chordIndex = song.chordIndex(time);
       const names = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
       const chord = chordIndex >= 0 ? song.chords[chordIndex] : null;
-      const figureNumber = chordIndex >= 0 ? chordIndex + 1 : 0;
+      const figureNumber = Math.max(0, lastIndexAtOrBefore(figureStarts, time)) + 1;
       labels.textAlign = "right";
       labels.fillText(`Fig. ${figureNumber}`, width * 0.9835, height * 0.982);
       labels.textAlign = "left";
