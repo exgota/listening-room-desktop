@@ -169,16 +169,30 @@ for (const [identifier, song] of Object.entries(SONGS)) {
       const box = document.querySelector("#seek").getBoundingClientRect();
       return { x: box.x, y: box.y, width: box.width, height: box.height };
     });
-    // Where the seek landed is read by the audio element's own "seeked" event, so a slow
-    // software renderer cannot make the song run on before it is read.
+    // Where the seek lands is the time the page sets on the audio element, recorded as it
+    // is set: on a software GPU the seek events are dispatched late (while the audio plays
+    // on), so reading currentTime in an event handler measured the renderer, not the seek.
     const target = now.duration / 2;
     await page.evaluate(() => {
       window.acceptanceLanded = null;
-      audio.addEventListener("seeked", () => (window.acceptanceLanded = audio.currentTime), { once: true });
+      const property = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "currentTime");
+      Object.defineProperty(audio, "currentTime", {
+        configurable: true,
+        get() {
+          return property.get.call(this);
+        },
+        set(value) {
+          if (window.acceptanceLanded === null) window.acceptanceLanded = value;
+          property.set.call(this, value);
+        },
+      });
     });
     await page.mouse.click(bounds.x + bounds.width * 0.5, bounds.y + bounds.height / 2);
     await page.waitForFunction(() => window.acceptanceLanded !== null, { timeout: 20000 }).catch(() => {});
-    const landed = await page.evaluate(() => window.acceptanceLanded ?? audio.currentTime);
+    const landed = await page.evaluate(() => {
+      delete audio.currentTime;
+      return window.acceptanceLanded ?? audio.currentTime;
+    });
     const playedOn = await page
       .waitForFunction((from) => !audio.paused && audio.currentTime > from + 0.3, { timeout: 20000 }, landed)
       .then(() => true, () => false);
