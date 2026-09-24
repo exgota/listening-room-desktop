@@ -13,8 +13,6 @@ Node builds the page (it inlines `site/*.css` and `site/*.js` into `site/dist/pa
 
 If `library/*/playback.m4a` is missing (the light copy ships without audio), run `python3 tools/fetch_audio.py` to download the mixes from the published site, and `tools/prepare_performance.py` to separate stems again.
 
-`BRIEF.md` describes the task.
-
 ## Where a visualizer goes
 
 `site/visualizer.js` is an empty slot. The player calls its five functions (selection, seek, draw, start, stop) and keeps a frame loop running while audio plays; the header comment lists them. The element `#visualizer` is a stage that fills the window above the waveform and controls, behind the title; the play button sits at its centre. Anything may replace or extend this, including the page layout.
