@@ -58,6 +58,20 @@ function visualizerInstance(key) {
   return visualizerInstances.get(definition.key);
 }
 
+// A visualizer may colour the page per song (themeFor returns CSS custom properties).
+let visualizerThemeKeys = [];
+function applyVisualizerTheme() {
+  const root = document.documentElement;
+  for (const key of visualizerThemeKeys) root.style.removeProperty(key);
+  visualizerThemeKeys = [];
+  const properties = visualizerActive?.themeFor?.(visualizerSong) || {};
+  for (const [key, value] of Object.entries(properties)) {
+    root.style.setProperty(key, value);
+    visualizerThemeKeys.push(key);
+  }
+  waveformTheme = null;
+}
+
 function selectVisualizer(key, remember = true) {
   const instance = visualizerInstance(key);
   if (!instance || instance === visualizerActive) return;
@@ -71,7 +85,7 @@ function selectVisualizer(key, remember = true) {
       localStorage.setItem(visualizerChoiceKey, definition.key);
     } catch (error) {}
   }
-  waveformTheme = null;
+  applyVisualizerTheme();
   drawVisualizer();
   drawWaveform();
 }
@@ -103,13 +117,16 @@ function prepareVisualizer(track, version) {
   visualizerTrack = track;
   visualizerSong = null;
   for (const instance of visualizerInstances.values()) instance.setSong(null);
+  applyVisualizerTheme();
   drawVisualizer();
   loadSongModel(track)
     .then((model) => {
       if (version !== selectionVersion || visualizerTrack !== track) return;
       visualizerSong = model;
       for (const instance of visualizerInstances.values()) instance.setSong(model);
+      applyVisualizerTheme();
       drawVisualizer();
+      drawWaveform();
       visualizerReadyResolve?.(true);
       // Warm the next track in the library so its first frame is ready too.
       const next = adjacentTrack(1);

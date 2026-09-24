@@ -62,7 +62,7 @@ async function openPage() {
   await page.waitForFunction(() => window.visualizerDebug, { timeout: 20000 });
   await page.evaluate(() => window.visualizerDebug.ready());
   // Headless Chromium cannot decode the AAC mix; silence the notice so it is not in frames.
-  await page.addStyleTag({ content: "#notice{display:none!important}" });
+  await page.addStyleTag({ content: "#notice{display:none!important} *,*::before,*::after{transition:none!important}" });
   return page;
 }
 const pageCount = Math.max(1, Math.min(Number(args.pages || 1), times.length));

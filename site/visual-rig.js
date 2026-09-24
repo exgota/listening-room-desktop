@@ -357,11 +357,7 @@ function createRigShow() {
     mainDrop = -1;
     if (!model) return;
     gel = hexColor(rigGels[model.identifier] || "#ffffff");
-    let best = -1;
-    model.drops.forEach((drop, index) => {
-      if (best < 0 || drop.strength > model.drops[best].strength + 0.02) best = index;
-    });
-    mainDrop = best;
+    mainDrop = model.mainDrop;
   }
 
   function aim(beam, x, y, z) {

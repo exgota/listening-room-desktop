@@ -1241,3 +1241,22 @@ html[data-visual="rig"] {
 html[data-visual="rig"] #player-view > .intro {
   mix-blend-mode: difference;
 }
+
+/* Type: one saturated field per song, set by the visualizer; the page follows its ink. */
+html[data-visual="type"] {
+  --vz-background: var(--type-field, #2530f2);
+  --vz-ink: var(--type-ink, #f3efe4);
+  --vz-secondary: var(--type-ink, #f3efe4);
+  --vz-accent: var(--type-ink, #f3efe4);
+  --vz-button: var(--type-ink, #f3efe4);
+  --vz-button-ink: var(--type-field, #2530f2);
+  --waveform-played: var(--type-ink, #f3efe4);
+  --waveform-rest: color-mix(in srgb, var(--type-ink, #f3efe4) 35%, transparent);
+  --vz-title-font: "Archivo", "Arial Narrow", sans-serif;
+  --vz-title-weight: 800;
+  --vz-title-spacing: -0.02em;
+  --vz-credits-font: "IBM Plex Mono", ui-monospace, monospace;
+  --vz-credits-size: 12px;
+  --vz-credits-spacing: 0.06em;
+  --vz-credits-transform: uppercase;
+}

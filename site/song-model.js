@@ -128,7 +128,19 @@ class SongModel {
     this.breakdowns = (sections.breakdowns || []).map((part) => ({ start: part.start + offset, end: part.end + offset }));
     const anchor = visual.anchor || performance.anchor || { kind: "none", moments: [] };
     this.anchor = { kind: anchor.kind, word: anchor.word, moments: anchor.moments.map((moment) => ({ start: moment.start, end: moment.end })) };
+    // A key-word anchor takes its moments from the revised lyrics when they found the word
+    // (Desire's "desire" is sung twelve times, not the eleven the first transcription heard).
+    if (this.anchor.kind === "word") {
+      const keyed = (visual.lyrics || []).filter((word) => word.key);
+      if (keyed.length >= this.anchor.moments.length - 1)
+        this.anchor.moments = keyed.map((word) => ({ start: word.start, end: Math.max(word.end, word.start + 0.25) }));
+    }
     this.anchorStarts = Float64Array.from(this.anchor.moments.map((moment) => moment.start));
+    // The main drop: the strongest, and of equals the later (the song's last word on it).
+    this.mainDrop = -1;
+    this.drops.forEach((drop, index) => {
+      if (this.mainDrop < 0 || drop.strength >= this.drops[this.mainDrop].strength - 0.02) this.mainDrop = index;
+    });
     this.peaks = (visual.peaks || []).map((peak) => ({ start: peak.start, end: peak.end, kind: peak.kind }));
     this.scenes = this.buildScenes(visual.scenes || []);
     this.sceneStarts = Float64Array.from(this.scenes.map((scene) => scene.start));

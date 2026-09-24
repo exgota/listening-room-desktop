@@ -4,7 +4,26 @@ Read `PLAN.md` first. Newest entries at the bottom of each section.
 
 ## State
 
-- Stage: design written; next is analysis extension + slot/harness.
+- Done: analysis extension (visual block), slot + song model + render harness, Rig first
+  pass (v2), Type first pass. Next: Pocket, Plate, then formal review passes (subagents).
+
+## Decisions (newest last)
+
+- Beat grid corrected per song against kick transients (Desire -28 ms, Ophelia -19,
+  Outside +21, American Boy -25, NBLY -6). Drops sit on the corrected downbeat; kicks and
+  snares snap to the corrected eighth grid; hats and bass keep their own timing (swing).
+- Verified in 1 ms waveform views: every listed drop arrives on the corrected downbeat.
+  Refined times: NBLY 2:18.126, 4:36.252; Desire 0:45.772, 1:16.252, 2:47.672, 3:48.632;
+  Ophelia 0:36.501, 1:34.681; Outside 2:21.177; American Boy 0:48.808.
+- Desire's "desire" is sung 12 times (the 12th at 3:10.3, missed by the first
+  transcription); anchor moments come from the revised lyrics.
+- Main drop = strongest, ties go to the later one (Desire 2:47.7, NBLY 4:36.3, Ophelia 1:34.7).
+- Play button hidden while playing (visibility); the stage click and Space toggle playback;
+  controls/brand/file row fade to opacity 0 at play and return on pointer move or focus.
+- Stage is full-bleed on desktop (bottom: 0); transport overlays it with a themed scrim.
+- Fonts vendored from @fontsource (Archivo variable, Inter Tight, Jost, Instrument Serif,
+  IBM Plex Mono), inlined as data URLs.
+- Renders: `tools/render/render.mjs` (one browser per worker; transitions disabled).
 
 ## Environment notes (for a fresh context)
 
