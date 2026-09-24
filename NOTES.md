@@ -99,53 +99,46 @@ Type shows only lines that are at least 70% confirmed, and only their confirmed 
 
   The visualizers treat that last beat as the held breath.
 
-## Cost per frame (assumptions to check on the M4) (draft)
+## Cost per frame
 
 The budget is 10 ms at 100 Hz for everything: page, compositing and visualizer. This
-machine has no GPU, so frame time can't be measured here. Each visualizer is bounded by
-construction instead:
+machine has no GPU (Chromium runs WebGL on SwiftShader, on the CPU), so the GPU side is an
+estimate by construction; the main-thread side is measured.
 
-- fixed internal resolution caps;
-- bounded draw calls and primitives;
-- no readbacks;
-- no per-frame allocation in the hot paths, beyond small strings for canvas text and the
-  captions.
+**Measured: main-thread script time per drawn frame** (`tools/render/frametime.mjs`: 150
+frames spread over each song, one animation frame between draws, headless Chromium at
+1920×1080). The machine was loaded (load average about 11 on 4 cores, two review renders
+running), so these are upper bounds; an M4 performance core is several times faster.
 
-The waveform canvas is no longer resized every frame, and it is not drawn while the
-controls are hidden.
+| Visualizer | Median | 95th percentile | Worst |
+| --- | --- | --- | --- |
+| Plate | 0.4 ms | 1.0 ms | 12.8 ms |
+| Type | 0.4 ms | 1.9 ms | 5.1 ms |
+| Pocket | 0.4 ms | 2.6 ms | 19.4 ms |
+| Rig | 0.2 ms | 0.6 ms | 4.6 ms |
 
-- **Rig (WebGL2, one full-screen fragment pass).**
-  - Internal resolution is at most 1600×900 (1.44 MP), and the browser scales it to the
-    stage.
-  - Each pixel tests 17 cones: 8 heads, 8 floor jets and 1 follow-spot.
-    - A miss costs about 50 operations.
-    - A hit costs about 150: the closed-form scattering integral plus two 3D-noise fetches.
-  - About 4 beams cover a typical pixel, and floor pixels (about 35%) add a reflected pass
-    and pools of light.
-  - Estimate: about 2,500–3,500 operations per pixel, so 3.6–5.0 G operations per frame.
-    The M4's 10-core GPU does about 2 T FMA per second, so this is 2–4 ms at realistic
-    occupancy.
-  - One draw call, no textures but a 32³ R8 noise volume. JS time is about 0.1 ms (17 beams'
-    uniforms).
-- **Type (Canvas2D).**
-  - One field fill and one ink block.
-  - Up to about 10 text runs at poster size (glyphs 150–900 px), each drawn at most twice
-    through clip rectangles for the inversion. Glyphs above 256 px are drawn as paths.
-  - Layout is computed once per line (cached); no measurement happens per frame except for
-    the one or two words of a mode change.
-  - Estimate: 1–3 ms CPU (Skia recording) and under 1 ms GPU.
-- **Pocket (Canvas2D).**
-  - About 25–40 flat polygons (48-sided discs, 32-sided domes, triangles) plus the lane's
-    stamps (at most about 60 small shapes in a bar).
-  - Estimate: under 1 ms CPU, negligible GPU.
-- **Plate (WebGL2 points, a Canvas2D caption layer).**
-  - 196,608 + 65,536 grains. Each vertex runs 2 × 7 Newton steps on a two-mode Chladni field
-    (about 700 operations), about 0.18 G operations per frame.
-  - About 1.3 M point fragments with alpha blending, now all inside the square plate
-    (about a third of the frame).
-  - One full-screen ground pass.
-  - Estimate: under 1.5 ms GPU. The captions cost two short text lines and the striker a
-    frame.
+The worst frames are single stalls under load (one per song or fewer; each song's median and
+95th percentile are in the same range), not a pattern in the music.
+
+**Bounded by construction:** fixed internal resolution caps; bounded draw calls and
+primitives; no readbacks; no per-frame allocation in the hot paths beyond small strings for
+canvas text and the captions. The waveform canvas is not resized every frame, and it is not
+drawn while the controls are hidden.
+
+- **Plate (WebGL2 points, a Canvas2D caption layer).** 196,608 + 65,536 grains, each placed
+  by 2 × 7 Newton steps on a two-mode Chladni field in the vertex shader (about 700
+  operations; 0.18 G operations a frame); about 1.3 M point fragments with alpha blending,
+  all inside the plate; one full-screen ground pass. Estimate: under 1.5 ms of GPU.
+- **Type (Canvas2D).** One field fill and one ink block; up to about 10 text runs at poster
+  size, each drawn at most twice through clip rectangles for the inversion. Layout is
+  computed once per line and cached. Estimate: under 1 ms of GPU.
+- **Pocket (Canvas2D).** About 25-40 flat polygons plus the lane's stamps (at most about 60
+  small shapes). Negligible GPU.
+- **Rig (WebGL2, one full-screen fragment pass).** At most 1600×900 internally, scaled to the
+  stage. Each pixel tests 17 cones (8 heads, 8 floor jets, 1 follow-spot) with a closed-form
+  scattering integral and two 3D-noise fetches per hit; floor pixels add a reflected pass.
+  About 2,500-3,500 operations a pixel, 3.6-5.0 G a frame: 2-4 ms on the M4's GPU at
+  realistic occupancy. The heaviest of the four, and the one to measure first on the M4.
 
 ## The four
 
