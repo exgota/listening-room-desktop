@@ -1,0 +1,1352 @@
+[
+{
+"word": "I",
+"start": 7.02,
+"end": 7.76,
+"probability": 0.502
+},
+{
+"word": "heard",
+"start": 7.76,
+"end": 8.06,
+"probability": 0.792
+},
+{
+"word": "you",
+"start": 8.06,
+"end": 8.2,
+"probability": 0.931
+},
+{
+"word": "calling",
+"start": 8.2,
+"end": 8.98,
+"probability": 0.771
+},
+{
+"word": "on",
+"start": 8.98,
+"end": 9.84,
+"probability": 0.753
+},
+{
+"word": "the",
+"start": 9.84,
+"end": 10.08,
+"probability": 0.988
+},
+{
+"word": "megaphone,",
+"start": 10.08,
+"end": 10.94,
+"probability": 0.993
+},
+{
+"word": "you",
+"start": 11.02,
+"end": 11.4,
+"probability": 0.847
+},
+{
+"word": "wanna",
+"start": 11.4,
+"end": 11.72,
+"probability": 0.774
+},
+{
+"word": "see",
+"start": 11.72,
+"end": 12.18,
+"probability": 0.996
+},
+{
+"word": "me",
+"start": 12.18,
+"end": 12.68,
+"probability": 0.998
+},
+{
+"word": "all",
+"start": 12.68,
+"end": 13.26,
+"probability": 0.991
+},
+{
+"word": "alone,",
+"start": 13.26,
+"end": 14.22,
+"probability": 0.988
+},
+{
+"word": "as",
+"start": 14.66,
+"end": 15.1,
+"probability": 0.876
+},
+{
+"word": "legend",
+"start": 15.1,
+"end": 15.5,
+"probability": 0.989
+},
+{
+"word": "has",
+"start": 15.5,
+"end": 15.84,
+"probability": 0.958
+},
+{
+"word": "it",
+"start": 15.84,
+"end": 16.0,
+"probability": 0.958
+},
+{
+"word": "you",
+"start": 16.0,
+"end": 16.36,
+"probability": 0.835
+},
+{
+"word": "are",
+"start": 16.36,
+"end": 16.88,
+"probability": 0.737
+},
+{
+"word": "quite",
+"start": 16.88,
+"end": 17.1,
+"probability": 0.991
+},
+{
+"word": "the",
+"start": 17.1,
+"end": 17.26,
+"probability": 0.988
+},
+{
+"word": "pyro,",
+"start": 17.26,
+"end": 18.08,
+"probability": 0.989
+},
+{
+"word": "you're",
+"start": 18.44,
+"end": 18.92,
+"probability": 0.713
+},
+{
+"word": "like",
+"start": 18.92,
+"end": 18.94,
+"probability": 0.998
+},
+{
+"word": "the",
+"start": 18.94,
+"end": 19.12,
+"probability": 0.94
+},
+{
+"word": "match",
+"start": 19.12,
+"end": 19.62,
+"probability": 0.953
+},
+{
+"word": "to",
+"start": 19.62,
+"end": 19.96,
+"probability": 0.429
+},
+{
+"word": "watch,",
+"start": 19.96,
+"end": 20.34,
+"probability": 0.852
+},
+{
+"word": "and",
+"start": 20.38,
+"end": 20.56,
+"probability": 0.755
+},
+{
+"word": "if",
+"start": 20.56,
+"end": 20.76,
+"probability": 0.908
+},
+{
+"word": "you'd",
+"start": 20.76,
+"end": 21.1,
+"probability": 0.876
+},
+{
+"word": "never",
+"start": 21.1,
+"end": 21.42,
+"probability": 0.959
+},
+{
+"word": "call",
+"start": 21.42,
+"end": 22.08,
+"probability": 0.721
+},
+{
+"word": "for",
+"start": 22.08,
+"end": 22.72,
+"probability": 0.951
+},
+{
+"word": "me,",
+"start": 22.72,
+"end": 23.2,
+"probability": 0.999
+},
+{
+"word": "I",
+"start": 23.82,
+"end": 24.1,
+"probability": 0.954
+},
+{
+"word": "might",
+"start": 24.1,
+"end": 24.46,
+"probability": 0.993
+},
+{
+"word": "have",
+"start": 24.46,
+"end": 24.56,
+"probability": 0.751
+},
+{
+"word": "drowned",
+"start": 24.56,
+"end": 24.92,
+"probability": 0.983
+},
+{
+"word": "in",
+"start": 24.92,
+"end": 25.34,
+"probability": 0.985
+},
+{
+"word": "melancholy,",
+"start": 25.34,
+"end": 27.02,
+"probability": 0.918
+},
+{
+"word": "I",
+"start": 27.46,
+"end": 27.7,
+"probability": 0.975
+},
+{
+"word": "swore",
+"start": 27.7,
+"end": 28.06,
+"probability": 0.972
+},
+{
+"word": "my",
+"start": 28.06,
+"end": 28.22,
+"probability": 0.995
+},
+{
+"word": "loyalty",
+"start": 28.22,
+"end": 28.7,
+"probability": 0.998
+},
+{
+"word": "to",
+"start": 28.7,
+"end": 29.1,
+"probability": 0.999
+},
+{
+"word": "me,",
+"start": 29.1,
+"end": 29.52,
+"probability": 0.998
+},
+{
+"word": "Myself",
+"start": 29.52,
+"end": 30.54,
+"probability": 0.505
+},
+{
+"word": "and",
+"start": 30.54,
+"end": 31.04,
+"probability": 0.857
+},
+{
+"word": "I",
+"start": 31.04,
+"end": 31.42,
+"probability": 0.99
+},
+{
+"word": "Right",
+"start": 31.42,
+"end": 32.1,
+"probability": 0.119
+},
+{
+"word": "before",
+"start": 32.1,
+"end": 32.4,
+"probability": 0.985
+},
+{
+"word": "you",
+"start": 32.4,
+"end": 32.8,
+"probability": 0.986
+},
+{
+"word": "lit",
+"start": 32.8,
+"end": 33.26,
+"probability": 0.763
+},
+{
+"word": "my",
+"start": 33.26,
+"end": 33.92,
+"probability": 0.896
+},
+{
+"word": "sky",
+"start": 33.92,
+"end": 34.66,
+"probability": 0.957
+},
+{
+"word": "Oh",
+"start": 34.66,
+"end": 35.5,
+"probability": 0.199
+},
+{
+"word": "I",
+"start": 36.46,
+"end": 36.78,
+"probability": 0.51
+},
+{
+"word": "sat",
+"start": 36.78,
+"end": 37.1,
+"probability": 0.9
+},
+{
+"word": "alone",
+"start": 37.1,
+"end": 37.58,
+"probability": 0.996
+},
+{
+"word": "in",
+"start": 37.58,
+"end": 37.8,
+"probability": 0.982
+},
+{
+"word": "my",
+"start": 37.8,
+"end": 37.98,
+"probability": 0.915
+},
+{
+"word": "tower",
+"start": 37.98,
+"end": 38.3,
+"probability": 0.815
+},
+{
+"word": "You",
+"start": 38.3,
+"end": 38.68,
+"probability": 0.832
+},
+{
+"word": "were",
+"start": 38.68,
+"end": 38.92,
+"probability": 0.994
+},
+{
+"word": "just",
+"start": 38.92,
+"end": 39.1,
+"probability": 0.998
+},
+{
+"word": "haunting",
+"start": 39.1,
+"end": 39.56,
+"probability": 0.342
+},
+{
+"word": "your",
+"start": 39.56,
+"end": 39.94,
+"probability": 0.408
+},
+{
+"word": "powers",
+"start": 39.94,
+"end": 40.24,
+"probability": 0.613
+},
+{
+"word": "Now",
+"start": 40.24,
+"end": 40.48,
+"probability": 0.97
+},
+{
+"word": "I",
+"start": 40.48,
+"end": 40.64,
+"probability": 0.992
+},
+{
+"word": "can",
+"start": 40.64,
+"end": 40.88,
+"probability": 0.995
+},
+{
+"word": "see",
+"start": 40.88,
+"end": 41.28,
+"probability": 0.84
+},
+{
+"word": "it",
+"start": 41.28,
+"end": 41.78,
+"probability": 0.979
+},
+{
+"word": "all",
+"start": 41.78,
+"end": 42.4,
+"probability": 0.986
+},
+{
+"word": "You",
+"start": 43.32,
+"end": 43.96,
+"probability": 0.223
+},
+{
+"word": "took",
+"start": 43.96,
+"end": 44.34,
+"probability": 0.929
+},
+{
+"word": "me",
+"start": 44.34,
+"end": 44.6,
+"probability": 0.979
+},
+{
+"word": "out",
+"start": 44.6,
+"end": 44.94,
+"probability": 0.993
+},
+{
+"word": "of",
+"start": 44.94,
+"end": 45.06,
+"probability": 0.992
+},
+{
+"word": "my",
+"start": 45.06,
+"end": 45.28,
+"probability": 0.995
+},
+{
+"word": "grave",
+"start": 45.28,
+"end": 45.62,
+"probability": 0.847
+},
+{
+"word": "And",
+"start": 45.62,
+"end": 45.78,
+"probability": 0.775
+},
+{
+"word": "saved",
+"start": 45.78,
+"end": 46.18,
+"probability": 0.909
+},
+{
+"word": "my",
+"start": 46.18,
+"end": 46.44,
+"probability": 0.999
+},
+{
+"word": "heart",
+"start": 46.44,
+"end": 46.64,
+"probability": 0.999
+},
+{
+"word": "from",
+"start": 46.64,
+"end": 46.88,
+"probability": 0.977
+},
+{
+"word": "the",
+"start": 46.88,
+"end": 47.14,
+"probability": 0.922
+},
+{
+"word": "fate",
+"start": 47.14,
+"end": 47.4,
+"probability": 0.18
+},
+{
+"word": "of",
+"start": 47.4,
+"end": 47.72,
+"probability": 0.771
+},
+{
+"word": "Ophelia",
+"start": 47.72,
+"end": 48.96,
+"probability": 0.733
+},
+{
+"word": "The",
+"start": 50.22,
+"end": 50.86,
+"probability": 0.274
+},
+{
+"word": "way",
+"start": 50.86,
+"end": 51.26,
+"probability": 0.991
+},
+{
+"word": "I",
+"start": 51.26,
+"end": 51.46,
+"probability": 0.982
+},
+{
+"word": "met",
+"start": 51.46,
+"end": 51.74,
+"probability": 0.261
+},
+{
+"word": "See",
+"start": 51.74,
+"end": 52.24,
+"probability": 0.074
+},
+{
+"word": "the",
+"start": 52.24,
+"end": 52.76,
+"probability": 0.555
+},
+{
+"word": "sky",
+"start": 52.76,
+"end": 53.18,
+"probability": 0.996
+},
+{
+"word": "but",
+"start": 53.18,
+"end": 53.52,
+"probability": 0.13
+},
+{
+"word": "you'll",
+"start": 53.52,
+"end": 53.82,
+"probability": 0.664
+},
+{
+"word": "lead",
+"start": 53.82,
+"end": 53.94,
+"probability": 0.8
+},
+{
+"word": "just",
+"start": 53.94,
+"end": 54.18,
+"probability": 0.649
+},
+{
+"word": "through",
+"start": 54.18,
+"end": 54.4,
+"probability": 0.843
+},
+{
+"word": "your",
+"start": 54.4,
+"end": 54.56,
+"probability": 0.978
+},
+{
+"word": "hands",
+"start": 54.56,
+"end": 55.1,
+"probability": 0.982
+},
+{
+"word": "You've",
+"start": 55.1,
+"end": 55.66,
+"probability": 0.695
+},
+{
+"word": "seen",
+"start": 55.66,
+"end": 55.88,
+"probability": 0.996
+},
+{
+"word": "your",
+"start": 55.88,
+"end": 56.36,
+"probability": 0.863
+},
+{
+"word": "vibes",
+"start": 56.36,
+"end": 56.86,
+"probability": 0.519
+},
+{
+"word": "Don't",
+"start": 56.86,
+"end": 57.12,
+"probability": 0.862
+},
+{
+"word": "care",
+"start": 57.12,
+"end": 57.32,
+"probability": 0.998
+},
+{
+"word": "where",
+"start": 57.32,
+"end": 57.62,
+"probability": 0.989
+},
+{
+"word": "the",
+"start": 57.62,
+"end": 57.78,
+"probability": 0.996
+},
+{
+"word": "hell",
+"start": 57.78,
+"end": 58.0,
+"probability": 0.998
+},
+{
+"word": "you've",
+"start": 58.0,
+"end": 58.36,
+"probability": 0.967
+},
+{
+"word": "been",
+"start": 58.36,
+"end": 58.56,
+"probability": 0.998
+},
+{
+"word": "Cause",
+"start": 58.56,
+"end": 59.16,
+"probability": 0.196
+},
+{
+"word": "now,",
+"start": 59.16,
+"end": 59.54,
+"probability": 0.923
+},
+{
+"word": "your",
+"start": 59.66,
+"end": 59.94,
+"probability": 0.224
+},
+{
+"word": "mind",
+"start": 59.94,
+"end": 60.36,
+"probability": 0.994
+},
+{
+"word": "will",
+"start": 60.36,
+"end": 60.52,
+"probability": 0.224
+},
+{
+"word": "stop",
+"start": 60.52,
+"end": 60.72,
+"probability": 0.503
+},
+{
+"word": "to",
+"start": 60.72,
+"end": 60.94,
+"probability": 0.754
+},
+{
+"word": "be",
+"start": 60.94,
+"end": 61.18,
+"probability": 0.849
+},
+{
+"word": "the",
+"start": 61.18,
+"end": 61.42,
+"probability": 0.969
+},
+{
+"word": "sleepless",
+"start": 61.42,
+"end": 61.82,
+"probability": 0.964
+},
+{
+"word": "night",
+"start": 61.82,
+"end": 62.16,
+"probability": 0.983
+},
+{
+"word": "you've",
+"start": 62.16,
+"end": 62.68,
+"probability": 0.789
+},
+{
+"word": "been",
+"start": 62.68,
+"end": 62.82,
+"probability": 0.999
+},
+{
+"word": "dreaming",
+"start": 62.82,
+"end": 63.24,
+"probability": 0.953
+},
+{
+"word": "of",
+"start": 63.24,
+"end": 63.96,
+"probability": 0.99
+},
+{
+"word": "Locked",
+"start": 79.8,
+"end": 80.42,
+"probability": 0.514
+},
+{
+"word": "inside",
+"start": 80.42,
+"end": 80.76,
+"probability": 0.978
+},
+{
+"word": "my",
+"start": 80.76,
+"end": 81.04,
+"probability": 0.974
+},
+{
+"word": "memory",
+"start": 81.04,
+"end": 81.44,
+"probability": 0.952
+},
+{
+"word": "and",
+"start": 81.44,
+"end": 81.86,
+"probability": 0.604
+},
+{
+"word": "only",
+"start": 81.86,
+"end": 82.22,
+"probability": 0.952
+},
+{
+"word": "you",
+"start": 82.22,
+"end": 82.52,
+"probability": 0.971
+},
+{
+"word": "possess",
+"start": 82.52,
+"end": 82.84,
+"probability": 0.675
+},
+{
+"word": "the",
+"start": 82.84,
+"end": 83.1,
+"probability": 0.984
+},
+{
+"word": "key",
+"start": 83.1,
+"end": 83.34,
+"probability": 0.938
+},
+{
+"word": "No",
+"start": 83.34,
+"end": 83.62,
+"probability": 0.881
+},
+{
+"word": "longer",
+"start": 83.62,
+"end": 84.04,
+"probability": 0.992
+},
+{
+"word": "drowning",
+"start": 84.04,
+"end": 84.52,
+"probability": 0.997
+},
+{
+"word": "and",
+"start": 84.52,
+"end": 84.82,
+"probability": 0.993
+},
+{
+"word": "deceived,",
+"start": 84.82,
+"end": 85.24,
+"probability": 0.874
+},
+{
+"word": "all",
+"start": 85.44,
+"end": 85.76,
+"probability": 0.978
+},
+{
+"word": "because",
+"start": 85.76,
+"end": 86.1,
+"probability": 0.996
+},
+{
+"word": "you",
+"start": 86.1,
+"end": 86.34,
+"probability": 0.986
+},
+{
+"word": "came",
+"start": 86.34,
+"end": 86.58,
+"probability": 0.797
+},
+{
+"word": "for",
+"start": 86.58,
+"end": 86.78,
+"probability": 0.994
+},
+{
+"word": "me",
+"start": 86.78,
+"end": 87.04,
+"probability": 1.0
+},
+{
+"word": "Locked",
+"start": 87.04,
+"end": 87.68,
+"probability": 0.915
+},
+{
+"word": "inside",
+"start": 87.68,
+"end": 88.0,
+"probability": 0.984
+},
+{
+"word": "my",
+"start": 88.0,
+"end": 88.24,
+"probability": 0.969
+},
+{
+"word": "memory,",
+"start": 88.24,
+"end": 88.7,
+"probability": 0.997
+},
+{
+"word": "and",
+"start": 88.9,
+"end": 89.16,
+"probability": 0.934
+},
+{
+"word": "only",
+"start": 89.16,
+"end": 89.54,
+"probability": 0.997
+},
+{
+"word": "you",
+"start": 89.54,
+"end": 89.8,
+"probability": 0.995
+},
+{
+"word": "possessed",
+"start": 89.8,
+"end": 90.1,
+"probability": 0.438
+},
+{
+"word": "the",
+"start": 90.1,
+"end": 90.42,
+"probability": 0.736
+},
+{
+"word": "key",
+"start": 90.42,
+"end": 90.6,
+"probability": 0.994
+},
+{
+"word": "No",
+"start": 90.6,
+"end": 90.92,
+"probability": 0.777
+},
+{
+"word": "longer",
+"start": 90.92,
+"end": 91.34,
+"probability": 0.999
+},
+{
+"word": "drowning",
+"start": 91.34,
+"end": 91.78,
+"probability": 0.996
+},
+{
+"word": "and",
+"start": 91.78,
+"end": 92.08,
+"probability": 0.866
+},
+{
+"word": "deceived",
+"start": 92.08,
+"end": 92.52,
+"probability": 0.872
+},
+{
+"word": "All",
+"start": 92.52,
+"end": 93.0,
+"probability": 0.513
+},
+{
+"word": "because",
+"start": 93.0,
+"end": 93.42,
+"probability": 0.982
+},
+{
+"word": "you",
+"start": 93.42,
+"end": 93.7,
+"probability": 0.997
+},
+{
+"word": "came",
+"start": 93.7,
+"end": 94.0,
+"probability": 0.998
+},
+{
+"word": "for",
+"start": 94.0,
+"end": 94.38,
+"probability": 0.983
+},
+{
+"word": "me",
+"start": 94.38,
+"end": 95.06,
+"probability": 0.998
+},
+{
+"word": "All",
+"start": 96.08,
+"end": 96.72,
+"probability": 0.919
+},
+{
+"word": "because",
+"start": 96.72,
+"end": 97.02,
+"probability": 0.906
+},
+{
+"word": "you",
+"start": 97.02,
+"end": 97.32,
+"probability": 0.97
+},
+{
+"word": "came",
+"start": 97.32,
+"end": 97.52,
+"probability": 0.989
+},
+{
+"word": "for",
+"start": 97.52,
+"end": 98.0,
+"probability": 0.999
+},
+{
+"word": "me",
+"start": 98.0,
+"end": 98.66,
+"probability": 0.994
+},
+{
+"word": "All",
+"start": 99.66,
+"end": 100.3,
+"probability": 0.981
+},
+{
+"word": "because",
+"start": 100.3,
+"end": 100.66,
+"probability": 0.939
+},
+{
+"word": "you",
+"start": 100.66,
+"end": 100.96,
+"probability": 0.959
+},
+{
+"word": "came",
+"start": 100.96,
+"end": 101.3,
+"probability": 0.997
+},
+{
+"word": "for",
+"start": 101.3,
+"end": 101.64,
+"probability": 1.0
+},
+{
+"word": "me",
+"start": 101.64,
+"end": 102.22,
+"probability": 0.981
+},
+{
+"word": "All",
+"start": 107.78,
+"end": 108.42,
+"probability": 0.967
+},
+{
+"word": "that",
+"start": 108.42,
+"end": 109.06,
+"probability": 0.853
+},
+{
+"word": "time",
+"start": 109.06,
+"end": 109.52,
+"probability": 0.43
+},
+{
+"word": "was",
+"start": 109.52,
+"end": 109.68,
+"probability": 0.359
+},
+{
+"word": "alone",
+"start": 109.68,
+"end": 110.3,
+"probability": 0.886
+},
+{
+"word": "in",
+"start": 110.3,
+"end": 110.54,
+"probability": 0.954
+},
+{
+"word": "my",
+"start": 110.54,
+"end": 110.74,
+"probability": 0.93
+},
+{
+"word": "town",
+"start": 110.74,
+"end": 111.04,
+"probability": 0.728
+},
+{
+"word": "You",
+"start": 111.04,
+"end": 111.4,
+"probability": 0.954
+},
+{
+"word": "were",
+"start": 111.4,
+"end": 111.68,
+"probability": 0.999
+},
+{
+"word": "just",
+"start": 111.68,
+"end": 111.84,
+"probability": 1.0
+},
+{
+"word": "haunting",
+"start": 111.84,
+"end": 112.22,
+"probability": 0.797
+},
+{
+"word": "your",
+"start": 112.22,
+"end": 112.54,
+"probability": 0.975
+},
+{
+"word": "powers,",
+"start": 112.54,
+"end": 112.96,
+"probability": 0.964
+},
+{
+"word": "now",
+"start": 113.0,
+"end": 113.2,
+"probability": 0.991
+},
+{
+"word": "I",
+"start": 113.2,
+"end": 113.4,
+"probability": 0.985
+},
+{
+"word": "can",
+"start": 113.4,
+"end": 113.64,
+"probability": 0.998
+},
+{
+"word": "see",
+"start": 113.64,
+"end": 114.02,
+"probability": 0.909
+},
+{
+"word": "it",
+"start": 114.02,
+"end": 114.48,
+"probability": 0.99
+},
+{
+"word": "all",
+"start": 114.48,
+"end": 114.78,
+"probability": 0.992
+},
+{
+"word": "You",
+"start": 114.78,
+"end": 115.88,
+"probability": 0.288
+},
+{
+"word": "saved",
+"start": 115.88,
+"end": 115.88,
+"probability": 0.907
+},
+{
+"word": "my",
+"start": 115.88,
+"end": 116.3,
+"probability": 0.971
+},
+{
+"word": "heart",
+"start": 116.3,
+"end": 116.72,
+"probability": 0.994
+},
+{
+"word": "from",
+"start": 116.72,
+"end": 117.08,
+"probability": 0.977
+},
+{
+"word": "the",
+"start": 117.08,
+"end": 117.32,
+"probability": 0.975
+},
+{
+"word": "fate",
+"start": 117.32,
+"end": 120.08,
+"probability": 0.951
+},
+{
+"word": "of",
+"start": 120.08,
+"end": 120.44,
+"probability": 0.987
+},
+{
+"word": "Ophelia",
+"start": 120.44,
+"end": 121.52,
+"probability": 0.835
+},
+{
+"word": "You",
+"start": 138.2,
+"end": 139.04,
+"probability": 0.156
+},
+{
+"word": "saved",
+"start": 139.04,
+"end": 139.88,
+"probability": 0.993
+},
+{
+"word": "my",
+"start": 139.88,
+"end": 140.1,
+"probability": 0.995
+},
+{
+"word": "heart",
+"start": 140.1,
+"end": 140.42,
+"probability": 0.999
+},
+{
+"word": "from",
+"start": 140.42,
+"end": 140.68,
+"probability": 0.993
+},
+{
+"word": "the",
+"start": 140.68,
+"end": 140.86,
+"probability": 0.992
+},
+{
+"word": "fate",
+"start": 140.86,
+"end": 141.18,
+"probability": 0.997
+},
+{
+"word": "of",
+"start": 141.18,
+"end": 141.86,
+"probability": 0.998
+},
+{
+"word": "Ophelia",
+"start": 141.86,
+"end": 143.68,
+"probability": 0.997
+},
+{
+"word": "Thank",
+"start": 147.14,
+"end": 147.3,
+"probability": 0.093
+},
+{
+"word": "you.",
+"start": 147.3,
+"end": 147.38,
+"probability": 0.997
+}
+]
