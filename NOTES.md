@@ -16,8 +16,7 @@ out at the moment playback starts, and come back when the pointer moves or keybo
 enters them. Clicking the picture or pressing Space pauses and resumes. On the desktop
 layout the stage is now full-bleed: the controls sit over it on a themed scrim when shown.
 
-_This file is being written as the work proceeds; sections marked (draft) are updated at
-the end._
+Reviews and the acceptance run are summarised per visualizer below and in `PROGRESS.md`.
 
 ## Shared ground
 
@@ -63,7 +62,7 @@ the result was merged with the original medium.en words by vote:
 - Words sung over a silent stem (hallucinations) are dropped.
 - Starts are snapped to vocal onsets.
 
-Type shows only lines that are at least 70% confirmed, and only their confirmed words.
+Type sets a line when at least half its words are confirmed, and shows only its confirmed words.
 
 ### Where the data and the brief disagree
 
