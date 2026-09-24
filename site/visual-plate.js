@@ -87,11 +87,14 @@ void main() {
   float r1, r2;
   vec2 a = settle(home, uModeA, uMix.x, uSignA, r1);
   vec2 b = settle(home, uModeB, uMix.y, uMix.w, r2);
+  // A re-form is a dissolve: each grain leaves the old figure's line for the new one's at its
+  // own moment, so every frame shows clean lines (no grains in flight across the plate).
   float s = uMix.z;
-  vec2 p = mix(a, b, s);
-  float residual = mix(r1, r2, s);
+  bool onB = fract(aSeed.w * 13.37 + aSeed.x * 7.13 + aSeed.y * 3.71) < s;
+  vec2 p = onB ? b : a;
+  float residual = onB ? r2 : r1;
   // Line weight: each grain sits off the line by its own amount.
-  vec2 grad = gradient(p, uModeB, uMix.y, uMix.w);
+  vec2 grad = onB ? gradient(p, uModeB, uMix.y, uMix.w) : gradient(p, uModeA, uMix.x, uSignA);
   vec2 normal = length(grad) > 1e-4 ? normalize(grad) : vec2(0.0, 1.0);
   p += normal * (aSeed.z - 0.5) * uGather.w;
 
@@ -119,11 +122,10 @@ void main() {
   gl_Position = vec4(clip, 0.0, 1.0);
   gl_PointSize = uPointSize * (0.75 + 0.5 * aSeed.w);
   // grains that did not reach a line are faint (real sand leaves the antinodes empty) until
-  // the knot closes; in mid-migration they dim, so a re-form is a quick fade across
+  // the knot closes
   float onLine = 1.0 - smoothstep(0.004, 0.02, residual);
-  float flight = 1.0 - 0.75 * 4.0 * s * (1.0 - s);
   float drained = step(uDrain, fract(aSeed.w * 7.31 + aSeed.x * 3.17));
-  vAlpha = mix(onLine * flight, 1.0, smoothstep(0.9, 1.0, uGather.x)) * uGather.z * (1.0 - outside) * drained;
+  vAlpha = mix(onLine, 1.0, smoothstep(0.9, 1.0, uGather.x)) * uGather.z * (1.0 - outside) * drained;
   vShade = aSeed.z;
 }`;
 
@@ -169,38 +171,64 @@ void main() {
 }`;
 
 // Each song's family of figures, simplest first, with its symmetry; the figure its drops land
-// on (used for nothing else); and the one reserved X for breakdowns.
+// on (the first drop and the thumbnail only), its siblings for the other drops and the drop
+// sections, a grander one for a main drop that is not the first; and the voice's own three
+// figures [n1, m1, n2, m2, second, symmetry], no two songs alike. Figures: see
+// tools/render/chladni.py.
 const plateSongs = {
   "5ff86d6cd02ebd7308e03df8": { // NBLY: rings and rosettes
     s: -1,
     family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 5], [3, 4, 1, 2], [2, 5, 1, 3]],
     drop: { mode: [2, 5, 1, 2], second: 0.45, sign: -1 },
+    siblings: [[2, 5, 1, 2, -0.45], [2, 5, 1, 2, 0.9], [2, 6, 1, 2, 0.45]],
+    grand: [3, 6, 1, 2, 0.45],
+    voice: [[1, 2, 1, 3, 0.3, -1], [1, 2, 2, 3, -0.4, -1], [2, 4, 1, 3, 0.3, -1]],
   },
   "1d589940ca458d793a3fad8a": { // Desire: hourglass bands
     s: 0.55,
-    family: [[1, 2, 1, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 5, 1, 2], [2, 5, 1, 3]],
+    family: [[2, 4, 1, 2], [2, 3, 1, 4], [1, 4, 2, 3], [3, 5, 1, 2], [2, 5, 1, 3]],
     drop: { mode: [3, 4, 1, 3], second: 0.5, sign: 0.55 },
+    siblings: [[3, 4, 1, 3, -0.5], [3, 5, 1, 3, 0.5], [4, 5, 1, 3, 0.5]],
+    grand: [4, 6, 1, 3, 0.5],
+    voice: [[1, 3, 3, 1, 0.4, 0], [1, 4, 2, 1, 0.3, 0.3], [1, 3, 2, 2, 0.3, 0.55]],
   },
   f127a026dc751f1528bfb95d: { // The Fate of Ophelia: pills and cushions
     s: -0.5,
     family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 4, 1, 2], [1, 5, 2, 3]],
     drop: { mode: [2, 4, 1, 1], second: 0.5, sign: -0.5 },
+    siblings: [[2, 4, 1, 1, -0.5], [2, 5, 1, 1, 0.5], [3, 4, 1, 1, 0.5]],
+    grand: [3, 5, 1, 1, 0.5],
+    voice: [[1, 2, 1, 3, 0.3, -0.5], [3, 1, 1, 2, 0.2, -0.5], [1, 3, 1, 4, -0.5, -0.5]],
   },
   "8eee874c702a10807f79706c": { // Outside: a ruled grid
     s: 0,
     family: [[1, 2, 2, 3], [2, 3, 1, 4], [1, 4, 2, 5], [3, 4, 1, 2], [2, 5, 1, 3]],
     drop: { mode: [1, 5, 3, 3], second: 0.3, sign: 0 },
+    siblings: [[1, 5, 3, 3, 0.6], [2, 5, 3, 3, 0.3], [2, 6, 3, 3, 0.3]],
+    grand: [2, 6, 3, 3, 0.3],
+    voice: [[1, 2, 2, 1, 0.6, 0], [2, 2, 1, 3, 0.4, 0], [2, 3, 1, 2, -0.3, 0]],
   },
   "4048d4a6dce44c151690b2b1": { // American Boy: columns and barbells
     s: 0.3,
     family: [[1, 3, 2, 3], [2, 3, 1, 4], [2, 5, 1, 2], [3, 4, 1, 3], [1, 5, 2, 3]],
     drop: { mode: [1, 4, 2, 3], second: 0.55, sign: 0.3 },
+    siblings: [[1, 4, 2, 3, 0.95], [1, 5, 2, 3, 0.55], [2, 4, 2, 3, 0.55]],
+    grand: [2, 5, 2, 3, 0.55],
+    voice: [[3, 1, 1, 2, 0.4, 0.3], [3, 1, 2, 2, 0.3, 0.55], [2, 1, 3, 1, 0.3, 0.3]],
   },
 };
-const plateDefaultSong = { s: -0.5, family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 4, 1, 2], [2, 5, 1, 3]], drop: { mode: [2, 4, 1, 1], second: 0.5, sign: -0.5 } };
+const plateDefaultSong = {
+  s: -0.5,
+  family: [[1, 3, 2, 3], [2, 3, 1, 4], [1, 4, 2, 3], [3, 4, 1, 2], [2, 5, 1, 3]],
+  drop: { mode: [2, 4, 1, 1], second: 0.5, sign: -0.5 },
+  siblings: [[2, 4, 1, 1, -0.5], [2, 5, 1, 1, 0.5], [3, 4, 1, 1, 0.5]],
+  grand: [3, 5, 1, 1, 0.5],
+  voice: [[1, 2, 1, 3, 0.3, -0.5], [3, 1, 1, 2, 0.2, -0.5], [1, 3, 1, 4, -0.5, -0.5]],
+};
 const plateCircle = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
-// The breakdown's bare X, and the key word's concentric rings: each used for nothing else.
-const plateBreakFigure = { mode: [1, 2, 1, 1], second: 0, sign: 1, start: 0 };
+// The breakdown's X (bare, then ringed, then with lobes, stepping every four bars), and the
+// key word's concentric rings: each used for nothing else.
+const plateBreakFigures = [[1, 2], [1, 4], [2, 3], [3, 4]].map(([n, m]) => ({ mode: [n, m, 1, 1], second: 0, sign: 1, start: 0 }));
 const plateKeyFigure = { mode: [-1, 4, 0, 0], second: 0, sign: 0, start: 0 };
 const plateColors = {
   ivory: { ground: "#efe9dc", plate: "#e7e0d0", sand: "#171513", voice: "#e2401c", ink: "#171513" },
@@ -259,10 +287,16 @@ registerVisualizer({
     let figureStarts = new Float64Array(0);
     let voices = []; // the voice sand: [{start, end, figure}], one per sung phrase
     let voiceStarts = new Float64Array(0);
-    let grounds = []; // per scene: "ivory" | "vermilion" | "ink"
+    let grounds = []; // [{start, ground}]: "ivory" | "vermilion" | "ink", in time
+    let groundStarts = new Float64Array(0);
     let drainStart = Infinity;
     let songEnd = Infinity;
     let backbeats = new SongEvents([]);
+
+    function groundAt(time) {
+      const index = lastIndexAtOrBefore(groundStarts, time);
+      return index >= 0 ? grounds[index].ground : "ivory";
+    }
 
     // A figure from the song's family for a moment: its place in the family from the
     // section's energy (and one step for the chord's root), the second pair's sign from minor,
@@ -272,14 +306,14 @@ registerVisualizer({
       const chord = chordIndex >= 0 ? model.chords[chordIndex] : model.chords[0] || { root: 0, minor: 0 };
       const intensity = model.scene(time + 0.01).intensity;
       const family = setup.family;
-      const step = Math.round(intensity * (family.length - 1)) - (sparse ? 1 : 0) + (plateCircle.indexOf(chord.root) % 2) + variant;
+      const step = Math.round(intensity * (family.length - 1)) - (sparse ? 1 : 0) + (plateCircle.indexOf(chord.root) % 2) + variant * 2;
       const index = ((step % family.length) + family.length) % family.length;
       const mode = family[Math.max(0, Math.min(family.length - 1, index))];
       return { mode: mode.slice(), second: chord.minor ? -0.3 : 0.3, sign: setup.s, start: time };
     }
 
-    // A voice figure: the simplest three of the family at the voice's scale, picked by the
-    // phrase's most sung pitch class and stepped on phrase by phrase.
+    // A voice figure: one of the song's three voice figures, picked by the phrase's most sung
+    // pitch class and stepped on phrase by phrase.
     function voiceFigure(model, start, end, order) {
       const weight = new Float32Array(12);
       const notes = model.vocalNotes;
@@ -289,8 +323,8 @@ registerVisualizer({
       }
       let best = 0;
       for (let pitch = 1; pitch < 12; pitch++) if (weight[pitch] > weight[best]) best = pitch;
-      const mode = setup.family[(plateCircle.indexOf(best) + order) % 3];
-      return { mode: [mode[0], mode[1], mode[1], mode[0] + 1], second: 0.2, sign: setup.s, start };
+      const [n1, m1, n2, m2, second, sign] = setup.voice[(plateCircle.indexOf(best) + order) % setup.voice.length];
+      return { mode: [n1, m1, n2, m2], second, sign, start };
     }
 
     function setSong(model) {
@@ -299,6 +333,7 @@ registerVisualizer({
       figures = [];
       voices = [];
       grounds = [];
+      groundStarts = new Float64Array(0);
       drainStart = songEnd = Infinity;
       figureStarts = new Float64Array(0);
       voiceStarts = new Float64Array(0);
@@ -316,22 +351,38 @@ registerVisualizer({
         songEnd = Math.min(model.duration, index / 100 + 0.3);
       }
 
-      // The ground per scene: ivory before the turn (the main drop's section in ink when that
-      // drop comes before the turn); from the turn vermilion for at least sixteen bars, then
-      // ink and vermilion by turns, a section under eight bars keeping the last colour; the
-      // outro keeps the colour of the last full section.
+      // The ground: ivory before the turn (the main drop's section in ink when that drop comes
+      // before the turn); from the turn vermilion for sixteen bars (eight when less than 64
+      // bars follow the turn), then ink and vermilion by turns, each change at the start of a
+      // section of eight bars or more or, failing one within eight bars, on a downbeat; the
+      // outro keeps the last colour.
       const turn = model.lateStart;
       const mainTime = model.mainDrop >= 0 ? model.drops[model.mainDrop].time : Infinity;
-      let late = 0;
-      model.scenes.forEach((scene, index) => {
-        const bars = (scene.end - scene.start) / model.barPeriod;
-        let ground;
-        if (scene.start < turn - 0.05) ground = mainTime < turn - 0.05 && scene.start >= mainTime - 0.05 && scene.start < mainTime + 0.05 ? "ink" : "ivory";
-        else if (scene.start < turn + 16 * model.barPeriod - 0.05) ground = "vermilion";
-        else if (scene.kind === "outro" || bars < 8) ground = grounds[index - 1] || "vermilion";
-        else ground = late++ % 2 === 0 ? "ink" : "vermilion";
-        grounds.push(ground);
-      });
+      const mark = (start, ground) => {
+        if (!grounds.length || grounds[grounds.length - 1].ground !== ground) grounds.push({ start, ground });
+      };
+      for (const scene of model.scenes) {
+        if (scene.start >= turn - 0.05) break;
+        mark(scene.start, mainTime < turn - 0.05 && scene.start >= mainTime - 0.05 && scene.start < mainTime + 0.05 ? "ink" : "ivory");
+      }
+      if (!grounds.length) mark(0, "ivory");
+      if (turn < model.duration) {
+        const bar = model.barPeriod;
+        const outro = model.scenes.find((scene, index) => scene.kind === "outro" && model.scenes.slice(index).every((next) => next.kind === "outro"));
+        const outroStart = outro ? outro.start : songEnd;
+        let colour = "vermilion";
+        mark(turn, colour);
+        let next = turn + ((model.duration - turn) / bar >= 64 ? 16 : 8) * bar;
+        while (next < outroStart - 4 * bar) {
+          const scene = model.scenes.find((entry) => entry.start >= next - 0.05 && entry.start < next + 8 * bar && entry.end - entry.start >= 8 * bar - 0.05);
+          const at = scene ? scene.start : model.barTime(model.barIndex(next + 0.05));
+          if (at >= outroStart - 0.05) break;
+          colour = colour === "vermilion" ? "ink" : "vermilion";
+          mark(at, colour);
+          next = at + 16 * bar;
+        }
+      }
+      groundStarts = Float64Array.from(grounds.map((entry) => entry.start));
       // The drain: from the start of the song's last run of quiet scenes (or its outro).
       for (let index = model.scenes.length - 1; index >= 0; index--) {
         const scene = model.scenes[index];
@@ -376,9 +427,12 @@ registerVisualizer({
         return index >= 0 && time < voices[index].end + 0.25;
       };
 
-      // The harmony: a re-form at most once a bar, on the downbeat, never in a build or a gap;
-      // while the voice sings only every eight bars; in a breakdown the bare X; every drop lands
-      // on the song's drop figure and holds it four bars; in a chord passage every chord.
+      // The harmony: a re-form at most every two bars, on the downbeat, never in a build or a
+      // gap, and never straight back to the figure before; while the voice sings only every
+      // eight bars; in a breakdown the X, stepping every four bars; in a chord passage every
+      // chord. The first drop lands on the song's drop figure (its thumbnail), a later main
+      // drop on the grander figure, the others on its siblings; each holds four bars, and a
+      // drop section then steps through the siblings every four bars.
       const same = (a, b) => a && b && a.mode.join() === b.mode.join() && a.sign === b.sign && Math.sign(a.second) === Math.sign(b.second);
       const push = (figure) => {
         const last = figures[figures.length - 1];
@@ -387,8 +441,10 @@ registerVisualizer({
         figures.push(figure);
         return true;
       };
+      const figureOf = ([n1, m1, n2, m2, second], time) => ({ mode: [n1, m1, n2, m2], second, sign: setup.drop.sign, start: time });
       let heldSince = 0,
-        dropHold = -Infinity;
+        dropHold = -Infinity,
+        siblingStep = 0;
       const seen = new Map(); // chord → how often it has come round in this scene
       let seenScene = -1;
       const moments = [];
@@ -409,11 +465,17 @@ registerVisualizer({
           seenScene = sceneIndex;
         }
         const drop = model.dropContext(time + 0.001);
-        const sparse = grounds[sceneIndex] === "vermilion";
+        const sparse = groundAt(time + 0.01) === "vermilion";
         if (moment.kind === "drop") {
-          push({ ...setup.drop, mode: setup.drop.mode.slice(), start: time });
+          const index = model.drops.findIndex((entry) => Math.abs(entry.time - time) < 0.01);
+          let figure;
+          if (index <= 0) figure = { ...setup.drop, mode: setup.drop.mode.slice(), start: time };
+          else if (index === model.mainDrop) figure = figureOf(setup.grand, time);
+          else figure = figureOf(setup.siblings[(index - 1) % setup.siblings.length], time);
+          push(figure);
           heldSince = time;
           dropHold = time + 4 * model.barPeriod;
+          siblingStep = Math.max(0, index);
           continue;
         }
         if (moment.kind === "chord") {
@@ -429,17 +491,26 @@ registerVisualizer({
           continue;
         }
         if (scene.kind === "break") {
-          if (push({ ...plateBreakFigure, start: time })) heldSince = time;
+          const step = Math.floor(Math.max(0, model.barIndex(time + 0.01) - model.barIndex(scene.start + 0.01)) / 4);
+          if (push({ ...plateBreakFigures[step % plateBreakFigures.length], start: time })) heldSince = time;
           continue;
         }
         const held = time - heldSince;
+        if (scene.kind === "drop") {
+          if (held < 4 * model.barPeriod - 0.05) continue;
+          if (push(figureOf(setup.siblings[siblingStep++ % setup.siblings.length], time))) heldSince = time;
+          continue;
+        }
+        if (held < 2 * model.barPeriod - 0.05) continue;
         if (singingAt(time) && held < 8 * model.barPeriod - 0.05) continue;
         const chordIndex = model.chordIndex(time + 0.05);
         const chordKey = chordIndex >= 0 ? `${model.chords[chordIndex].root}${model.chords[chordIndex].minor}` : "none";
         const count = seen.get(chordKey) || 0;
-        const last = figures[figures.length - 1];
+        const last = figures[figures.length - 1],
+          beforeLast = figures[figures.length - 2];
         let next = harmonyFigure(model, time, count, sparse);
-        if (same(next, last) && held >= 4 * model.barPeriod - 0.05) next = harmonyFigure(model, time, count + 1, sparse);
+        if ((same(next, last) && held >= 4 * model.barPeriod - 0.05) || same(next, beforeLast)) next = harmonyFigure(model, time, count + 1, sparse);
+        if (same(next, beforeLast)) next = harmonyFigure(model, time, count + 2, sparse);
         if (!same(next, last)) {
           seen.set(chordKey, count + 1);
           push(next);
@@ -494,7 +565,7 @@ registerVisualizer({
       const sceneIndex = song ? song.sceneIndex(time) : 0;
       const peak = song ? song.peakAt(time) : null;
       const chordPassage = Boolean(peak && peak.kind === "chords");
-      const groundName = song ? (chordPassage ? "inverted" : grounds[sceneIndex] || "ivory") : "ivory";
+      const groundName = song ? (chordPassage ? "inverted" : groundAt(time)) : "ivory";
       const colors = plateColors[groundName];
       const key = `${colors.ground}:${colors.ink}`;
       if (key !== themeKey) {
@@ -637,20 +708,26 @@ registerVisualizer({
         }
       }
       // a hole (and the last beat before a drop with none) is the knot alone, unless the key
-      // word is sung into it
+      // word is sung into it; a drop's four-bar hold belongs to the black sand (the voice is
+      // away for its first 0.3 s, then at half); the voice recedes as a build contracts
       const inHole = drop.phase === 2 || leadIn >= 0 || lastBeat;
       if (inHole) voicePresence = 0;
+      const holding = drop.phase === 3 && drop.since < 4 * song.barPeriod;
+      if (holding) voicePresence *= drop.since < 0.3 ? 0 : 0.5;
+      if (drop.phase === 1) voicePresence *= 1 - clamp01(gather);
 
       const sandColor = hexColor(colors.sand),
         voiceColor = hexColor(colors.voice);
-      // the black sand steps back while the voice sings, and almost leaves for the key word
-      const sandPresence = (1 - 0.55 * voicePresence) * (1 - 0.8 * keyMoment);
+      // the black sand steps back while the voice sings, and almost leaves for the key word,
+      // except in a drop's hold
+      const sandPresence = holding ? 1 : (1 - 0.55 * voicePresence) * (1 - 0.8 * keyMoment);
       drawSand(sandArray, plateGrains, previous, current, settle, gather, knot, sandPresence, sandColor, pointSize, ripples, weight, drain);
       if (keyMoment > 0.01) {
         const before = lastIndexAtOrBefore(voiceStarts, keyStart - 0.01);
         Object.assign(voiceBefore, before >= 0 ? voices[before].figure : plateKeyFigure);
         const voiceSettle = easeOutCubic(clamp01((time - keyStart) / 0.2));
-        drawSand(voiceArray, plateVoiceGrains, voiceBefore, plateKeyFigure, voiceSettle, inHole ? 0.6 : gather, 0.3, keyMoment, voiceColor, pointSize * 1.5, ripples, 0.03, drain, 1);
+        // (in a build the rings keep their size and fade instead of being crushed)
+        drawSand(voiceArray, plateVoiceGrains, voiceBefore, plateKeyFigure, voiceSettle, inHole ? 0.6 : 0, 0.3, keyMoment * (drop.phase === 1 ? 1 - 0.7 * clamp01(gather) : 1), voiceColor, pointSize * 1.5, ripples, 0.03, drain, 1);
       } else if (voicePresence > 0.01 && voices.length) {
         const index = Math.max(0, voiceIndex);
         Object.assign(voiceNow, voices[index].figure);
@@ -690,18 +767,18 @@ registerVisualizer({
         const left = plate.x0 + 8 * unit,
           span = plate.side - 16 * unit,
           top = plate.y0 + 3 * unit;
-        const tick = plate.side * 0.045;
+        const tick = plate.side * 0.065;
         labels.fillStyle = colors.sand;
-        labels.globalAlpha = 0.25;
-        for (let step = 0; step < 16; step++) labels.fillRect(left + (step / 16) * span - 1.5 * unit, top, 3 * unit, tick * (step % 4 === 0 ? 0.55 : 0.3));
+        labels.globalAlpha = 0.3;
+        for (let step = 0; step < 16; step++) labels.fillRect(left + (step / 16) * span - 2 * unit, top, 4 * unit, tick * (step % 4 === 0 ? 0.5 : 0.28));
         let index = song.hats.last(time);
         while (index >= 0) {
           const age = time - song.hats.time[index];
           if (age > song.barPeriod) break;
           if (song.hats.strength[index] >= 0.25) {
             const at = fract(song.barPosition(song.hats.time[index]));
-            labels.globalAlpha = 0.25 + 0.75 * Math.exp(-age / (song.beatPeriod * 0.8));
-            labels.fillRect(left + at * span - 4 * unit, top, 8 * unit, tick);
+            labels.globalAlpha = 0.3 + 0.7 * Math.exp(-age / (song.beatPeriod * 0.8));
+            labels.fillRect(left + at * span - 6 * unit, top, 12 * unit, tick);
           }
           index--;
         }
