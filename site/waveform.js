@@ -10,13 +10,17 @@ function drawWaveform() {
   const progress = Number(elements.seek.value) / 1000,
     peaks = selected?.peaks || [],
     barCount = Math.max(1, Math.floor(bounds.width / 5)),
-    center = bounds.height / 2;
+    center = bounds.height / 2,
+    style = getComputedStyle(canvas),
+    color = (name) => style.getPropertyValue(name);
   context.clearRect(0, 0, bounds.width, bounds.height);
   if (!peaks.length) {
-    context.fillStyle = "#aeb6c2";
+    context.fillStyle = color("--wave-empty");
     context.fillRect(0, center, bounds.width, 1);
     return;
   }
+  const played = color("--wave-played"),
+    unplayed = color("--wave");
   for (let index = 0; index < barCount; index++) {
     const start = Math.floor((index * peaks.length) / barCount),
       finish = Math.max(
@@ -27,7 +31,7 @@ function drawWaveform() {
     for (let sample = start; sample < finish; sample++)
       height = Math.max(height, peaks[sample] || 0);
     height = Math.max(3, height * (bounds.height - 22));
-    context.fillStyle = index / barCount < progress ? "#315bca" : "#8290a3";
+    context.fillStyle = index / barCount < progress ? played : unplayed;
     context.beginPath();
     context.roundRect(
       (index * bounds.width) / barCount,

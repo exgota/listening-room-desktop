@@ -175,10 +175,12 @@ window.addEventListener("popstate", () => {
     showNotice("That file is no longer shared.", "route");
 });
 
-const playerResizeObserver = new ResizeObserver(() => {
+function redrawPlayer() {
   drawWaveform();
   drawVisualizer();
-});
+}
+const playerResizeObserver = new ResizeObserver(redrawPlayer);
+addEventListener("themechange", redrawPlayer);
 playerResizeObserver.observe(elements.waveform);
 playerResizeObserver.observe(elements.visualizer);
 loadTracks();
